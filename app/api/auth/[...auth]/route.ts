@@ -1,3 +1,3 @@
-import { auth } from "../../../../lib/auth";
+import { handler } from '@/lib/auth'
 
-export const { GET, POST, HEAD, PUT, DELETE, PATCH } = auth.handler;
+export const { GET, POST, PATCH, PUT, DELETE } = handler;
