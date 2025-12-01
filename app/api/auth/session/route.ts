@@ -1,27 +1,32 @@
-import { auth, Session } from '@/lib/auth';
+import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
+import { JWTUtils } from '@/lib/auth/jwt';
+import { getUserRoles, getUserPermissions } from '@/lib/auth/auth-db';
 
 export async function GET() {
   try {
-    const cookieStore = await (await import('next/headers')).cookies();
-    const session: Session = await auth.api.getSession({
-      headers: new Headers({
-        cookie: cookieStore.toString()
-      })
-    });
+    const cookieStore = await cookies();
+    const accessToken = cookieStore.get('access_token')?.value;
 
-    if (!session?.user) {
+    if (!accessToken) {
       return NextResponse.json({ user: null });
     }
 
+    // Verify the JWT token
+    const payload = JWTUtils.verifyAccessToken(accessToken);
+    
+    // Get user roles and permissions
+    const roles = await getUserRoles(payload.userId);
+    const permissions = await getUserPermissions(payload.userId);
+
     return NextResponse.json({ 
       user: {
-        id: session.user.id,
-        email: session.user.email,
-        name: session.user.name,
-        role: session.user.roles?.[0] || 'EMPLOYEE', // Use roles from session
-        roles: session.user.roles || [],
-        permissions: session.user.permissions || []
+        id: payload.userId.toString(),
+        email: payload.email,
+        name: payload.username,
+        role: roles[0]?.name || 'EMPLOYEE',
+        roles: roles.map(role => role.name),
+        permissions
       }
     });
 
