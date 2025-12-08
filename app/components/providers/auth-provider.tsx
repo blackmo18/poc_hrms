@@ -6,6 +6,8 @@ interface User {
   id: string;
   email: string;
   name?: string;
+  role?: string;
+  permissions?: string[];
 }
 
 interface AuthContextType {
@@ -14,6 +16,7 @@ interface AuthContextType {
   logout: () => Promise<void>;
   isLoading: boolean;
   getAccessToken: () => Promise<string | null>;
+  checkAuth: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -21,34 +24,41 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [hasCheckedAuth, setHasCheckedAuth] = useState(false);
+
+  const checkAuth = async () => {
+    try {
+      const response = await fetch('/api/auth/session', {
+        credentials: 'include', // Important for cookies
+        headers: {
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.user) {
+          setUser(data.user);
+        }
+      }
+    } catch (error) {
+      console.error('Auth check failed:', error);
+    } finally {
+      setIsLoading(false);
+      setHasCheckedAuth(true);
+    }
+  };
 
   useEffect(() => {
-    // Check if user has valid JWT token on mount
-    const checkAuth = async () => {
-      try {
-        const response = await fetch('/api/auth/session', {
-          credentials: 'include', // Important for cookies
-          headers: {
-            'Cache-Control': 'no-cache',
-            'Pragma': 'no-cache'
-          }
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          if (data.user) {
-            setUser(data.user);
-          }
-        }
-      } catch (error) {
-        console.error('Auth check failed:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
+    // Only check auth once on mount, not on every route change
+    if (hasCheckedAuth) {
+      setIsLoading(false);
+      return;
+    }
 
     checkAuth();
-  }, []);
+  }, [hasCheckedAuth]);
 
   const login = async (email: string, password: string) => {
     setIsLoading(true);
@@ -77,11 +87,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const logout = async () => {
+    console.log('user is logged out ====>')
     try {
+      // Clear local tokens
+      localStorage.removeItem('access_token');
+      localStorage.removeItem('refresh_token');
+      
+      // Call sign-out endpoint to clear server-side cookies
       await fetch('/api/auth/sign-out', { method: 'POST', credentials: 'include' });
+      
       setUser(null);
     } catch (error) {
       console.error('Logout failed:', error);
+      // Still clear local state even if server logout fails
+      setUser(null);
+      localStorage.removeItem('access_token');
+      localStorage.removeItem('refresh_token');
     }
   };
 
@@ -89,7 +110,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const refreshAccessToken = async (): Promise<boolean> => {
     try {
       const refreshToken = localStorage.getItem('refresh_token');
-      if (!refreshToken) return false;
+      if (!refreshToken) {
+        // No refresh token means user needs to login again
+        logout();
+        return false;
+      }
 
       const response = await fetch('/api/auth/refresh', {
         method: 'POST',
@@ -103,14 +128,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         localStorage.setItem('refresh_token', data.refreshToken);
         setUser(data.user);
         return true;
+      } else if (response.status === 401) {
+        // 401 means refresh token is invalid/expired - user must login again
+        console.error('Refresh token expired - requires login');
+        logout();
+        return false;
+      } else {
+        // Other errors (500, network issues, etc.) - don't logout immediately
+        console.error('Token refresh failed with status:', response.status);
+        return false;
       }
     } catch (error) {
-      console.error('Token refresh failed:', error);
+      // Network errors or other issues - don't logout immediately
+      console.error('Token refresh network error:', error);
+      return false;
     }
-
-    // If refresh fails, logout user
-    logout();
-    return false;
   };
 
   // Get access token with auto-refresh
@@ -130,10 +162,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (refreshed) {
           token = localStorage.getItem('access_token');
         } else {
-          return null;
+          // Refresh failed but don't return null immediately
+          // Return the existing token and let the API handle auth
+          return token;
         }
       }
     } catch {
+      // Token is malformed, return null
       return null;
     }
 
@@ -141,7 +176,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, isLoading, getAccessToken }}>
+    <AuthContext.Provider value={{ user, login, logout, isLoading, getAccessToken, checkAuth }}>
       {children}
     </AuthContext.Provider>
   );

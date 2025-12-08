@@ -1,10 +1,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Users, Building2, DollarSign, Calendar } from 'lucide-react';
-import { useAuth } from '../components/providers/auth-provider';
+import { ProtectedRoute } from '../components/protected-route';
 
 interface DashboardStats {
   totalEmployees: number;
@@ -13,9 +12,7 @@ interface DashboardStats {
   pendingLeaveRequests: number;
 }
 
-export default function Dashboard() {
-  const { user, isLoading } = useAuth();
-  const router = useRouter();
+function DashboardContent() {
   const [stats, setStats] = useState<DashboardStats>({
     totalEmployees: 0,
     totalDepartments: 0,
@@ -23,13 +20,6 @@ export default function Dashboard() {
     pendingLeaveRequests: 0,
   });
   const [loading, setLoading] = useState(true);
-
-  // Redirect to login if not authenticated
-  useEffect(() => {
-    if (!isLoading && !user) {
-      router.push('/login');
-    }
-  }, [user, isLoading, router]);
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -55,13 +45,8 @@ export default function Dashboard() {
       }
     };
 
-    // Only fetch if user is authenticated
-    if (user) {
-      fetchStats();
-    } else {
-      setLoading(false);
-    }
-  }, [user]);
+    fetchStats();
+  }, []);
 
   const statCards = [
     {
@@ -147,5 +132,13 @@ export default function Dashboard() {
         </Card>
       </div>
     </div>
+  );
+}
+
+export default function Dashboard() {
+  return (
+    <ProtectedRoute>
+      <DashboardContent />
+    </ProtectedRoute>
   );
 }

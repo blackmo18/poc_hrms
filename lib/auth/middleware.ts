@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { JWTUtils } from './jwt';
 import { prisma } from '../db';
+import { permissionController } from '../controllers';
 
 export interface AuthenticatedRequest extends NextRequest {
   user?: {
@@ -10,6 +11,10 @@ export interface AuthenticatedRequest extends NextRequest {
     role: string;
   };
 }
+
+/* ===================================================== */
+/* AUTHENTICATION MIDDLEWARE                            */
+/* ===================================================== */
 
 /**
  * Authentication middleware for API routes
@@ -74,24 +79,6 @@ export async function authMiddleware(request: NextRequest): Promise<NextResponse
 }
 
 /**
- * Role-based access control middleware
- */
-export function rbacMiddleware(allowedRoles: string[]) {
-  return async (request: NextRequest): Promise<NextResponse | null> => {
-    const userRole = request.headers.get('x-user-role');
-    
-    if (!userRole || !allowedRoles.includes(userRole)) {
-      return NextResponse.json(
-        { error: 'Insufficient permissions' },
-        { status: 403 }
-      );
-    }
-
-    return null; // Continue to the actual handler
-  };
-}
-
-/**
  * Organization access middleware - ensures user can only access their own organization
  */
 export async function organizationMiddleware(request: NextRequest): Promise<NextResponse | null> {
@@ -109,6 +96,32 @@ export async function organizationMiddleware(request: NextRequest): Promise<Next
   return null; // Continue to the actual handler
 }
 
+/* ===================================================== */
+/* AUTHORIZATION MIDDLEWARE                             */
+/* ===================================================== */
+
+/**
+ * Role-based access control middleware
+ */
+export function rbacMiddleware(allowedRoles: string[]) {
+  return async (request: NextRequest): Promise<NextResponse | null> => {
+    const userRole = request.headers.get('x-user-role');
+    
+    if (!userRole || !allowedRoles.includes(userRole)) {
+      return NextResponse.json(
+        { error: 'Insufficient permissions' },
+        { status: 403 }
+      );
+    }
+
+    return null; // Continue to the actual handler
+  };
+}
+
+/* ===================================================== */
+/* HELPER FUNCTIONS                                      */
+/* ===================================================== */
+
 /**
  * Helper function to get authenticated user from request
  */
@@ -121,9 +134,142 @@ export function getAuthenticatedUser(request: NextRequest) {
   };
 }
 
+/**
+ * Helper function to check if user has required permissions
+ */
+async function getUserPermissions(roleIds: bigint[]): Promise<string[]> {
+  const userPermissions: string[] = [];
+  for (const roleId of roleIds) {
+    const rolePermissions = await permissionController.getPermissionsByRoleId(roleId);
+    userPermissions.push(...rolePermissions);
+  }
+  return [...new Set(userPermissions)]; // Remove duplicates
+}
+
+/* ===================================================== */
+/* AUTHENTICATION & AUTHORIZATION WRAPPERS              */
+/* ===================================================== */
+
+/**
+ * Wrapper function that handles authentication and role-based authorization
+ */
+export const requireRoles = async (
+  request: NextRequest,
+  allowedRoles: string[],
+  handler: (authRequest: AuthenticatedRequest) => Promise<NextResponse>
+) => {
+  try {
+    // Authentication
+    const authResult = await authMiddleware(request);
+    if (authResult) return authResult;
+
+    // Get user
+    const user = getAuthenticatedUser(request);
+    if (!user || user.id === 0) {
+      return NextResponse.json(
+        { error: 'Authentication required' },
+        { status: 401 }
+      );
+    }
+
+    // Authorization - Check role
+    const hasRole = allowedRoles.includes(user.role);
+    if (!hasRole) {
+      return NextResponse.json(
+        { error: 'Insufficient permissions' },
+        { status: 403 }
+      );
+    }
+
+    // Execute handler
+    const authRequest = request as AuthenticatedRequest;
+    authRequest.user = user;
+    return await handler(authRequest);
+    
+  } catch (error) {
+    console.error('Role check error:', error);
+    return NextResponse.json(
+      { error: 'Authentication or authorization failed' },
+      { status: 500 }
+    );
+  }
+};
+
+/**
+ * Wrapper function that handles authentication and permission-based authorization
+ */
+export const requirePermission = async (
+  request: NextRequest,
+  requiredPermissions: string[],
+  handler: (authRequest: AuthenticatedRequest) => Promise<NextResponse>
+) => {
+  try {
+    // Authentication
+    const authResult = await authMiddleware(request);
+    if (authResult) return authResult;
+
+    // Get user
+    const user = getAuthenticatedUser(request);
+    if (!user || user.id === 0) {
+      return NextResponse.json(
+        { error: 'Authentication required' },
+        { status: 401 }
+      );
+    }
+
+    // Get role IDs from JWT
+    const token = JWTUtils.extractTokenFromHeader(request.headers.get('authorization') || undefined);
+    if (!token) {
+      return NextResponse.json(
+        { error: 'Authentication required' },
+        { status: 401 }
+      );
+    }
+
+    const decoded = JWTUtils.decodeToken(token);
+    if (!decoded) {
+      return NextResponse.json(
+        { error: 'Invalid authentication token' },
+        { status: 401 }
+      );
+    }
+
+    // Authorization - Check permissions
+    const userPermissions = await getUserPermissions(decoded.roleIds);
+    const hasRequiredPermission = requiredPermissions.some(permission => 
+      userPermissions.includes(permission)
+    );
+    
+    if (!hasRequiredPermission) {
+      return NextResponse.json(
+        { error: 'Insufficient permissions' },
+        { status: 403 }
+      );
+    }
+
+    // Execute handler
+    const authRequest = request as AuthenticatedRequest;
+    authRequest.user = user;
+    return await handler(authRequest);
+    
+  } catch (error) {
+    console.error('Permission check error:', error);
+    return NextResponse.json(
+      { error: 'Authentication or authorization failed' },
+      { status: 500 }
+    );
+  }
+};
+
+/* ===================================================== */
+/* EXPORTS                                              */
+/* ===================================================== */
+
 export default {
   authMiddleware,
   rbacMiddleware,
   organizationMiddleware,
-  getAuthenticatedUser
+  getAuthenticatedUser,
+  requireRoles,
+  requirePermission
 };

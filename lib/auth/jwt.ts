@@ -1,7 +1,7 @@
 import jwt from 'jsonwebtoken';
 import { jwtDecode } from 'jwt-decode';
 import bcrypt from 'bcryptjs';
-import { findUserByEmail, findUserById, getUserRoles, verifyPassword } from './auth-db';
+import { findUserByEmail, findUserById, getUserRoles, getUserPermissions, verifyPassword } from './auth-db';
 import { JWTPayload, JWTSerializablePayload } from '@/models/auth';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
@@ -81,12 +81,16 @@ export class JWTUtils {
       const accessToken = this.generateAccessToken(payload);
       const refreshToken = this.generateRefreshToken(payload);
 
+      // Get user permissions
+      const permissions = await getUserPermissions(user.id);
+
       return {
         user: {
           id: user.id.toString(),
           email: user.email,
           name: user.name,
           role: roles[0]?.name || 'EMPLOYEE',
+          permissions,
           organizationId: user.organizationId?.toString()
         },
         accessToken,
@@ -121,6 +125,59 @@ export class JWTUtils {
       throw new Error('Invalid access token');
     }
   }
+
+  static async refreshToken(refreshToken: string) {
+  try {
+    // Verify refresh token
+    const payload = this.verifyRefreshToken(refreshToken);
+    if (!payload) return null;
+
+    // Check if user exists and is active
+    const user = await findUserById(payload.userId);
+    if (!user || !user.enabled) return null;
+
+    // Get user roles
+    const roles = await getUserRoles(user.id);
+    const roleIds = roles.map(role => role.id);
+
+    // Generate new tokens
+    const newAccessToken = this.generateAccessToken({
+      userId: user.id,
+      email: user.email,
+      organizationId: user.organizationId,
+      username: user.email,
+      roleIds
+    });
+
+    const newRefreshToken = this.generateRefreshToken({
+      userId: user.id,
+      email: user.email,
+      organizationId: user.organizationId,
+      username: user.email,
+      roleIds
+    });
+
+    // Get user permissions
+    const permissions = await getUserPermissions(user.id);
+
+    return {
+      accessToken: newAccessToken,
+      refreshToken: newRefreshToken,
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        role: roles[0]?.name || 'EMPLOYEE',
+        permissions,
+        organizationId: user.organizationId
+      }
+    };
+
+  } catch (error) {
+    console.error('Token refresh failed:', error);
+    return null;
+  }
+}
 
   /**
    * Verify refresh token
