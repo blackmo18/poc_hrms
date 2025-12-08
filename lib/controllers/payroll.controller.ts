@@ -2,7 +2,7 @@ import { prisma } from '../db';
 import { CreatePayroll, UpdatePayroll } from '../models/payroll';
 
 export class PayrollController {
-  async getAll(employeeId?: number, periodStart?: Date, periodEnd?: Date) {
+  async getAll(employeeId?: bigint, periodStart?: Date, periodEnd?: Date) {
     return await prisma.payroll.findMany({
       where: {
         ...(employeeId && { employee_id: employeeId }),

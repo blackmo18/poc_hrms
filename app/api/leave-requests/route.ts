@@ -9,7 +9,7 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get('status');
     
     const leaveRequests = await leaveRequestController.getAll(
-      employeeId || undefined,
+      BigInt(employeeId || '0'),
       status || undefined
     );
     

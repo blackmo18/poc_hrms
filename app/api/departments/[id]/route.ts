@@ -6,7 +6,7 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const department = await departmentController.getById(params.id);
+    const department = await departmentController.getById(BigInt(params.id));
     
     if (!department) {
       return NextResponse.json(
@@ -31,7 +31,7 @@ export async function PUT(
 ) {
   try {
     const body = await request.json();
-    const department = await departmentController.update(params.id, body);
+    const department = await departmentController.update(BigInt(params.id), body);
     
     return NextResponse.json(department);
   } catch (error) {
@@ -48,7 +48,7 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    await departmentController.delete(params.id);
+    await departmentController.delete(BigInt(params.id));
     return NextResponse.json({ message: 'Department deleted successfully' });
   } catch (error) {
     console.error('Error deleting department:', error);

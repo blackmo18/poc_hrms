@@ -4,3 +4,5 @@ export * from './employee.controller';
 export * from './user.controller';
 export * from './leave-request.controller';
 export * from './payroll.controller';
+export * from './role.controller';
+export * from './permission.controller';
