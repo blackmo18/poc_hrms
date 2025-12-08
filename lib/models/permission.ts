@@ -1,10 +1,10 @@
 import { z } from 'zod';
 
 export const PermissionSchema = z.object({
-  id: z.bigint().optional(),
+  id: z.number().optional(),
   name: z.string().min(1, 'Permission name is required'),
   description: z.string().optional(),
-  organization_id: z.bigint().optional(),
+  organization_id: z.number().optional(),
   created_at: z.date().optional(),
   updated_at: z.date().optional(),
 });

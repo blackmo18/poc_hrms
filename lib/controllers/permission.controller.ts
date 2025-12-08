@@ -2,7 +2,7 @@ import { prisma } from '../db';
 import { CreatePermission, UpdatePermission } from '../models/permission';
 
 export class PermissionController {
-  async getAll(organizationId?: bigint) {
+  async getAll(organizationId?: number) {
     return await prisma.permission.findMany({
       where: organizationId ? { organization_id: organizationId } : undefined,
       include: {
@@ -20,7 +20,7 @@ export class PermissionController {
     });
   }
 
-  async getById(id: bigint) {
+  async getById(id: number) {
     return await prisma.permission.findUnique({
       where: { id },
       include: {
@@ -61,7 +61,7 @@ export class PermissionController {
     });
   }
 
-  async update(id: bigint, data: UpdatePermission) {
+  async update(id: number, data: UpdatePermission) {
     return await prisma.permission.update({
       where: { id },
       data,
@@ -75,7 +75,7 @@ export class PermissionController {
     });
   }
 
-  async delete(id: bigint) {
+  async delete(id: number) {
     // First, delete all role-permission associations
     await prisma.rolePermission.deleteMany({
       where: { permission_id: id }
@@ -87,7 +87,7 @@ export class PermissionController {
     });
   }
 
-  async getRolesWithPermission(permissionId: bigint) {
+  async getRolesWithPermission(permissionId: number) {
     const permission = await prisma.permission.findUnique({
       where: { id: permissionId },
       include: {
@@ -121,7 +121,7 @@ export class PermissionController {
     return permission.rolePermissions.map(rp => rp.role);
   }
 
-  async assignToRole(permissionId: bigint, roleId: bigint) {
+  async assignToRole(permissionId: number, roleId: number) {
     return await prisma.rolePermission.create({
       data: {
         role_id: roleId,
@@ -134,7 +134,7 @@ export class PermissionController {
     });
   }
 
-  async removeFromRole(permissionId: bigint, roleId: bigint) {
+  async removeFromRole(permissionId: number, roleId: number) {
     return await prisma.rolePermission.deleteMany({
       where: {
         role_id: roleId,
@@ -160,7 +160,7 @@ export class PermissionController {
     });
   }
 
-  async getOrganizationPermissions(organizationId: bigint) {
+  async getOrganizationPermissions(organizationId: number) {
     // Get all permissions for a specific organization
     return await prisma.permission.findMany({
       where: {
@@ -200,7 +200,7 @@ export class PermissionController {
     });
   }
 
-  async getPermissionsByRoleId(roleId: bigint): Promise<string[]> {
+  async getPermissionsByRoleId(roleId: number): Promise<string[]> {
     const rolePermissions = await prisma.rolePermission.findMany({
       where: { role_id: roleId },
       include: {
@@ -211,7 +211,7 @@ export class PermissionController {
     return rolePermissions.map(rp => rp.permission.name);
   }
 
-  async getPermissionDetailsByRoleId(roleId: bigint) {
+  async getPermissionDetailsByRoleId(roleId: number) {
     return await prisma.rolePermission.findMany({
       where: { role_id: roleId },
       include: {

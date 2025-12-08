@@ -2,7 +2,7 @@ import { prisma } from '../db';
 import { CreateDepartment, UpdateDepartment } from '../models/department';
 
 export class DepartmentController {
-  async getAll(organizationId?: bigint) {
+  async getAll(organizationId?: number) {
     return await prisma.department.findMany({
       where: organizationId ? { organization_id: organizationId } : undefined,
       include: {
@@ -16,7 +16,7 @@ export class DepartmentController {
     });
   }
 
-  async getById(id: bigint) {
+  async getById(id: number) {
     return await prisma.department.findUnique({
       where: { id },
       include: {
@@ -41,7 +41,7 @@ export class DepartmentController {
     });
   }
 
-  async update(id: bigint, data: UpdateDepartment) {
+  async update(id: number, data: UpdateDepartment) {
     return await prisma.department.update({
       where: { id },
       data,
@@ -52,7 +52,7 @@ export class DepartmentController {
     });
   }
 
-  async delete(id: bigint) {
+  async delete(id: number) {
     return await prisma.department.delete({
       where: { id },
     });

@@ -2,7 +2,7 @@ import { prisma } from '../db';
 import { CreateLeaveRequest, UpdateLeaveRequest } from '../models/leave-request';
 
 export class LeaveRequestController {
-  async getAll(employeeId?: bigint, status?: string) {
+  async getAll(employeeId?: number, status?: string) {
     return await prisma.leaveRequest.findMany({
       where: {
         ...(employeeId && { employee_id: employeeId }),
@@ -22,7 +22,7 @@ export class LeaveRequestController {
     });
   }
 
-  async getById(id: bigint) {
+  async getById(id: number) {
     return await prisma.leaveRequest.findUnique({
       where: { id },
       include: {
@@ -51,7 +51,7 @@ export class LeaveRequestController {
     });
   }
 
-  async update(id: bigint, data: UpdateLeaveRequest) {
+  async update(id: number, data: UpdateLeaveRequest) {
     return await prisma.leaveRequest.update({
       where: { id },
       data,
@@ -66,17 +66,17 @@ export class LeaveRequestController {
     });
   }
 
-  async delete(id: bigint) {
+  async delete(id: number) {
     return await prisma.leaveRequest.delete({
       where: { id },
     });
   }
 
-  async approve(id: bigint) {
+  async approve(id: number) {
     return await this.update(id, { status: 'APPROVED' });
   }
 
-  async reject(id: bigint, remarks?: string) {
+  async reject(id: number, remarks?: string) {
     return await this.update(id, { status: 'REJECTED', remarks });
   }
 }

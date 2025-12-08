@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 export const OrganizationSchema = z.object({
-  id: z.bigint().optional(),
+  id: z.number().optional(),
   name: z.string().min(1, 'Organization name is required'),
   address: z.string().optional(),
   status: z.enum(['ACTIVE', 'INACTIVE', 'SUSPENDED']).default('ACTIVE'),

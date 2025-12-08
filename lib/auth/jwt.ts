@@ -112,12 +112,12 @@ export class JWTUtils {
         throw new Error('Invalid token type');
       }
       
-      // Convert back to JWTPayload with BigInt types
+      // Convert back to JWTPayload with number types
       return {
-        userId: BigInt(decoded.userId),
+        userId: Number(decoded.userId),
         email: decoded.email,
-        organizationId: decoded.organizationId ? BigInt(decoded.organizationId) : BigInt(0),
-        roleIds: decoded.roleIds.map(id => BigInt(id)),
+        organizationId: decoded.organizationId ? Number(decoded.organizationId) : 0,
+        roleIds: decoded.roleIds.map(id => Number(id)),
         username: decoded.username,
         type: 'access'
       };
@@ -189,12 +189,12 @@ export class JWTUtils {
         throw new Error('Invalid token type');
       }
       
-      // Convert back to JWTPayload with BigInt types
+      // Convert back to JWTPayload with number types
       return {
-        userId: BigInt(decoded.userId),
+        userId: Number(decoded.userId),
         email: decoded.email,
-        organizationId: decoded.organizationId ? BigInt(decoded.organizationId) : BigInt(0),
-        roleIds: decoded.roleIds.map(id => BigInt(id)),
+        organizationId: decoded.organizationId ? Number(decoded.organizationId) : 0,
+        roleIds: decoded.roleIds.map(id => Number(id)),
         username: decoded.username,
         type: 'refresh'
       };
@@ -260,12 +260,12 @@ export class JWTUtils {
     try {
       const decoded = jwtDecode<JWTSerializablePayload>(token);
       
-      // Convert back to JWTPayload with BigInt types
+      // Convert back to JWTPayload with number types
       return {
-        userId: BigInt(decoded.userId),
+        userId: Number(decoded.userId),
         email: decoded.email,
-        organizationId: decoded.organizationId ? BigInt(decoded.organizationId) : BigInt(0),
-        roleIds: decoded.roleIds.map(id => BigInt(id)),
+        organizationId: decoded.organizationId ? Number(decoded.organizationId) : 0,
+        roleIds: decoded.roleIds.map(id => Number(id)),
         username: decoded.username,
         type: decoded.type
       };
@@ -278,7 +278,7 @@ export class JWTUtils {
   /**
    * Extract user ID from token
    */
-  static extractUserId(token: string): bigint | null {
+  static extractUserId(token: string): number | null {
     const decoded = this.decodeToken(token);
     return decoded?.userId || null;
   }
@@ -294,7 +294,7 @@ export class JWTUtils {
   /**
    * Extract organization ID from token
    */
-  static extractOrganizationId(token: string): bigint | null {
+  static extractOrganizationId(token: string): number | null {
     const decoded = this.decodeToken(token);
     return decoded?.organizationId || null;
   }
@@ -302,7 +302,7 @@ export class JWTUtils {
   /**
    * Extract role IDs from token
    */
-  static extractRoleIds(token: string): bigint[] {
+  static extractRoleIds(token: string): number[] {
     const decoded = this.decodeToken(token);
     return decoded?.roleIds || [];
   }

@@ -3,10 +3,11 @@ import { leaveRequestController } from '@/lib/controllers/leave-request.controll
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const leaveRequest = await leaveRequestController.getById(params.id);
+    const { id } = await params;
+    const leaveRequest = await leaveRequestController.getById(Number(id));
     
     if (!leaveRequest) {
       return NextResponse.json(
@@ -27,11 +28,12 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const body = await request.json();
-    const leaveRequest = await leaveRequestController.update(params.id, body);
+    const leaveRequest = await leaveRequestController.update(Number(id), body);
     
     return NextResponse.json(leaveRequest);
   } catch (error) {
@@ -45,10 +47,11 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    await leaveRequestController.delete(params.id);
+    const { id } = await params;
+    await leaveRequestController.delete(Number(id));
     return NextResponse.json({ message: 'Leave request deleted successfully' });
   } catch (error) {
     console.error('Error deleting leave request:', error);
@@ -61,17 +64,18 @@ export async function DELETE(
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const body = await request.json();
     const { action, remarks } = body;
 
     let leaveRequest;
     if (action === 'approve') {
-      leaveRequest = await leaveRequestController.approve(params.id);
+      leaveRequest = await leaveRequestController.approve(Number(id));
     } else if (action === 'reject') {
-      leaveRequest = await leaveRequestController.reject(params.id, remarks);
+      leaveRequest = await leaveRequestController.reject(Number(id), remarks);
     } else {
       return NextResponse.json(
         { error: 'Invalid action' },

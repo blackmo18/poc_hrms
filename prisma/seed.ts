@@ -1,41 +1,156 @@
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
+import { config } from 'dotenv';
+
+// Load .env.local (which could be from .env or Vercel depending on the command used)
+config({ path: '.env.local' });
+
+// Debug: Show which database we're connecting to
+const dbUrl = process.env.DATABASE_URL;
+console.log('Database URL:', dbUrl);
+const isVercel = dbUrl?.includes('neon') || dbUrl?.includes('vercel');
+console.log('🔗 Database:', isVercel ? 'Vercel/Neon Database' : 'Local Database');
+console.log('🚀 Environment:', process.env.NODE_ENV || 'development');
 
 const prisma = new PrismaClient();
 
-async function main() {
+// Database operations
+async function cleanDatabase() {
+  console.log('🧹 Cleaning database...');
+  
+  // First check if any tables exist
+  try {
+    const result = await prisma.$queryRaw`SELECT tablename FROM pg_tables WHERE schemaname = 'public' LIMIT 1`;
+    if (!result || (result as any[]).length === 0) {
+      console.log('ℹ️  No tables found - database is empty');
+      return;
+    }
+  } catch (error) {
+    console.log('ℹ️  Could not check table existence, proceeding anyway...');
+  }
+
+  // Delete in correct order to respect foreign key constraints
+  const tables = [
+    'leave_request',
+    'compensation', 
+    'user_role',
+    'role_permission',
+    'employee',
+    'user',
+    'job_title',
+    'department',
+    'permission',
+    'role',
+    'organization'
+  ];
+
+  for (const table of tables) {
+    try {
+      await prisma.$executeRawUnsafe(`DELETE FROM "${table}";`);
+      console.log(`✅ Cleared ${table}`);
+    } catch (error: any) {
+      if (error.code === '42P01') {
+        console.log(`ℹ️  Table ${table} does not exist - skipping`);
+      } else {
+        console.log(`⚠️  Could not clear ${table}: ${error.message || error}`);
+      }
+    }
+  }
+}
+
+async function dropDatabase() {
+  console.log('💣 Dropping all tables...');
+  
+  try {
+    // Get all table names
+    const tables = await prisma.$queryRaw`SELECT tablename FROM pg_tables WHERE schemaname = 'public'`;
+    
+    // Disable foreign key constraints
+    await prisma.$executeRawUnsafe('SET session_replication_role = replica;');
+    
+    // Drop all tables
+    for (const table of tables as any[]) {
+      await prisma.$executeRawUnsafe(`DROP TABLE IF EXISTS "${table.tablename}" CASCADE;`);
+      console.log(`💣 Dropped ${table.tablename}`);
+    }
+    
+    // Re-enable foreign key constraints
+    await prisma.$executeRawUnsafe('SET session_replication_role = DEFAULT;');
+    
+    console.log('✅ All tables dropped');
+  } catch (error) {
+    console.error('❌ Error dropping tables:', error);
+  }
+}
+
+async function seedDatabase() {
   console.log('🌱 Starting database seeding...');
 
-  // Create organization
-  const organization = await prisma.organization.create({
-    data: {
-      name: 'Tech Corp Inc.',
-      address: '123 Business Ave, Tech City, TC 12345',
-      status: 'ACTIVE',
-    },
+  // Check if data already exists and clean if needed
+  try {
+    const existingOrg = await prisma.organization.findFirst();
+    if (existingOrg) {
+      console.log('🔍 Existing data found. Cleaning before seeding...');
+      await cleanDatabase();
+      console.log('✅ Cleaned existing data. Proceeding with fresh seed...');
+    } else {
+      console.log('📝 Database appears to be empty. Proceeding with seed...');
+    }
+  } catch (error: any) {
+    if (error.code === '42P01') {
+      console.log('📝 Tables do not exist. Database needs schema setup.');
+      console.log('💡 Please run "npm run db:push" first to create tables.');
+      return;
+    } else {
+      console.log('⚠️  Could not check existing data, proceeding anyway...');
+    }
+  }
+
+  // Create organization using findFirst and create/update pattern
+  console.log('🏢 Creating organization...');
+  let organization = await prisma.organization.findFirst({
+    where: { name: 'Tech Corp Inc.' }
   });
 
-  console.log('✅ Created organization:', organization.name);
+  if (!organization) {
+    organization = await prisma.organization.create({
+      data: {
+        name: 'Tech Corp Inc.',
+        address: '123 Business Ave, Tech City, TC 12345',
+        status: 'ACTIVE',
+      },
+    });
+    console.log('✅ Created new organization:', organization.name);
+  } else {
+    console.log('✅ Using existing organization:', organization.name);
+  }
 
-  // Create roles
-  const adminRole = await prisma.role.create({
-    data: {
+  // Create roles using upsert to handle existing data
+  console.log('👥 Creating roles...');
+  const adminRole = await prisma.role.upsert({
+    where: { name: 'ADMIN' },
+    update: {},
+    create: {
       name: 'ADMIN',
       description: 'System administrator with full access',
       organization_id: organization.id,
     },
   });
 
-  const hrRole = await prisma.role.create({
-    data: {
+  const hrRole = await prisma.role.upsert({
+    where: { name: 'HR_MANAGER' },
+    update: {},
+    create: {
       name: 'HR_MANAGER',
       description: 'Human Resources manager with employee management access',
       organization_id: organization.id,
     },
   });
 
-  const employeeRole = await prisma.role.create({
-    data: {
+  const employeeRole = await prisma.role.upsert({
+    where: { name: 'EMPLOYEE' },
+    update: {},
+    create: {
       name: 'EMPLOYEE',
       description: 'Regular employee with self-service access',
       organization_id: organization.id,
@@ -44,42 +159,60 @@ async function main() {
 
   console.log('✅ Created roles');
 
-  // Create permissions
-  const permissions = await Promise.all([
-    prisma.permission.create({ data: { name: 'users.create', description: 'Create users' } }),
-    prisma.permission.create({ data: { name: 'users.read', description: 'Read users' } }),
-    prisma.permission.create({ data: { name: 'users.update', description: 'Update users' } }),
-    prisma.permission.create({ data: { name: 'users.delete', description: 'Delete users' } }),
-    prisma.permission.create({ data: { name: 'employees.create', description: 'Create employees' } }),
-    prisma.permission.create({ data: { name: 'employees.read', description: 'Read employees' } }),
-    prisma.permission.create({ data: { name: 'employees.update', description: 'Update employees' } }),
-    prisma.permission.create({ data: { name: 'employees.delete', description: 'Delete employees' } }),
-    prisma.permission.create({ data: { name: 'payroll.process', description: 'Process payroll' } }),
-    prisma.permission.create({ data: { name: 'leave.approve', description: 'Approve leave requests' } }),
-  ]);
+  // Create permissions using upsert
+  console.log('🔑 Creating permissions...');
+  const permissionNames = [
+    { name: 'users.create', description: 'Create users' },
+    { name: 'users.read', description: 'Read users' },
+    { name: 'users.update', description: 'Update users' },
+    { name: 'users.delete', description: 'Delete users' },
+    { name: 'employees.create', description: 'Create employees' },
+    { name: 'employees.read', description: 'Read employees' },
+    { name: 'employees.update', description: 'Update employees' },
+    { name: 'employees.delete', description: 'Delete employees' },
+    { name: 'payroll.process', description: 'Process payroll' },
+    { name: 'leave.approve', description: 'Approve leave requests' },
+  ];
+
+  const permissions = await Promise.all(
+    permissionNames.map(perm => 
+      prisma.permission.upsert({
+        where: { name: perm.name },
+        update: {},
+        create: perm,
+      })
+    )
+  );
 
   console.log('✅ Created permissions');
 
-  // Assign permissions to roles
+  // Assign permissions to roles using upsert
+  console.log('🔗 Assigning permissions to roles...');
   await Promise.all([
     // Admin gets all permissions
     ...permissions.map(permission =>
-      prisma.rolePermission.create({
-        data: { role_id: adminRole.id, permission_id: permission.id }
+      prisma.rolePermission.upsert({
+        where: { role_id_permission_id: { role_id: adminRole.id, permission_id: permission.id } },
+        update: {},
+        create: { role_id: adminRole.id, permission_id: permission.id }
       })
     ),
     // HR gets employee and leave permissions
     ...permissions.filter(p => p.name.includes('employees') || p.name.includes('leave'))
       .map(permission =>
-        prisma.rolePermission.create({
-          data: { role_id: hrRole.id, permission_id: permission.id }
+        prisma.rolePermission.upsert({
+          where: { role_id_permission_id: { role_id: hrRole.id, permission_id: permission.id } },
+          update: {},
+          create: { role_id: hrRole.id, permission_id: permission.id }
         })
       ),
     // Employee gets read permissions only
     ...permissions.filter(p => p.name.includes('read'))
       .map(permission =>
-        prisma.rolePermission.create({
-          data: { role_id: employeeRole.id, permission_id: permission.id }
+        prisma.rolePermission.upsert({
+          where: { role_id_permission_id: { role_id: employeeRole.id, permission_id: permission.id } },
+          update: {},
+          create: { role_id: employeeRole.id, permission_id: permission.id }
         })
       ),
   ]);
@@ -314,6 +447,55 @@ async function main() {
   console.log('Employee: john.doe@techcorp.com / password123');
   console.log('HR: jane.smith@techcorp.com / password123');
   console.log('Sales: mike.johnson@techcorp.com / password123');
+}
+
+// Main execution with command-line arguments
+async function main() {
+  const command = process.argv[2];
+  const force = process.argv.includes('--force');
+  
+  console.log(`🚀 Environment: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`📊 Database: ${process.env.DATABASE_URL ? 'Connected' : 'Not configured'}`);
+  console.log('');
+
+  switch (command) {
+    case 'clean':
+      await cleanDatabase();
+      break;
+    case 'drop':
+      await dropDatabase();
+      break;
+    case 'seed':
+      if (force) {
+        console.log('💪 Force mode: Skipping existing data check...');
+        await seedDatabase();
+      } else {
+        await seedDatabase();
+      }
+      break;
+    case 'reset':
+      await cleanDatabase();
+      await seedDatabase();
+      break;
+    case 'full-reset':
+      await dropDatabase();
+      // Wait a moment for tables to be fully dropped
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Re-create schema (you'll need to run prisma db push first)
+      console.log('⚠️  Run "npm run db:push" to recreate schema, then "npm run db:seed" to seed data');
+      break;
+    default:
+      console.log('📋 Available commands:');
+      console.log('  npm run db:seed clean    - Clean all data from tables');
+      console.log('  npm run db:seed drop     - Drop all tables');
+      console.log('  npm run db:seed seed     - Seed database with default data');
+      console.log('  npm run db:seed reset    - Clean and reseed database');
+      console.log('  npm run db:seed full-reset - Drop tables, recreate schema, and seed');
+      console.log('  npm run db:seed --force  - Force seed without cleanup check');
+      console.log('');
+      console.log('🔄 Default: Running seed operation...');
+      await seedDatabase();
+  }
 }
 
 main()

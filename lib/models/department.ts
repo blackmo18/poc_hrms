@@ -1,8 +1,8 @@
 import { z } from 'zod';
 
 export const DepartmentSchema = z.object({
-  id: z.bigint().optional(),
-  organization_id: z.bigint().min(1n, 'Organization ID is required'),
+  id: z.number().optional(),
+  organization_id: z.number().min(1, 'Organization ID is required'),
   name: z.string().min(1, 'Department name is required'),
   description: z.string().optional(),
 });

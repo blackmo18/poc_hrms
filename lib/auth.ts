@@ -37,3 +37,5 @@ export const auth = betterAuth({
 });
 
 export const handler = toNextJsHandler(auth.handler);
+
+export type Session = typeof auth.$Infer.Session;

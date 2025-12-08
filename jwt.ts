@@ -24,7 +24,7 @@ export function decodeToken(token: string): JWTPayload | null {
 /**
  * Extract user ID from token
  */
-export function extractUserId(token: string): bigint | null {
+export function extractUserId(token: string): number | null {
   return JWTUtils.extractUserId(token);
 }
 

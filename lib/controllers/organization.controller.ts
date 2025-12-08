@@ -12,7 +12,7 @@ export class OrganizationController {
     });
   }
 
-  async getById(id: bigint) {
+  async getById(id: number) {
     return await prisma.organization.findUnique({
       where: { id },
       include: {
@@ -40,7 +40,7 @@ export class OrganizationController {
     });
   }
 
-  async update(id: bigint, data: UpdateOrganization) {
+  async update(id: number, data: UpdateOrganization) {
     return await prisma.organization.update({
       where: { id },
       data,
@@ -52,7 +52,7 @@ export class OrganizationController {
     });
   }
 
-  async delete(id: bigint) {
+  async delete(id: number) {
     return await prisma.organization.delete({
       where: { id },
     });
