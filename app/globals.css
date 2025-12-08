@@ -199,6 +199,10 @@
     display: none;
     -webkit-appearance: none;
   }
+
+  .btn-disabled {
+    @apply opacity-50 cursor-not-allowed pointer-events-none;
+  }
 }
 
 .tableCheckbox:checked ~ span span {
