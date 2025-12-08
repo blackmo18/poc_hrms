@@ -1,16 +1,16 @@
 {
   "version": 2,
   "env": {
-    "DATABASE_URL": "@neon_postgres_url",
-    "PGHOST": "@neon_host",
-    "PGPORT": "@neon_port",
-    "PGUSER": "@neon_user",
-    "PGPASSWORD": "@neon_password",
-    "PGDATABASE": "@neon_database"
+    "DATABASE_URL": "@database_url",
+    "POSTGRES_URL": "@database_url",
+    "POSTGRES_PRISMA_URL": "@database_url",
+    "POSTGRES_URL_NON_POOLING": "@database_url_non_pooling",
+    "PRISMA_DATABASE_URL": "@database_url"
   },
   "build": {
     "env": {
-      "DATABASE_URL": "@neon_postgres_url"
+      "DATABASE_URL": "@database_url",
+      "PRISMA_GENERATE_DATAPROXY": "true"
     }
   },
   "functions": {
