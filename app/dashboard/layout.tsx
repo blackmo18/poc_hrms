@@ -1,5 +1,4 @@
-import { Sidebar } from '../components/layout/sidebar';
-import { Header } from '../components/layout/header';
+import AppLayout from '../layout/AppLayout';
 
 export default function DashboardLayout({
   children,
@@ -8,15 +7,9 @@ export default function DashboardLayout({
 }) {
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="flex h-screen">
-        <Sidebar />
-        <div className="flex flex-col flex-1">
-          <Header />
-          <main className="flex-1 overflow-y-auto p-6">
-            {children}
-          </main>
-        </div>
-      </div>
+      <AppLayout>
+        {children}
+      </AppLayout>
     </div>
   );
 }
