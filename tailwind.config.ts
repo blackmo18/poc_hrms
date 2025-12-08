@@ -7,16 +7,21 @@ const config: Config = {
     "./components/**/*.{js,ts,jsx,tsx,mdx}",
     "./app/**/*.{js,ts,jsx,tsx,mdx}",
   ],
-  prefix: "",
   theme: {
-    container: {
-      center: true,
-      padding: "2rem",
-      screens: {
-        "2xl": "1400px",
-      },
-    },
     extend: {
+      fontFamily: {
+        outfit: ["Outfit", "sans-serif"],
+      },
+      fontSize: {
+        "theme-xs": "12px",
+        "theme-sm": "14px",
+        "theme-xl": "20px",
+        "title-sm": "30px",
+        "title-md": "36px",
+        "title-lg": "48px",
+        "title-xl": "60px",
+        "title-2xl": "72px",
+      },
       colors: {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",

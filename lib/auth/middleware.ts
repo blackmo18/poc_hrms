@@ -154,7 +154,7 @@ async function getUserPermissions(roleIds: number[]): Promise<string[]> {
 /**
  * Wrapper function that handles authentication and role-based authorization
  */
-export const requireRoles = async (
+export const requiresRoles = async (
   request: NextRequest,
   allowedRoles: string[],
   handler: (authRequest: AuthenticatedRequest) => Promise<NextResponse>
@@ -199,7 +199,7 @@ export const requireRoles = async (
 /**
  * Wrapper function that handles authentication and permission-based authorization
  */
-export const requirePermission = async (
+export const requiresPermissions = async (
   request: NextRequest,
   requiredPermissions: string[],
   handler: (authRequest: AuthenticatedRequest) => Promise<NextResponse>
@@ -262,6 +262,16 @@ export const requirePermission = async (
   }
 };
 
+/**
+ * Wrapper function specifically for admin operations
+ */
+export const requireAdmin = async (
+  request: NextRequest,
+  handler: (authRequest: AuthenticatedRequest) => Promise<NextResponse>
+) => {
+  return requiresRoles(request, ['ADMIN'], handler);
+};
+
 /* ===================================================== */
 /* EXPORTS                                              */
 /* ===================================================== */
@@ -271,6 +281,7 @@ export default {
   rbacMiddleware,
   organizationMiddleware,
   getAuthenticatedUser,
-  requireRoles,
-  requirePermission
+  requiresRoles,
+  requiresPermissions,
+  requireAdmin
 };
