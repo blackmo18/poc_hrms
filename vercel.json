@@ -1,0 +1,23 @@
+{
+  "version": 2,
+  "env": {
+    "DATABASE_URL": "@neon_postgres_url",
+    "PGHOST": "@neon_host",
+    "PGPORT": "@neon_port",
+    "PGUSER": "@neon_user",
+    "PGPASSWORD": "@neon_password",
+    "PGDATABASE": "@neon_database"
+  },
+  "build": {
+    "env": {
+      "DATABASE_URL": "@neon_postgres_url"
+    }
+  },
+  "functions": {
+    "api/**/*.ts": {
+      "runtime": "nodejs18.x",
+      "memory": 1024,
+      "maxDuration": 10
+    }
+  }
+}
