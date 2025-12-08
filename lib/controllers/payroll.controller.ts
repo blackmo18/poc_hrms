@@ -2,7 +2,7 @@ import { prisma } from '../db';
 import { CreatePayroll, UpdatePayroll } from '../models/payroll';
 
 export class PayrollController {
-  async getAll(employeeId?: bigint, periodStart?: Date, periodEnd?: Date) {
+  async getAll(employeeId?: number, periodStart?: Date, periodEnd?: Date) {
     return await prisma.payroll.findMany({
       where: {
         ...(employeeId && { employee_id: employeeId }),
@@ -24,7 +24,7 @@ export class PayrollController {
     });
   }
 
-  async getById(id: bigint) {
+  async getById(id: number) {
     return await prisma.payroll.findUnique({
       where: { id },
       include: {
@@ -57,7 +57,7 @@ export class PayrollController {
     });
   }
 
-  async update(id: bigint, data: UpdatePayroll) {
+  async update(id: number, data: UpdatePayroll) {
     return await prisma.payroll.update({
       where: { id },
       data,
@@ -73,13 +73,13 @@ export class PayrollController {
     });
   }
 
-  async delete(id: bigint) {
+  async delete(id: number) {
     return await prisma.payroll.delete({
       where: { id },
     });
   }
 
-  async processPayroll(employeeId: bigint, periodStart: Date, periodEnd: Date, grossSalary: number, deductions: Array<{ type: string; amount: number }>) {
+  async processPayroll(employeeId: number, periodStart: Date, periodEnd: Date, grossSalary: number, deductions: Array<{ type: string; amount: number }>) {
     const netSalary = deductions.reduce((total, deduction) => total - deduction.amount, grossSalary);
 
     const payroll = await prisma.payroll.create({
@@ -104,7 +104,7 @@ export class PayrollController {
       });
     }
 
-    return this.getById(payroll.id);
+    return this.getById(Number(payroll.id));
   }
 }
 

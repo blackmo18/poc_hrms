@@ -83,7 +83,7 @@ async function validateTestLogins() {
       console.log(`   Expected: ${testUser.expected ? 'SUCCESS' : 'FAILURE'}`);
 
       const result = await userController.verifyPassword(testUser.email, testUser.password);
-      const passed = result === testUser.expected;
+      const passed = (result !== null) === testUser.expected;
 
       if (passed) {
         console.log(`   ✅ ${result ? 'LOGIN SUCCESS' : 'LOGIN FAILED'} - Correct behavior`);

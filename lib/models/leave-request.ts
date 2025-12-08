@@ -1,8 +1,8 @@
 import { z } from 'zod';
 
 export const LeaveRequestSchema = z.object({
-  id: z.bigint().optional(),
-  employee_id: z.bigint().min(1n, 'Employee ID is required'),
+  id: z.number().optional(),
+  employee_id: z.number().min(1, 'Employee ID is required'),
   leave_type: z.enum(['SICK', 'VACATION', 'PERSONAL', 'MATERNITY', 'PATERNITY', 'COMPASSIONATE']),
   start_date: z.date(),
   end_date: z.date(),

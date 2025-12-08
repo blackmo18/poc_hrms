@@ -2,7 +2,7 @@ import { prisma } from '../db';
 import { CreateEmployee, UpdateEmployee } from '../models/employee';
 
 export class EmployeeController {
-  async getAll(organizationId?: bigint) {
+  async getAll(organizationId?: number) {
     return await prisma.employee.findMany({
       where: organizationId ? { organization_id: organizationId } : undefined,
       include: {
@@ -22,7 +22,7 @@ export class EmployeeController {
     });
   }
 
-  async getById(id: bigint) {
+  async getById(id: number) {
     return await prisma.employee.findUnique({
       where: { id },
       include: {
@@ -63,7 +63,7 @@ export class EmployeeController {
     });
   }
 
-  async update(id: bigint, data: UpdateEmployee) {
+  async update(id: number, data: UpdateEmployee) {
     return await prisma.employee.update({
       where: { id },
       data,
@@ -78,13 +78,13 @@ export class EmployeeController {
     });
   }
 
-  async delete(id: bigint) {
+  async delete(id: number) {
     return await prisma.employee.delete({
       where: { id },
     });
   }
 
-  async getByDepartment(departmentId: bigint) {
+  async getByDepartment(departmentId: number) {
     return await prisma.employee.findMany({
       where: { department_id: departmentId },
       include: {
@@ -95,7 +95,7 @@ export class EmployeeController {
     });
   }
 
-  async getByManager(managerId: bigint) {
+  async getByManager(managerId: number) {
     return await prisma.employee.findMany({
       where: { manager_id: managerId },
       include: {

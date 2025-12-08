@@ -14,7 +14,7 @@ datasource db {
 }
 
 model Organization {
-  id         BigInt   @id @default(autoincrement())
+  id         Int   @id @default(autoincrement())
   name       String
   address    String?
   status     String   @default("ACTIVE")
@@ -40,8 +40,8 @@ model Organization {
 }
 
 model Department {
-  id              BigInt   @id @default(autoincrement())
-  organization_id BigInt
+  id              Int   @id @default(autoincrement())
+  organization_id Int
   name            String
   description     String?
 
@@ -52,8 +52,8 @@ model Department {
 }
 
 model JobTitle {
-  id              BigInt   @id @default(autoincrement())
-  organization_id BigInt
+  id              Int   @id @default(autoincrement())
+  organization_id Int
   name            String
   description     String?
 
@@ -64,7 +64,7 @@ model JobTitle {
 }
 
 model User {
-  id              BigInt   @id @default(autoincrement())
+  id              Int   @id @default(autoincrement())
   name            String?
   email           String    @unique
   emailVerified   DateTime?
@@ -73,7 +73,7 @@ model User {
   status          String    @default("ACTIVE")
   created_at      DateTime  @default(now())
   updated_at      DateTime  @updatedAt
-  organization_id BigInt
+  organization_id Int
 
   // Relations
   organization Organization @relation(fields: [organization_id], references: [id], onDelete: Cascade)
@@ -89,12 +89,12 @@ model User {
 }
 
 model Employee {
-  id                BigInt   @id @default(autoincrement())
-  organization_id   BigInt
-  user_id           BigInt?  @unique
-  department_id     BigInt
-  job_title_id      BigInt
-  manager_id        BigInt?
+  id                Int   @id @default(autoincrement())
+  organization_id   Int
+  user_id           Int?  @unique
+  department_id     Int
+  job_title_id      Int
+  manager_id        Int?
   first_name        String
   last_name         String
   email             String
@@ -125,8 +125,8 @@ model Employee {
 }
 
 model Compensation {
-  id             BigInt   @id @default(autoincrement())
-  employee_id    BigInt
+  id             Int   @id @default(autoincrement())
+  employee_id    Int
   base_salary    Float
   pay_frequency  String
   effective_date DateTime
@@ -138,8 +138,8 @@ model Compensation {
 }
 
 model Benefit {
-  id              BigInt   @id @default(autoincrement())
-  organization_id BigInt
+  id              Int   @id @default(autoincrement())
+  organization_id Int
   name            String
   description     String?
   type            String
@@ -151,9 +151,9 @@ model Benefit {
 }
 
 model EmployeeBenefit {
-  id                    BigInt   @id @default(autoincrement())
-  employee_id           BigInt
-  benefit_id            BigInt
+  id                    Int   @id @default(autoincrement())
+  employee_id           Int
+  benefit_id            Int
   employee_contribution Float
   enrollment_date       DateTime @default(now())
 
@@ -164,8 +164,8 @@ model EmployeeBenefit {
 }
 
 model Document {
-  id                 BigInt   @id @default(autoincrement())
-  organization_id    BigInt
+  id                 Int   @id @default(autoincrement())
+  organization_id    Int
   name               String
   file_type          String
   storage_path       String
@@ -178,9 +178,9 @@ model Document {
 }
 
 model EmployeeDocument {
-  id          BigInt   @id @default(autoincrement())
-  employee_id BigInt
-  document_id BigInt
+  id          Int   @id @default(autoincrement())
+  employee_id Int
+  document_id Int
   version     String
   uploaded_at DateTime  @default(now())
   signed_at   DateTime?
@@ -192,12 +192,12 @@ model EmployeeDocument {
 }
 
 model AuditLog {
-  id              BigInt   @id @default(autoincrement())
-  organization_id BigInt
-  user_id         BigInt
+  id              Int   @id @default(autoincrement())
+  organization_id Int
+  user_id         Int
   action_type     String
   entity_type     String
-  entity_id       BigInt?
+  entity_id       Int?
   old_data        Json?
   new_data        Json?
   timestamp       DateTime @default(now())
@@ -210,8 +210,8 @@ model AuditLog {
 }
 
 model Role {
-  id              BigInt   @id @default(autoincrement())
-  organization_id BigInt
+  id              Int   @id @default(autoincrement())
+  organization_id Int
   name            String   @unique
   description     String?
   created_at      DateTime @default(now())
@@ -225,7 +225,7 @@ model Role {
 }
 
 model Permission {
-  id              BigInt   @id @default(autoincrement())
+  id              Int   @id @default(autoincrement())
   name            String   @unique
   description     String?
   created_at      DateTime @default(now())
@@ -233,15 +233,15 @@ model Permission {
 
   rolePermissions RolePermission[]
   Organization    Organization?    @relation(fields: [organization_id], references: [id])
-  organization_id BigInt?
+  organization_id Int?
 
   @@map("permissions")
 }
 
 model UserRole {
-  id         BigInt   @id @default(autoincrement())
-  user_id    BigInt
-  role_id    BigInt
+  id         Int   @id @default(autoincrement())
+  user_id    Int
+  role_id    Int
   created_at DateTime @default(now())
 
   user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
@@ -252,9 +252,9 @@ model UserRole {
 }
 
 model RolePermission {
-  id            BigInt   @id @default(autoincrement())
-  role_id       BigInt
-  permission_id BigInt
+  id            Int   @id @default(autoincrement())
+  role_id       Int
+  permission_id Int
   created_at    DateTime @default(now())
 
   role       Role       @relation(fields: [role_id], references: [id], onDelete: Cascade)
@@ -265,8 +265,8 @@ model RolePermission {
 }
 
 model Admin {
-  id              BigInt   @id @default(autoincrement())
-  organization_id BigInt
+  id              Int   @id @default(autoincrement())
+  organization_id Int
   name            String
   email           String
   role            String
@@ -279,8 +279,8 @@ model Admin {
 }
 
 model EmployeeOnboarding {
-  id             BigInt   @id @default(autoincrement())
-  employee_id    BigInt   @unique
+  id             Int   @id @default(autoincrement())
+  employee_id    Int   @unique
   date_started   DateTime  @default(now())
   date_completed DateTime?
   status         String    @default("PENDING")
@@ -293,8 +293,8 @@ model EmployeeOnboarding {
 }
 
 model EmployeeOffboarding {
-  id             BigInt   @id @default(autoincrement())
-  employee_id    BigInt   @unique
+  id             Int   @id @default(autoincrement())
+  employee_id    Int   @unique
   date_started   DateTime  @default(now())
   date_completed DateTime?
   reason         String?
@@ -308,8 +308,8 @@ model EmployeeOffboarding {
 }
 
 model OrganizationOnboarding {
-  id              BigInt   @id @default(autoincrement())
-  organization_id BigInt   @unique
+  id              Int   @id @default(autoincrement())
+  organization_id Int   @unique
   started_at      DateTime  @default(now())
   completed_at    DateTime?
   status          String    @default("PENDING")
@@ -322,8 +322,8 @@ model OrganizationOnboarding {
 }
 
 model OrganizationOffboarding {
-  id              BigInt   @id @default(autoincrement())
-  organization_id BigInt   @unique
+  id              Int   @id @default(autoincrement())
+  organization_id Int   @unique
   started_at      DateTime  @default(now())
   completed_at    DateTime?
   reason          String?
@@ -337,8 +337,8 @@ model OrganizationOffboarding {
 }
 
 model Timesheet {
-  id          BigInt   @id @default(autoincrement())
-  employee_id BigInt
+  id          Int   @id @default(autoincrement())
+  employee_id Int
   work_date   DateTime
   time_in     DateTime
   time_out    DateTime?
@@ -353,8 +353,8 @@ model Timesheet {
 }
 
 model LeaveRequest {
-  id          BigInt   @id @default(autoincrement())
-  employee_id BigInt
+  id          Int   @id @default(autoincrement())
+  employee_id Int
   leave_type  String
   start_date  DateTime
   end_date    DateTime
@@ -369,8 +369,8 @@ model LeaveRequest {
 }
 
 model Payroll {
-  id           BigInt   @id @default(autoincrement())
-  employee_id  BigInt
+  id           Int   @id @default(autoincrement())
+  employee_id  Int
   period_start DateTime
   period_end   DateTime
   gross_salary Float
@@ -386,8 +386,8 @@ model Payroll {
 }
 
 model Deduction {
-  id         BigInt   @id @default(autoincrement())
-  payroll_id BigInt
+  id         Int   @id @default(autoincrement())
+  payroll_id Int
   type       String
   amount     Float
   created_at DateTime @default(now())
@@ -399,8 +399,8 @@ model Deduction {
 }
 
 model HolidayTemplate {
-  id              BigInt   @id @default(autoincrement())
-  organization_id BigInt
+  id              Int   @id @default(autoincrement())
+  organization_id Int
   name            String
   description     String?
   created_at      DateTime @default(now())
@@ -413,9 +413,9 @@ model HolidayTemplate {
 }
 
 model Holiday {
-  id                  BigInt   @id @default(autoincrement())
-  organization_id     BigInt
-  holiday_template_id BigInt
+  id                  Int   @id @default(autoincrement())
+  organization_id     Int
+  holiday_template_id Int
   date                DateTime
   is_recurring        Boolean  @default(false)
   type                String
@@ -430,9 +430,9 @@ model Holiday {
 }
 
 model EmployeeHolidayAssignment {
-  id          BigInt   @id @default(autoincrement())
-  employee_id BigInt
-  holiday_id  BigInt
+  id          Int   @id @default(autoincrement())
+  employee_id Int
+  holiday_id  Int
   created_at  DateTime @default(now())
   updated_at  DateTime @updatedAt
 
@@ -444,8 +444,8 @@ model EmployeeHolidayAssignment {
 }
 
 model Calendar {
-  id              BigInt   @id @default(autoincrement())
-  organization_id BigInt
+  id              Int   @id @default(autoincrement())
+  organization_id Int
   name            String
   description     String?
   created_at      DateTime @default(now())
@@ -458,9 +458,9 @@ model Calendar {
 }
 
 model CalendarHoliday {
-  id          BigInt   @id @default(autoincrement())
-  calendar_id BigInt
-  holiday_id  BigInt
+  id          Int   @id @default(autoincrement())
+  calendar_id Int
+  holiday_id  Int
   created_at  DateTime @default(now())
   updated_at  DateTime @updatedAt
 
@@ -473,8 +473,8 @@ model CalendarHoliday {
 
 // Better Auth required tables
 model Account {
-  id                BigInt   @id @default(autoincrement())
-  userId            BigInt
+  id                Int   @id @default(autoincrement())
+  userId            Int
   type              String
   provider          String
   providerAccountId String
@@ -493,9 +493,9 @@ model Account {
 }
 
 model Session {
-  id           BigInt   @id @default(autoincrement())
+  id           Int   @id @default(autoincrement())
   sessionToken String   @unique
-  userId       BigInt
+  userId       Int
   expires      DateTime
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -506,7 +506,7 @@ model VerificationToken {
   identifier String
   token      String   @unique
   expires    DateTime
-  id         BigInt   @id @default(autoincrement())
+  id         Int   @id @default(autoincrement())
 
   @@unique([identifier, token])
   @@map("verification_tokens")

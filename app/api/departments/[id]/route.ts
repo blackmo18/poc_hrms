@@ -3,10 +3,11 @@ import { departmentController } from '@/lib/controllers/department.controller';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const department = await departmentController.getById(BigInt(params.id));
+    const { id } = await params;
+    const department = await departmentController.getById(Number(id));
     
     if (!department) {
       return NextResponse.json(
@@ -27,11 +28,12 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const body = await request.json();
-    const department = await departmentController.update(BigInt(params.id), body);
+    const department = await departmentController.update(Number(id), body);
     
     return NextResponse.json(department);
   } catch (error) {
@@ -45,10 +47,11 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    await departmentController.delete(BigInt(params.id));
+    const { id } = await params;
+    await departmentController.delete(Number(id));
     return NextResponse.json({ message: 'Department deleted successfully' });
   } catch (error) {
     console.error('Error deleting department:', error);

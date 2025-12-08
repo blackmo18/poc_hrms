@@ -3,10 +3,11 @@ import { organizationController } from '@/lib/controllers/organization.controlle
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const organization = await organizationController.getById(params.id);
+    const { id } = await params;
+    const organization = await organizationController.getById(Number(id));
     
     if (!organization) {
       return NextResponse.json(
@@ -27,11 +28,12 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const body = await request.json();
-    const organization = await organizationController.update(params.id, body);
+    const organization = await organizationController.update(Number(id), body);
     
     return NextResponse.json(organization);
   } catch (error) {
@@ -45,10 +47,11 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    await organizationController.delete(params.id);
+    const { id } = await params;
+    await organizationController.delete(Number(id));
     return NextResponse.json({ message: 'Organization deleted successfully' });
   } catch (error) {
     console.error('Error deleting organization:', error);

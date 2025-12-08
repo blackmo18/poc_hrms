@@ -31,8 +31,10 @@ export async function proxy(req: Request) {
   // -----------------------------
   // 3) Check permissions for protected routes
   // -----------------------------
-  const userPermissions = session.user.permissions || [];
-  const userRoles = session.user.roles || [];
+  // Note: Better Auth session doesn't include custom permissions/roles
+  // These would need to be fetched separately if required
+  const userPermissions: string[] = [];
+  const userRoles: string[] = [];
 
   // Example permission checks for specific routes
   if (pathname.startsWith("/api/admin")) {

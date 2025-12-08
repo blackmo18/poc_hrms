@@ -2,7 +2,7 @@ import { prisma } from '../db';
 import { CreateRole, UpdateRole } from '../models/role';
 
 export class RoleController {
-  async getAll(organizationId?: bigint) {
+  async getAll(organizationId?: number) {
     return await prisma.role.findMany({
       where: organizationId ? { organization_id: organizationId } : undefined,
       include: {
@@ -28,7 +28,7 @@ export class RoleController {
     });
   }
 
-  async getById(id: bigint) {
+  async getById(id: number) {
     return await prisma.role.findUnique({
       where: { id },
       include: {
@@ -67,7 +67,7 @@ export class RoleController {
     });
   }
 
-  async update(id: bigint, data: UpdateRole) {
+  async update(id: number, data: UpdateRole) {
     return await prisma.role.update({
       where: { id },
       data,
@@ -82,7 +82,7 @@ export class RoleController {
     });
   }
 
-  async delete(id: bigint) {
+  async delete(id: number) {
     // First, delete all user-role associations
     await prisma.userRole.deleteMany({
       where: { role_id: id }
@@ -99,7 +99,7 @@ export class RoleController {
     });
   }
 
-  async assignPermission(roleId: bigint, permissionId: bigint) {
+  async assignPermission(roleId: number, permissionId: number) {
     return await prisma.rolePermission.create({
       data: {
         role_id: roleId,
@@ -112,7 +112,7 @@ export class RoleController {
     });
   }
 
-  async removePermission(roleId: bigint, permissionId: bigint) {
+  async removePermission(roleId: number, permissionId: number) {
     return await prisma.rolePermission.deleteMany({
       where: {
         role_id: roleId,
@@ -121,7 +121,7 @@ export class RoleController {
     });
   }
 
-  async getRolePermissions(roleId: bigint) {
+  async getRolePermissions(roleId: number) {
     const role = await prisma.role.findUnique({
       where: { id: roleId },
       include: {
@@ -140,7 +140,7 @@ export class RoleController {
     return role.rolePermissions.map(rp => rp.permission);
   }
 
-  async getUsersWithRole(roleId: bigint) {
+  async getUsersWithRole(roleId: number) {
     const role = await prisma.role.findUnique({
       where: { id: roleId },
       include: {

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { JWTUtils } from './jwt';
 import { prisma } from '../db';
 import { permissionController } from '../controllers';
+import { findUserById, getPermissionsByRoleIds } from './auth-db';
 
 export interface AuthenticatedRequest extends NextRequest {
   user?: {
@@ -137,7 +138,7 @@ export function getAuthenticatedUser(request: NextRequest) {
 /**
  * Helper function to check if user has required permissions
  */
-async function getUserPermissions(roleIds: bigint[]): Promise<string[]> {
+async function getUserPermissions(roleIds: number[]): Promise<string[]> {
   const userPermissions: string[] = [];
   for (const roleId of roleIds) {
     const rolePermissions = await permissionController.getPermissionsByRoleId(roleId);
@@ -235,7 +236,7 @@ export const requirePermission = async (
     }
 
     // Authorization - Check permissions
-    const userPermissions = await getUserPermissions(decoded.roleIds);
+    const userPermissions = await getPermissionsByRoleIds(decoded.roleIds);
     const hasRequiredPermission = requiredPermissions.some(permission => 
       userPermissions.includes(permission)
     );

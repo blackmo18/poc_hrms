@@ -1,10 +1,10 @@
 export interface User {
-  id: bigint;
+  id: number;
   email: string;
   name: string;
   passwordHash: string;
   enabled: boolean;
-  organizationId: bigint;
+  organizationId: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -14,16 +14,16 @@ export interface UserWithRole extends User {
 }
 
 export interface Role {
-  id: bigint;
+  id: number;
   name: string;
   description: string;
-  organizationId: bigint;
+  organizationId: number;
   createdAt: Date;
   updatedAt: Date;
 }
 
 export interface Permission {
-  id: bigint;
+  id: number;
   name: string;
   description: string;
   createdAt: Date;
@@ -35,25 +35,25 @@ export interface RoleWithPermissions extends Role {
 }
 
 export interface AuthenticatedUser {
-  id: bigint;
+  id: number;
   username: string;
-  roleIds: bigint[];
+  roleIds: number[];
   permissions: string[];
 }
 
 export interface JWTPayload {
-  userId: bigint;
+  userId: number;
   email: string;
-  organizationId: bigint;
-  roleIds: bigint[];
+  organizationId: number;
+  roleIds: number[];
   username: string;
   type: 'access' | 'refresh';
   user?: {
-    id: bigint;
+    id: number;
     email: string;
     name: string;
     role: string;
-    organizationId?: bigint;
+    organizationId?: number;
   };
 }
 
@@ -66,10 +66,10 @@ export interface JWTSerializablePayload {
   username: string;
   type: 'access' | 'refresh';
   user?: {
-    id: bigint;
+    id: number;
     email: string;
     name: string;
     role: string;
-    organizationId?: bigint;
+    organizationId?: number;
   };
 }

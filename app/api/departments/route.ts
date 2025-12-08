@@ -8,7 +8,7 @@ export async function GET(request: NextRequest) {
     const organizationId = searchParams.get('organizationId');
     
     const departments = await departmentController.getAll(
-      BigInt(organizationId || '0')
+      organizationId ? Number(organizationId) : undefined
     );
     
     return NextResponse.json(departments);
