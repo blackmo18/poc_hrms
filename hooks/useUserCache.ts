@@ -12,6 +12,7 @@ interface User {
 interface UseUserCacheOptions {
   revalidationInterval?: number;
   enabled?: boolean;
+  onUserNull?: () => void;
 }
 
 export function useUserCache(
@@ -22,7 +23,8 @@ export function useUserCache(
 ) {
   const { 
     revalidationInterval = 4 * 60 * 1000, // 4 minutes default
-    enabled = true 
+    enabled = true,
+    onUserNull
   } = options;
   
   const [isRevalidating, setIsRevalidating] = useState(false);
@@ -54,6 +56,8 @@ export function useUserCache(
         }
       });
 
+      console.log('Auth response: ', response);
+
       if (response.ok) {
         const data = await response.json();
         if (data.user) {
@@ -64,17 +68,20 @@ export function useUserCache(
           setUser(null);
           setInternalUser(null);
           userCache.setCachedUser(null);
+          onUserNull?.();
         }
       } else {
         setUser(null);
         setInternalUser(null);
         userCache.setCachedUser(null);
+        onUserNull?.();
       }
     } catch (error) {
       console.error('Auth check failed:', error);
       setUser(null);
       setInternalUser(null);
       userCache.setCachedUser(null);
+      onUserNull?.();
     } finally {
       setIsLoading(false);
       setHasCheckedAuth(true);
@@ -84,7 +91,8 @@ export function useUserCache(
 
   // Periodic session revalidation
   useEffect(() => {
-    if (!enabled || !user || isRevalidating) return;
+    console.log('Revalidating session...');
+    if (!enabled || isRevalidating) return;
 
     const interval = setInterval(async () => {
       setIsRevalidating(true);
@@ -96,7 +104,7 @@ export function useUserCache(
     }, revalidationInterval);
 
     return () => clearInterval(interval);
-  }, [user, isRevalidating, checkAuth, revalidationInterval, enabled]);
+  }, [isRevalidating, checkAuth, revalidationInterval, enabled]);
 
   return {
     checkAuth,

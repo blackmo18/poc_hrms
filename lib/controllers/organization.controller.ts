@@ -2,14 +2,37 @@ import { prisma } from '../db';
 import { CreateOrganization, UpdateOrganization } from '../models/organization';
 
 export class OrganizationController {
-  async getAll() {
-    return await prisma.organization.findMany({
-      include: {
-        departments: true,
-        employees: true,
-        admins: true,
-      },
-    });
+  async getAll(options?: { page?: number; limit?: number }) {
+    const { page = 1, limit = 15 } = options || {};
+    const skip = (page - 1) * limit;
+
+    const [organizations, total] = await Promise.all([
+      prisma.organization.findMany({
+        skip,
+        take: limit,
+        include: {
+          departments: true,
+          employees: true,
+          admins: true,
+        },
+        orderBy: {
+          created_at: 'desc'
+        }
+      }),
+      prisma.organization.count()
+    ]);
+
+    return {
+      data: organizations,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+        hasNext: page * limit < total,
+        hasPrev: page > 1
+      }
+    };
   }
 
   async getById(id: number) {

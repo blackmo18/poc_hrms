@@ -12,9 +12,6 @@ export default function UserDropdown() {
 
   const router = useRouter();
 
-  useEffect(() => {
-    console.log('user ====>', user)
-  }, [user])
 
   // Don't render anything while loading to prevent flicker
   if (isLoading && !user) {

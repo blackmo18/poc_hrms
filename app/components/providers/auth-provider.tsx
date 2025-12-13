@@ -1,6 +1,7 @@
 'use client';
 
 import { createContext, useContext, useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { useUserCache } from '@/hooks/useUserCache';
 import { useIdleTimeout } from '@/hooks/useIdleTimeout';
 
@@ -9,6 +10,7 @@ interface User {
   email: string;
   username: string;
   role?: string;
+  roles?: string[];
   permissions?: string[];
 }
 
@@ -34,6 +36,8 @@ export function AuthProvider({
   const [isLoading, setIsLoading] = useState(true); // Always start loading, let checkAuth handle it
   const [hasCheckedAuth, setHasCheckedAuth] = useState(false);
 
+  const router = useRouter();
+
   const { checkAuth } = useUserCache(setUser, setIsLoading, setHasCheckedAuth);
 
   // Idle timeout functionality - auto logout after 30 minutes of inactivity
@@ -47,6 +51,13 @@ export function AuthProvider({
 
     checkAuth();
   }, [hasCheckedAuth]);
+
+  // Redirect to login if user is null after auth check
+  useEffect(() => {
+    if (!user && hasCheckedAuth) {
+      router.push('/login');
+    }
+  }, [user, hasCheckedAuth, router]);
 
 
   const login = async (email: string, password: string) => {
@@ -62,6 +73,8 @@ export function AuthProvider({
       if (response.ok) {
         const session = await response.json();
         setUser(session.user);
+        // Fetch full user data including roles
+        await checkAuth();
       } else {
         const error = await response.json();
         throw new Error(error.error || 'Login failed');
@@ -76,7 +89,6 @@ export function AuthProvider({
   };
 
   const logout = async () => {
-    console.log('user is logged out ====>')
     try {
       // Clear local tokens
       localStorage.removeItem('access_token');
