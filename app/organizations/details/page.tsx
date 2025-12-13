@@ -244,7 +244,7 @@ export default function OrganizationDetailsPage() {
                         </TableCell>
                         <TableCell className="px-4 py-3 text-center">
                           <Link
-                            href={`/organizations/details/${org.id}/edit`}
+                            href={`/organizations/details/${org.id}`}
                             className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-800 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white transition-colors"
                           >
                             <PencilIcon className="w-4 h-4" />
