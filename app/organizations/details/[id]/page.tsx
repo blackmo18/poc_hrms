@@ -1,23 +1,27 @@
 'use client'
 
 import { useEffect, useState } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
+import { Organization } from '@/lib/models';
 import ComponentCard from '@/app/components/common/ComponentCard';
-import Badge from '@/app/components/ui/badge/Badge';
 import RoleComponentWrapper from '@/app/components/common/RoleComponentWrapper';
-import OrganizationNameCard from '@/app/components/profiles/header/OrgnizationNameCard';
+import OrganizationNameCard from '@/app/components/organizations/OrgnizationNameCard';
 import GeneralInfoCard from '@/app/components/profiles/general/GeneralInfoCard';
 import PageMeta from '@/app/components/common/PageMeta';
-import { Organization } from '@/lib/models';
 import PageBreadcrumb from '@/app/components/common/PageBreadCrumb';
 
 
 const OrganizationPage = () => {
   const params = useParams();
+  const router = useRouter();
   const id = params.id as string;
   const [organization, setOrganization] = useState<Organization | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const handleEditClick = () => {
+    router.push(`/organizations/details/${id}/edit`);
+  };
 
   useEffect(() => {
     const fetchOrganization = async () => {
@@ -94,6 +98,7 @@ const OrganizationPage = () => {
             description={organization.description || ""}
             website={organization.website || ""}
             socialMedias={[]} // Could be added to the organization model later
+            editClick={handleEditClick}
           />
           <GeneralInfoCard
             id={organization.id.toString()}
