@@ -6,21 +6,22 @@ export class OrganizationController {
     const { page = 1, limit = 15 } = options || {};
     const skip = (page - 1) * limit;
 
-    const [organizations, total] = await Promise.all([
-      prisma.organization.findMany({
-        skip,
-        take: limit,
-        include: {
-          departments: true,
-          employees: true,
-          admins: true,
-        },
-        orderBy: {
-          created_at: 'desc'
-        }
-      }),
-      prisma.organization.count()
-    ]);
+    // First get the total count
+    const total = await prisma.organization.count();
+
+    // Then fetch the paginated organizations
+    const organizations = await prisma.organization.findMany({
+      skip,
+      take: limit,
+      include: {
+        departments: false,
+        employees: false,
+        admins: false,
+      },
+      orderBy: {
+        created_at: 'desc'
+      }
+    });
 
     return {
       data: organizations,

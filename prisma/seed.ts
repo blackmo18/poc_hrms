@@ -107,7 +107,7 @@ async function seedDatabase() {
   }
 
   // Create organization using findFirst and create/update pattern
-  console.log('🏢 Creating organization...');
+  console.log('🏢 Creating organizations...');
   let organization = await prisma.organization.findFirst({
     where: { name: 'Tech Corp Inc.' }
   });
@@ -116,13 +116,63 @@ async function seedDatabase() {
     organization = await prisma.organization.create({
       data: {
         name: 'Tech Corp Inc.',
+        email: 'contact@techcorp.com',
+        contact_number: '+1-555-0101',
         address: '123 Business Ave, Tech City, TC 12345',
+        website: 'https://techcorp.com',
+        description: 'Leading technology solutions provider',
         status: 'ACTIVE',
       },
     });
     console.log('✅ Created new organization:', organization.name);
   } else {
     console.log('✅ Using existing organization:', organization.name);
+  }
+
+  // Create 3 additional organizations
+  const additionalOrgs = [
+    {
+      name: 'Global Finance Solutions',
+      email: 'info@globalfinance.com',
+      contact_number: '+1-555-0102',
+      address: '456 Financial Plaza, New York, NY 10001',
+      website: 'https://globalfinance.com',
+      description: 'Premier financial services and consulting firm',
+    },
+    {
+      name: 'Creative Design Studios',
+      email: 'hello@creativedesign.com',
+      contact_number: '+1-555-0103',
+      address: '789 Art District, Los Angeles, CA 90001',
+      website: 'https://creativedesign.com',
+      description: 'Award-winning design and branding agency',
+    },
+    {
+      name: 'Healthcare Innovations Inc',
+      email: 'support@healthcareinnovations.com',
+      contact_number: '+1-555-0104',
+      address: '321 Medical Center, Boston, MA 02101',
+      website: 'https://healthcareinnovations.com',
+      description: 'Cutting-edge healthcare technology solutions',
+    },
+  ];
+
+  for (const orgData of additionalOrgs) {
+    const existingOrg = await prisma.organization.findFirst({
+      where: { name: orgData.name }
+    });
+    
+    if (!existingOrg) {
+      await prisma.organization.create({
+        data: {
+          ...orgData,
+          status: 'ACTIVE',
+        },
+      });
+      console.log('✅ Created organization:', orgData.name);
+    } else {
+      console.log('ℹ️  Organization already exists:', orgData.name);
+    }
   }
 
   // Create roles using upsert to handle existing data

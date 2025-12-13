@@ -3,7 +3,12 @@ import { z } from 'zod';
 export const OrganizationSchema = z.object({
   id: z.number().optional(),
   name: z.string().min(1, 'Organization name is required'),
+  email: z.string().email('Invalid email address'),
+  contact_number: z.string().optional(),
   address: z.string().optional(),
+  logo: z.string().optional(),
+  website: z.string().url('Invalid URL').optional(),
+  description: z.string().optional(),
   status: z.enum(['ACTIVE', 'INACTIVE', 'SUSPENDED']).default('ACTIVE'),
   created_at: z.date().optional(),
   updated_at: z.date().optional(),

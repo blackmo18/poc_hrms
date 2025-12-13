@@ -19,7 +19,6 @@ export async function GET(request: NextRequest) {
     }
 
     const result = await organizationController.getAll({ page, limit });
-    console.log('Result: ', result);
     return NextResponse.json(result);
   });
 }

@@ -17,7 +17,12 @@ import ComponentCard from '@/app/components/common/ComponentCard';
 interface Organization {
   id: number;
   name: string;
+  email?: string;
+  contact_number?: string;
   address?: string;
+  logo?: string;
+  website?: string;
+  description?: string;
   status: 'ACTIVE' | 'INACTIVE' | 'SUSPENDED';
   created_at: string;
   updated_at: string;
@@ -153,12 +158,12 @@ export default function OrganizationDetailsPage() {
       </div>
 
       {/* Table Container */}
-      <div className="max-w-full overflow-x-auto">
-        <ComponentCard title="Organization Details">
+      <div className="w-full overflow-x-auto ">
+        <ComponentCard title="Organization Details" size="full">
           <RoleComponentWrapper roles={['ADMIN']}>
 
             <div className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03]">
-              <div className="max-w-full overflow-x-auto">
+              <div className="w-full overflow-x-auto">
                 <Table>
                   {/* Table Header */}
                   <TableHeader className="border-b border-gray-100 dark:border-white/[0.05]">
@@ -173,7 +178,19 @@ export default function OrganizationDetailsPage() {
                         isHeader
                         className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
                       >
-                        Organization Namez
+                        Organization Name
+                      </TableCell>
+                      <TableCell
+                        isHeader
+                        className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
+                      >
+                        Email
+                      </TableCell>
+                      <TableCell
+                        isHeader
+                        className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
+                      >
+                        Contact Number
                       </TableCell>
                       <TableCell
                         isHeader
@@ -186,18 +203,6 @@ export default function OrganizationDetailsPage() {
                         className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
                       >
                         Status
-                      </TableCell>
-                      <TableCell
-                        isHeader
-                        className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
-                      >
-                        Created Date
-                      </TableCell>
-                      <TableCell
-                        isHeader
-                        className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
-                      >
-                        Last Updated
                       </TableCell>
                       <TableCell
                         isHeader
@@ -221,6 +226,12 @@ export default function OrganizationDetailsPage() {
                           </span>
                         </TableCell>
                         <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
+                          {org.email || 'N/A'}
+                        </TableCell>
+                        <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
+                          {org.contact_number || 'N/A'}
+                        </TableCell>
+                        <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
                           {org.address || 'N/A'}
                         </TableCell>
                         <TableCell className="px-4 py-3 text-start">
@@ -230,12 +241,6 @@ export default function OrganizationDetailsPage() {
                           >
                             {org.status}
                           </Badge>
-                        </TableCell>
-                        <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
-                          {new Date(org.created_at).toLocaleDateString()}
-                        </TableCell>
-                        <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
-                          {new Date(org.updated_at).toLocaleDateString()}
                         </TableCell>
                         <TableCell className="px-4 py-3 text-center">
                           <Link

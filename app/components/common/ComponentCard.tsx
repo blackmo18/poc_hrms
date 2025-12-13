@@ -1,19 +1,31 @@
+type CardSize = 'sm' | 'md' | 'lg' | 'xl' | 'full';
+
 interface ComponentCardProps {
   title: string;
   children: React.ReactNode;
   className?: string; // Additional custom classes for styling
   desc?: string; // Description text
+  size?: CardSize; // Size variant: sm, md, lg, xl, full
 }
+
+const sizeClasses: Record<CardSize, string> = {
+  sm: 'max-w-sm',
+  md: 'max-w-md',
+  lg: 'max-w-lg',
+  xl: 'max-w-xl',
+  full: 'w-full',
+};
 
 const ComponentCard: React.FC<ComponentCardProps> = ({
   title,
   children,
   className = "",
   desc = "",
+  size = 'full',
 }) => {
   return (
     <div
-      className={`rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03] ${className}`}
+      className={`rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03] ${sizeClasses[size]} ${className}`}
     >
       {/* Card Header */}
       <div className="px-6 py-5">
