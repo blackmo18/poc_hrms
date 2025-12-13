@@ -1,9 +1,15 @@
 'use client';
 
 import { useIdleTimeout } from '@/hooks/useIdleTimeout';
+import { useAuth } from '../providers/auth-provider';
 
 export default function IdleStatus() {
-  const { getIdleStatus } = useIdleTimeout();
+  const { user, logout } = useAuth();
+  const { getIdleStatus } = useIdleTimeout(logout, user, {
+    timeout: 12 * 60 * 1000, // 12 minutes
+    promptBefore: 2 * 60 * 1000, // 2 minutes
+    enabled: !!user // Only enable when user is logged in
+  });
 
   // Only show in development
   if (process.env.NODE_ENV !== 'development') {

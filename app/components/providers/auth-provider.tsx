@@ -174,8 +174,8 @@ export function AuthProvider({
     }
 
     useIdleTimeout(logout, user, {
-      timeout: 30 * 60 * 1000, // 30 minutes
-      promptBefore: 5 * 60 * 1000, // Warn 5 minutes before logout
+      timeout: 12 * 60 * 1000, // 12 minutes
+      promptBefore: 2 * 60 * 1000, // Warn 2 minutes before logout
       enabled: !!user // Only enable when user is logged in
     });
 

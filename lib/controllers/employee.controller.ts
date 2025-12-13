@@ -105,6 +105,33 @@ export class EmployeeController {
       },
     });
   }
+
+  async getByUserId(userId: number) {
+    return await prisma.employee.findUnique({
+      where: { user_id: userId },
+      include: {
+        organization: true,
+        user: true,
+        department: true,
+        jobTitle: true,
+        manager: true,
+        directReports: true,
+        compensations: true,
+        employeeBenefits: {
+          include: {
+            benefit: true,
+          },
+        },
+        timesheets: true,
+        leaveRequests: true,
+        payrolls: {
+          include: {
+            deductions: true,
+          },
+        },
+      },
+    });
+  }
 }
 
 export const employeeController = new EmployeeController();
