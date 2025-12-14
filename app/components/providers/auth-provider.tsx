@@ -4,6 +4,7 @@ import { createContext, useContext, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useUserCache } from '@/hooks/useUserCache';
 import { useIdleTimeout } from '@/hooks/useIdleTimeout';
+import { sessionManager } from '@/lib/utils/session-manager';
 
 interface User {
   id: string;
@@ -40,8 +41,27 @@ export function AuthProvider({
 
   const { checkAuth } = useUserCache(setUser, setIsLoading, setHasCheckedAuth);
 
-  // Idle timeout functionality - auto logout after 30 minutes of inactivity
+  // Cross-tab session synchronization
+  useEffect(() => {
+    const unsubscribe = sessionManager.subscribe((sessionData) => {
+      if (sessionData) {
+        if (sessionData.user === null) {
+          // Session was invalidated by another tab - logout this tab
+          console.log('Session invalidated by another tab, logging out...');
+          setUser(null);
+          router.push('/login');
+        } else if (sessionData.user && !user) {
+          // Another tab logged in - update this tab's state
+          console.log('Session established by another tab, updating state...');
+          setUser(sessionData.user);
+        }
+      }
+    });
 
+    return unsubscribe;
+  }, [user, router]);
+
+  // Idle timeout functionality - auto logout after 30 minutes of inactivity
   useEffect(() => {
     // Only check auth once on mount, not on every route change
     if (hasCheckedAuth) {
@@ -73,6 +93,8 @@ export function AuthProvider({
       if (response.ok) {
         const session = await response.json();
         setUser(session.user);
+        // Store complete session with tokens in session manager
+        sessionManager.setAuthenticatedUser(session.user, session.accessToken, session.refreshToken);
         // Fetch full user data including roles
         await checkAuth();
       } else {
@@ -90,9 +112,8 @@ export function AuthProvider({
 
   const logout = async () => {
     try {
-      // Clear local tokens
-      localStorage.removeItem('access_token');
-      localStorage.removeItem('refresh_token');
+      // Notify other tabs about logout and clear session
+      sessionManager.clearSession();
 
       // Call sign-out endpoint to clear server-side cookies
       await fetch('/api/auth/sign-out', { method: 'POST', credentials: 'include' });
@@ -102,15 +123,14 @@ export function AuthProvider({
       console.error('Logout failed:', error);
       // Still clear local state even if server logout fails
       setUser(null);
-      localStorage.removeItem('access_token');
-      localStorage.removeItem('refresh_token');
+      sessionManager.clearSession();
     }
   };
 
   // Token refresh logic
   const refreshAccessToken = async (): Promise<boolean> => {
     try {
-      const refreshToken = localStorage.getItem('refresh_token');
+      const refreshToken = sessionManager.getRefreshToken();
       if (!refreshToken) {
         // No refresh token means user needs to login again
         logout();
@@ -125,8 +145,8 @@ export function AuthProvider({
 
       if (response.ok) {
         const data = await response.json();
-        localStorage.setItem('access_token', data.accessToken);
-        localStorage.setItem('refresh_token', data.refreshToken);
+        // Update access token in session manager
+        sessionManager.updateAccessToken(data.accessToken);
         setUser(data.user);
         return true;
       } else if (response.status === 401) {
@@ -148,7 +168,7 @@ export function AuthProvider({
 
   // Get access token with auto-refresh
   const getAccessToken = async (): Promise<string | null> => {
-    let token = localStorage.getItem('access_token');
+    let token = sessionManager.getAccessToken();
 
     if (!token) return null;
 
@@ -161,7 +181,7 @@ export function AuthProvider({
       if (payload.exp - now < 300) {
         const refreshed = await refreshAccessToken();
         if (refreshed) {
-          token = localStorage.getItem('access_token');
+          token = sessionManager.getAccessToken();
         } else {
           // Refresh failed but don't return null immediately
           // Return the existing token and let the API handle auth

@@ -27,7 +27,9 @@ export async function POST(request: Request) {
       user: {
         ...authResult.user,
         username: authResult.user.email
-      }
+      },
+      accessToken: authResult.accessToken,
+      refreshToken: authResult.refreshToken
     });
 
     // Set both access and refresh tokens

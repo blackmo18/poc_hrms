@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { userCache } from '@/lib/utils/user-cache';
+import { sessionManager } from '@/lib/utils/session-manager';
 
 interface User {
   id: string;
@@ -30,17 +30,13 @@ export function useUserCache(
   const [isRevalidating, setIsRevalidating] = useState(false);
   const [user, setInternalUser] = useState<User | null>(null);
 
-  // Auto-cache user changes
-  useEffect(() => {
-    userCache.setCachedUser(user);
-  }, [user]);
-
   // Check auth with caching logic
   const checkAuth = async (forceRefresh = false) => {
     try {
       // First, try to get cached user data for immediate display
       if (!forceRefresh) {
-        const cachedUser = userCache.getCachedUser();
+        const sessionData = sessionManager.getSessionData();
+        const cachedUser = sessionData?.user;
         if (cachedUser) {
           setUser(cachedUser);
           setInternalUser(cachedUser);
@@ -63,24 +59,20 @@ export function useUserCache(
         if (data.user) {
           setUser(data.user);
           setInternalUser(data.user);
-          userCache.setCachedUser(data.user);
         } else {
           setUser(null);
           setInternalUser(null);
-          userCache.setCachedUser(null);
           onUserNull?.();
         }
       } else {
         setUser(null);
         setInternalUser(null);
-        userCache.setCachedUser(null);
         onUserNull?.();
       }
     } catch (error) {
       console.error('Auth check failed:', error);
       setUser(null);
       setInternalUser(null);
-      userCache.setCachedUser(null);
       onUserNull?.();
     } finally {
       setIsLoading(false);
