@@ -75,7 +75,6 @@ export async function authMiddleware(request: NextRequest): Promise<any | NextRe
     }
 
     // Return user object
-    console.log('Authenticated user: ', user);
     return {
       id: user.id,
       email: user.email,

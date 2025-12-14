@@ -94,7 +94,6 @@ export default function OrganizationOnboardingPage() {
       <PageBreadcrumb
         pageTitle='Organization Onboarding'
         breadcrumbs={[
-          { label: 'Organizations', href: '/organizations/details' },
           { label: 'Onboarding' }
         ]}
       />

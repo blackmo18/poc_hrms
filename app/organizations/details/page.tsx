@@ -13,6 +13,8 @@ import Badge from '../../components/ui/badge/Badge';
 import { PencilIcon, AngleLeftIcon, AngleRightIcon } from '../../icons';
 import RoleComponentWrapper from '@/app/components/common/RoleComponentWrapper';
 import ComponentCard from '@/app/components/common/ComponentCard';
+import PageMeta from '@/app/components/common/PageMeta';
+import PageBreadcrumb from '@/app/components/common/PageBreadCrumb';
 
 interface Organization {
   id: number;
@@ -146,16 +148,13 @@ export default function OrganizationDetailsPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-            Organization Details
-          </h1>
-          <p className="mt-2 text-gray-600 dark:text-gray-300">
-            Manage and view all organizations in the system
-          </p>
-        </div>
-      </div>
+      <PageMeta title='Organization Onboarding - HR Management System' description='Create a new organization' />
+      <PageBreadcrumb
+        pageTitle='Organization Details'
+        breadcrumbs={[
+          { label: 'Details' }
+        ]}
+      />
 
       {/* Table Container */}
       <div className="w-full overflow-x-auto ">

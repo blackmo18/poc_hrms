@@ -41,8 +41,6 @@ export async function POST(request: Request) {
       maxAge: 60 * 60 * 24 * 7 // 1 week
     });
 
-    console.log('response ====>', response)
-
     return response;
 
   } catch (error) {
