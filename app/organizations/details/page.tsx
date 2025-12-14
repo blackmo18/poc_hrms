@@ -9,12 +9,13 @@ import {
   TableHeader,
   TableRow,
 } from '../../components/ui/table';
-import Badge from '../../components/ui/badge/Badge';
+import Badge, { BadgeColor } from '../../components/ui/badge/Badge';
 import { PencilIcon, AngleLeftIcon, AngleRightIcon } from '../../icons';
 import RoleComponentWrapper from '@/app/components/common/RoleComponentWrapper';
 import ComponentCard from '@/app/components/common/ComponentCard';
 import PageMeta from '@/app/components/common/PageMeta';
 import PageBreadcrumb from '@/app/components/common/PageBreadCrumb';
+import OrganizationCard from '@/app/components/organizations/OrganizationCard';
 
 interface Organization {
   id: number;
@@ -50,6 +51,7 @@ export default function OrganizationDetailsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
+  const [expandedCards, setExpandedCards] = useState<Set<number>>(new Set());
 
   const fetchOrganizations = async (page: number = 1) => {
     try {
@@ -89,7 +91,7 @@ export default function OrganizationDetailsPage() {
     fetchOrganizations(currentPage);
   }, [currentPage]);
 
-  const getStatusColor = (status: string) => {
+  const getStatusColor = (status: string): BadgeColor => {
     switch (status) {
       case 'ACTIVE':
         return 'success';
@@ -100,6 +102,16 @@ export default function OrganizationDetailsPage() {
       default:
         return 'info';
     }
+  };
+
+  const toggleCardExpansion = (orgId: number) => {
+    const newExpanded = new Set(expandedCards);
+    if (newExpanded.has(orgId)) {
+      newExpanded.delete(orgId);
+    } else {
+      newExpanded.add(orgId);
+    }
+    setExpandedCards(newExpanded);
   };
 
   if (loading) {
@@ -156,12 +168,13 @@ export default function OrganizationDetailsPage() {
         ]}
       />
 
-      {/* Table Container */}
-      <div className="w-full overflow-x-auto ">
+      {/* Content Container */}
+      <div className="w-full overflow-x-auto">
         <ComponentCard title="Organization Details" size="full">
           <RoleComponentWrapper roles={['ADMIN']}>
 
-            <div className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03]">
+            {/* Desktop Table View */}
+            <div className="hidden lg:block overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03]">
               <div className="w-full overflow-x-auto">
                 <Table>
                   {/* Table Header */}
@@ -255,6 +268,20 @@ export default function OrganizationDetailsPage() {
                 </Table>
               </div>
             </div>
+
+            {/* Mobile Card View */}
+            <div className="lg:hidden space-y-4">
+              {organizations.map((org) => (
+                <OrganizationCard
+                  key={org.id}
+                  org={org}
+                  isExpanded={expandedCards.has(org.id)}
+                  onToggle={toggleCardExpansion}
+                  getStatusColor={getStatusColor}
+                />
+              ))}
+            </div>
+
           </RoleComponentWrapper>
         </ComponentCard>
       </div>
