@@ -208,7 +208,7 @@ export default function OrganizationOnboardingPage() {
             disabled={saving}
             className='bg-blue-600 hover:bg-blue-700 text-white'
           >
-            {saving ? 'Creating...' : 'Create Organization'}
+            {saving ? 'Boarding...' : 'Onboard Organization'}
           </Button>
         </div>
       </div>
