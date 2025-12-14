@@ -23,7 +23,7 @@ export async function GET() {
       user: {
         id: payload.userId.toString(),
         email: payload.email,
-        name: payload.username,
+        username: payload.username,
         role: roles[0]?.name || 'EMPLOYEE',
         roles: roles.map(role => role.name),
         permissions

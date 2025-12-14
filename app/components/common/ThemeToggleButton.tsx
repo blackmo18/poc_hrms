@@ -5,15 +5,6 @@ import { useEffect, useState } from "react";
 
 export const ThemeToggleButton: React.FC = () => {
   const { toggleTheme, theme } = useTheme();
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  if (!mounted) {
-    return null;
-  }
 
   return (
     <button

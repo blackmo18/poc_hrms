@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { organizationController } from '@/lib/controllers/organization.controller';
+import { UpdateOrganizationSchema } from '@/lib/models/organization';
 
 export async function GET(
   request: NextRequest,
@@ -33,11 +34,27 @@ export async function PUT(
   try {
     const { id } = await params;
     const body = await request.json();
-    const organization = await organizationController.update(Number(id), body);
+    
+    // Validate update data
+    const validatedData = UpdateOrganizationSchema.parse(body);
+    const organization = await organizationController.update(Number(id), validatedData);
+    
+    if (!organization) {
+      return NextResponse.json(
+        { error: 'Organization not found' },
+        { status: 404 }
+      );
+    }
     
     return NextResponse.json(organization);
   } catch (error) {
     console.error('Error updating organization:', error);
+    if (error instanceof Error && error.message.includes('validation')) {
+      return NextResponse.json(
+        { error: 'Invalid organization data', details: error.message },
+        { status: 400 }
+      );
+    }
     return NextResponse.json(
       { error: 'Failed to update organization' },
       { status: 500 }

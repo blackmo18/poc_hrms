@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
 import { JWTUtils } from './jwt';
 import { prisma } from '../db';
 import { permissionController } from '../controllers';
@@ -9,7 +10,7 @@ export interface AuthenticatedRequest extends NextRequest {
     id: number;
     email: string;
     organizationId: number;
-    role: string;
+    roles: string[];
   };
 }
 
@@ -20,11 +21,22 @@ export interface AuthenticatedRequest extends NextRequest {
 /**
  * Authentication middleware for API routes
  */
-export async function authMiddleware(request: NextRequest): Promise<NextResponse | null> {
+export async function authMiddleware(request: NextRequest): Promise<any | NextResponse> {
   try {
-    // Extract token from Authorization header
-    const token = JWTUtils.extractTokenFromHeader(request.headers.get('authorization') || undefined);
-    
+    // First try to extract token from Authorization header
+    let token = JWTUtils.extractTokenFromHeader(request.headers.get('authorization') || undefined);
+
+    // If no header token, try to get token from cookies (for cookie-based auth)
+    if (!token) {
+      try {
+        const cookieStore = await cookies();
+        token = cookieStore.get('access_token')?.value;
+      } catch (error) {
+        // cookies() might not be available in all contexts
+        console.warn('Could not access cookies for authentication');
+      }
+    }
+
     if (!token) {
       return NextResponse.json(
         { error: 'Authentication required' },
@@ -62,14 +74,13 @@ export async function authMiddleware(request: NextRequest): Promise<NextResponse
       );
     }
 
-    // Add user info to request headers for downstream handlers
-    const response = NextResponse.next();
-    response.headers.set('x-user-id', user.id.toString());
-    response.headers.set('x-user-email', user.email);
-    response.headers.set('x-user-organization', user.organization_id.toString());
-    response.headers.set('x-user-role', user.userRoles[0]?.role?.name || 'EMPLOYEE');
-
-    return null; // Continue to the actual handler
+    // Return user object
+    return {
+      id: user.id,
+      email: user.email,
+      organizationId: user.organization_id,
+      roles: user.userRoles.map(ur => ur.role?.name).filter(Boolean) as string[]
+    };
   } catch (error) {
     console.error('Auth middleware error:', error);
     return NextResponse.json(
@@ -83,11 +94,12 @@ export async function authMiddleware(request: NextRequest): Promise<NextResponse
  * Organization access middleware - ensures user can only access their own organization
  */
 export async function organizationMiddleware(request: NextRequest): Promise<NextResponse | null> {
-  const userOrganization = request.headers.get('x-user-organization');
+  const authRequest = request as AuthenticatedRequest;
+  const userOrganization = authRequest.user?.organizationId;
   const requestedOrganization = request.nextUrl.searchParams.get('organization_id') || 
                                request.headers.get('x-organization-id');
 
-  if (requestedOrganization && userOrganization !== requestedOrganization) {
+  if (requestedOrganization && userOrganization !== parseInt(requestedOrganization)) {
     return NextResponse.json(
       { error: 'Access to this organization is not allowed' },
       { status: 403 }
@@ -106,9 +118,10 @@ export async function organizationMiddleware(request: NextRequest): Promise<Next
  */
 export function rbacMiddleware(allowedRoles: string[]) {
   return async (request: NextRequest): Promise<NextResponse | null> => {
-    const userRole = request.headers.get('x-user-role');
+    const authRequest = request as AuthenticatedRequest;
+    const userRoles = authRequest.user?.roles || [];
     
-    if (!userRole || !allowedRoles.includes(userRole)) {
+    if (!userRoles.some(role => allowedRoles.includes(role))) {
       return NextResponse.json(
         { error: 'Insufficient permissions' },
         { status: 403 }
@@ -122,18 +135,6 @@ export function rbacMiddleware(allowedRoles: string[]) {
 /* ===================================================== */
 /* HELPER FUNCTIONS                                      */
 /* ===================================================== */
-
-/**
- * Helper function to get authenticated user from request
- */
-export function getAuthenticatedUser(request: NextRequest) {
-  return {
-    id: parseInt(request.headers.get('x-user-id') || '0'),
-    email: request.headers.get('x-user-email') || '',
-    organizationId: parseInt(request.headers.get('x-user-organization') || '0'),
-    role: request.headers.get('x-user-role') || 'EMPLOYEE'
-  };
-}
 
 /**
  * Helper function to check if user has required permissions
@@ -162,19 +163,12 @@ export const requiresRoles = async (
   try {
     // Authentication
     const authResult = await authMiddleware(request);
-    if (authResult) return authResult;
+    if (authResult instanceof NextResponse) return authResult;
 
-    // Get user
-    const user = getAuthenticatedUser(request);
-    if (!user || user.id === 0) {
-      return NextResponse.json(
-        { error: 'Authentication required' },
-        { status: 401 }
-      );
-    }
+    const user = authResult;
 
     // Authorization - Check role
-    const hasRole = allowedRoles.includes(user.role);
+    const hasRole = allowedRoles.some(role => user.roles.includes(role));
     if (!hasRole) {
       return NextResponse.json(
         { error: 'Insufficient permissions' },
@@ -207,19 +201,24 @@ export const requiresPermissions = async (
   try {
     // Authentication
     const authResult = await authMiddleware(request);
-    if (authResult) return authResult;
+    if (authResult instanceof NextResponse) return authResult;
 
-    // Get user
-    const user = getAuthenticatedUser(request);
-    if (!user || user.id === 0) {
-      return NextResponse.json(
-        { error: 'Authentication required' },
-        { status: 401 }
-      );
+    const user = authResult;
+
+    // Get role IDs - since we have user, but to get permissions, we need role IDs from JWT
+    // Get token again to get roleIds
+    let token = JWTUtils.extractTokenFromHeader(request.headers.get('authorization') || undefined);
+
+    // If no header token, try to get token from cookies
+    if (!token) {
+      try {
+        const cookieStore = await cookies();
+        token = cookieStore.get('access_token')?.value;
+      } catch (error) {
+        console.warn('Could not access cookies for authentication');
+      }
     }
 
-    // Get role IDs from JWT
-    const token = JWTUtils.extractTokenFromHeader(request.headers.get('authorization') || undefined);
     if (!token) {
       return NextResponse.json(
         { error: 'Authentication required' },
@@ -280,7 +279,6 @@ export default {
   authMiddleware,
   rbacMiddleware,
   organizationMiddleware,
-  getAuthenticatedUser,
   requiresRoles,
   requiresPermissions,
   requireAdmin

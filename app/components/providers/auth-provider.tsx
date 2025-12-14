@@ -1,12 +1,16 @@
 'use client';
 
 import { createContext, useContext, useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { useUserCache } from '@/hooks/useUserCache';
+import { useIdleTimeout } from '@/hooks/useIdleTimeout';
 
 interface User {
   id: string;
   email: string;
-  name?: string;
+  username: string;
   role?: string;
+  roles?: string[];
   permissions?: string[];
 }
 
@@ -21,34 +25,22 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+export function AuthProvider({
+  children,
+  initialUser = null
+}: {
+  children: React.ReactNode;
+  initialUser?: User | null;
+}) {
+  const [user, setUser] = useState<User | null>(initialUser);
+  const [isLoading, setIsLoading] = useState(true); // Always start loading, let checkAuth handle it
   const [hasCheckedAuth, setHasCheckedAuth] = useState(false);
 
-  const checkAuth = async () => {
-    try {
-      const response = await fetch('/api/auth/session', {
-        credentials: 'include', // Important for cookies
-        headers: {
-          'Cache-Control': 'no-cache',
-          'Pragma': 'no-cache'
-        }
-      });
+  const router = useRouter();
 
-      if (response.ok) {
-        const data = await response.json();
-        if (data.user) {
-          setUser(data.user);
-        }
-      }
-    } catch (error) {
-      console.error('Auth check failed:', error);
-    } finally {
-      setIsLoading(false);
-      setHasCheckedAuth(true);
-    }
-  };
+  const { checkAuth } = useUserCache(setUser, setIsLoading, setHasCheckedAuth);
+
+  // Idle timeout functionality - auto logout after 30 minutes of inactivity
 
   useEffect(() => {
     // Only check auth once on mount, not on every route change
@@ -59,6 +51,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     checkAuth();
   }, [hasCheckedAuth]);
+
+  // Redirect to login if user is null after auth check
+  useEffect(() => {
+    if (!user && hasCheckedAuth) {
+      router.push('/login');
+    }
+  }, [user, hasCheckedAuth, router]);
+
 
   const login = async (email: string, password: string) => {
     setIsLoading(true);
@@ -73,6 +73,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (response.ok) {
         const session = await response.json();
         setUser(session.user);
+        // Fetch full user data including roles
+        await checkAuth();
       } else {
         const error = await response.json();
         throw new Error(error.error || 'Login failed');
@@ -87,15 +89,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const logout = async () => {
-    console.log('user is logged out ====>')
     try {
       // Clear local tokens
       localStorage.removeItem('access_token');
       localStorage.removeItem('refresh_token');
-      
+
       // Call sign-out endpoint to clear server-side cookies
       await fetch('/api/auth/sign-out', { method: 'POST', credentials: 'include' });
-      
+
       setUser(null);
     } catch (error) {
       console.error('Logout failed:', error);
@@ -171,6 +172,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Token is malformed, return null
       return null;
     }
+
+    useIdleTimeout(logout, user, {
+      timeout: 12 * 60 * 1000, // 12 minutes
+      promptBefore: 2 * 60 * 1000, // Warn 2 minutes before logout
+      enabled: !!user // Only enable when user is logged in
+    });
 
     return token;
   };

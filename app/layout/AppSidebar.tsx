@@ -16,6 +16,7 @@ import {
   PlugInIcon,
   TableIcon,
   UserCircleIcon,
+  OrganizationIcon
 } from "../icons";
 import { useSidebar } from "../context/SidebarContext";
 import SidebarWidget from "./SidebarWidget";
@@ -76,6 +77,14 @@ const othersItems: NavItem[] = [
     subItems: [
       { name: "General", path: "/settings", pro: false },
       { name: "User Management", path: "/settings/users", pro: false },
+    ],
+  },
+  {
+    icon: <OrganizationIcon />,
+    name: "Organizations",
+    subItems: [
+      { name: "Onboarding", path: "/organizations/onboarding", pro: false },
+      { name: "Details", path: "/organizations/details", pro: false },
     ],
   },
 ];

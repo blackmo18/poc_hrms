@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
+import MetricCard from '../components/common/MetricCard';
 import { Users, Building2, DollarSign, Calendar } from 'lucide-react';
 import { ProtectedRoute } from '../components/protected-route';
 
@@ -53,36 +54,43 @@ function DashboardContent() {
       title: 'Total Employees',
       value: stats.totalEmployees,
       icon: Users,
-      color: 'text-blue-600',
-      bgColor: 'bg-blue-50',
+      iconColor: 'text-blue-600 dark:text-blue-400',
+      iconBgColor: 'bg-blue-50 dark:bg-blue-900/20',
     },
     {
       title: 'Departments',
       value: stats.totalDepartments,
       icon: Building2,
-      color: 'text-green-600',
-      bgColor: 'bg-green-50',
+      iconColor: 'text-green-600 dark:text-green-400',
+      iconBgColor: 'bg-green-50 dark:bg-green-900/20',
     },
     {
       title: 'Total Payroll',
       value: `$${stats.totalPayroll.toLocaleString()}`,
       icon: DollarSign,
-      color: 'text-purple-600',
-      bgColor: 'bg-purple-50',
+      iconColor: 'text-purple-600 dark:text-purple-400',
+      iconBgColor: 'bg-purple-50 dark:bg-purple-900/20',
     },
     {
       title: 'Pending Leave Requests',
       value: stats.pendingLeaveRequests,
       icon: Calendar,
-      color: 'text-orange-600',
-      bgColor: 'bg-orange-50',
+      iconColor: 'text-orange-600 dark:text-orange-400',
+      iconBgColor: 'bg-orange-50 dark:bg-orange-900/20',
+    },
+    {
+      title: 'Pending Leave Requests',
+      value: stats.pendingLeaveRequests,
+      icon: Calendar,
+      iconColor: 'text-orange-600 dark:text-orange-400',
+      iconBgColor: 'bg-orange-50 dark:bg-orange-900/20',
     },
   ];
 
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-lg text-gray-600">Loading dashboard...</div>
+        <div className="text-lg text-gray-600 dark:text-gray-300">Loading dashboard...</div>
       </div>
     );
   }
@@ -90,25 +98,21 @@ function DashboardContent() {
   return (
     <div>
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-        <p className="text-gray-600 mt-2">Welcome to your HR Management System</p>
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Dashboard</h1>
+        <p className="text-gray-600 mt-2 dark:text-gray-300">Welcome to your HR Management System</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         {statCards.map((card) => (
-          <Card key={card.title}>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600">
-                {card.title}
-              </CardTitle>
-              <div className={`p-2 rounded-lg ${card.bgColor}`}>
-                <card.icon className={`h-6 w-6 ${card.color}`} />
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-gray-900">{card.value}</div>
-            </CardContent>
-          </Card>
+          <MetricCard
+            id={card.title}
+            key={card.title}
+            title={card.title}
+            value={card.value}
+            icon={card.icon}
+            iconColor={card.iconColor}
+            iconBgColor={card.iconBgColor}
+          />
         ))}
       </div>
 

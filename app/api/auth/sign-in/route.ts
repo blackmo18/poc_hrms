@@ -24,7 +24,10 @@ export async function POST(request: Request) {
     };
 
     const response = NextResponse.json({
-      user: authResult.user
+      user: {
+        ...authResult.user,
+        username: authResult.user.email
+      }
     });
 
     // Set both access and refresh tokens

@@ -44,6 +44,7 @@ import {
   FileText,
   MessageSquare,
   MoreHorizontal,
+  Building2,
 } from "lucide-react";
 
 // Create wrapper components for consistency
@@ -103,3 +104,4 @@ export const ChatIcon = MessageSquare;
 export const MoreDotIcon = MoreVertical;
 export const AlertHexaIcon = AlertCircle;
 export const ErrorHexaIcon = AlertTriangle;
+export const OrganizationIcon = Building2;
