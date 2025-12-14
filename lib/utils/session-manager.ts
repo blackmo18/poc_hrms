@@ -20,7 +20,7 @@ const SESSION_KEY = 'auth_session';
 const SESSION_EVENT = 'auth_session_change';
 
 export class SessionManager {
-  private static instance: SessionManager;
+  private static instance: SessionManager | null = null;
   private listeners: Set<(data: SessionData) => void> = new Set();
   private currentSessionId: string;
 
@@ -28,16 +28,27 @@ export class SessionManager {
     // Generate unique session ID for this tab
     this.currentSessionId = this.generateSessionId();
 
-    // Listen for storage changes from other tabs
-    window.addEventListener('storage', this.handleStorageChange.bind(this));
+    // Only add event listeners if window is available (client-side)
+    if (typeof window !== 'undefined') {
+      // Listen for storage changes from other tabs
+      window.addEventListener('storage', this.handleStorageChange.bind(this));
 
-    // Listen for custom session change events within the same tab
-    window.addEventListener(SESSION_EVENT, this.handleSessionEvent.bind(this));
+      // Listen for custom session change events within the same tab
+      window.addEventListener(SESSION_EVENT, this.handleSessionEvent.bind(this));
+    }
   }
 
   static getInstance(): SessionManager {
     if (!SessionManager.instance) {
-      SessionManager.instance = new SessionManager();
+      // Only create instance if we're on the client side
+      if (typeof window !== 'undefined') {
+        SessionManager.instance = new SessionManager();
+      } else {
+        // Return a dummy instance for SSR that doesn't access window
+        SessionManager.instance = Object.create(SessionManager.prototype);
+        SessionManager.instance.listeners = new Set();
+        SessionManager.instance.currentSessionId = 'ssr-session';
+      }
     }
     return SessionManager.instance;
   }
@@ -75,6 +86,8 @@ export class SessionManager {
    * Set authenticated user session with tokens
    */
   setAuthenticatedUser(user: User, accessToken: string, refreshToken: string): void {
+    if (typeof window === 'undefined') return; // Skip on server
+    
     const sessionData: SessionData = {
       user,
       accessToken,
@@ -91,6 +104,8 @@ export class SessionManager {
    * Update access token (for token refresh)
    */
   updateAccessToken(accessToken: string): void {
+    if (typeof window === 'undefined') return; // Skip on server
+    
     const currentSession = this.getSessionData();
     if (currentSession && currentSession.user) {
       const updatedSession: SessionData = {
@@ -124,6 +139,8 @@ export class SessionManager {
    * Clear session (logout)
    */
   clearSession(): void {
+    if (typeof window === 'undefined') return; // Skip on server
+    
     const sessionData: SessionData = {
       user: null,
       accessToken: null,
@@ -140,6 +157,8 @@ export class SessionManager {
    * Get current session data
    */
   getSessionData(): SessionData | null {
+    if (typeof window === 'undefined') return null; // Return null on server
+    
     try {
       const stored = localStorage.getItem(SESSION_KEY);
       return stored ? JSON.parse(stored) : null;

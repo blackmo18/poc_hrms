@@ -7,7 +7,7 @@ export const OrganizationSchema = z.object({
   contact_number: z.string().optional(),
   address: z.string().optional(),
   logo: z.string().optional(),
-  website: z.string().url('Invalid URL').optional(),
+  website: z.union([z.string().url(), z.literal('')]).optional(),
   description: z.string().optional(),
   status: z.enum(['ACTIVE', 'INACTIVE', 'SUSPENDED']).default('ACTIVE'),
   created_at: z.date().optional(),
