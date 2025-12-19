@@ -105,3 +105,4 @@ export const MoreDotIcon = MoreVertical;
 export const AlertHexaIcon = AlertCircle;
 export const ErrorHexaIcon = AlertTriangle;
 export const OrganizationIcon = Building2;
+export const Building2Icon = Building2;

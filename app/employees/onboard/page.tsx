@@ -3,13 +3,13 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import PageBreadcrumb from '../../components/common/PageBreadCrumb';
-import PageMeta from '../../components/common/PageMeta';
-import Button from '../../components/ui/button/Button';
-import Input from '../../components/form/input/InputField';
-import Label from '../../components/form/Label';
-import Select from '../../components/form/Select';
-import EmployeeConfirmModal from '../../components/employees/EmployeeConfirmModal';
+import PageBreadcrumb from '@/app/components/common/PageBreadCrumb';
+import PageMeta from '@/app/components/common/PageMeta';
+import Button from '@/app/components/ui/button/Button';
+import Input from '@/app/components/form/input/InputField';
+import Label from '@/app/components/form/Label';
+import Select from '@/app/components/form/Select';
+import EmployeeConfirmModal from '@/app/components/employees/EmployeeConfirmModal';
 
 interface Organization {
   id: number;

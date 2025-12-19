@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { employeeController } from '@/lib/controllers/employee.controller';
 import { CreateEmployeeSchema } from '@/lib/models/employee';
-import { requiresRoles, requiresPermissions } from '@/lib/auth/middleware';
+import { requiresPermissions } from '@/lib/auth/middleware';
 
 export async function GET(request: NextRequest) {
   return requiresPermissions(request, ['employees.read'], async (authRequest) => {

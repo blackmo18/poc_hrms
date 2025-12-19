@@ -8,15 +8,15 @@ import {
   TableCell,
   TableHeader,
   TableRow,
-} from '../components/ui/table';
-import Badge, { BadgeColor } from '../components/ui/badge/Badge';
-import { PencilIcon, PlusIcon, OrganizationIcon, UserIcon } from '../icons';
+} from '@/app/components/ui/table';
+import Badge, { BadgeColor } from '@/app/components/ui/badge/Badge';
+import { PencilIcon, PlusIcon, OrganizationIcon, UserIcon } from '@/app/icons';
 import RoleComponentWrapper from '@/app/components/common/RoleComponentWrapper';
 import ComponentCard from '@/app/components/common/ComponentCard';
 import PageMeta from '@/app/components/common/PageMeta';
 import PageBreadcrumb from '@/app/components/common/PageBreadCrumb';
-import EmployeeCard from '../components/employees/EmployeeCard';
-import Pagination from '../components/ui/pagination';
+import EmployeeCard from '@/app/components/employees/EmployeeCard';
+import Pagination from '@/app/components/ui/pagination';
 
 interface Employee {
   id: number;

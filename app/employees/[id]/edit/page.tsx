@@ -3,13 +3,13 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import PageBreadcrumb from '../../../components/common/PageBreadCrumb';
-import PageMeta from '../../../components/common/PageMeta';
-import Button from '../../../components/ui/button/Button';
-import Input from '../../../components/form/input/InputField';
-import Label from '../../../components/form/Label';
-import Select from '../../../components/form/Select';
-import EmployeeConfirmModal from '../../../components/employees/EmployeeConfirmModal';
+import PageBreadcrumb from '@/app/components/common/PageBreadCrumb';
+import PageMeta from '@/app/components/common/PageMeta';
+import Button from '@/app/components/ui/button/Button';
+import Input from '@/app/components/form/input/InputField';
+import Label from '@/app/components/form/Label';
+import Select from '@/app/components/form/Select';
+import EmployeeConfirmModal from '@/app/components/employees/EmployeeConfirmModal';
 
 interface Organization {
   id: number;
@@ -137,7 +137,7 @@ export default function EditEmployeePage({ params }: EditEmployeePageProps) {
         });
         if (deptResponse.ok) {
           const deptData = await deptResponse.json();
-          setDepartments(deptData);
+          setDepartments(deptData.data || []);
         }
 
         // Fetch job titles for the employee's organization
@@ -146,7 +146,7 @@ export default function EditEmployeePage({ params }: EditEmployeePageProps) {
         });
         if (jobResponse.ok) {
           const jobData = await jobResponse.json();
-          setJobTitles(jobData);
+          setJobTitles(jobData || []);
         }
 
         // Fetch managers for the employee's organization
@@ -200,7 +200,7 @@ export default function EditEmployeePage({ params }: EditEmployeePageProps) {
           });
           if (deptResponse.ok) {
             const deptData = await deptResponse.json();
-            setDepartments(deptData);
+            setDepartments(deptData.data || []);
           }
 
           // Fetch job titles
@@ -209,7 +209,7 @@ export default function EditEmployeePage({ params }: EditEmployeePageProps) {
           });
           if (jobResponse.ok) {
             const jobData = await jobResponse.json();
-            setJobTitles(jobData);
+            setJobTitles(jobData || []);
           }
 
           // Fetch managers
@@ -298,24 +298,24 @@ export default function EditEmployeePage({ params }: EditEmployeePageProps) {
     { value: 'ON_LEAVE', label: 'On Leave' },
   ];
 
-  const organizationOptions = organizations.map(org => ({
+  const organizationOptions = (organizations || []).map(org => ({
     value: org.id.toString(),
     label: org.name,
   }));
 
-  const departmentOptions = departments.map(dept => ({
+  const departmentOptions = (departments || []).map(dept => ({
     value: dept.id.toString(),
     label: dept.name,
   }));
 
-  const jobTitleOptions = jobTitles.map(title => ({
+  const jobTitleOptions = (jobTitles || []).map(title => ({
     value: title.id.toString(),
     label: title.name,
   }));
 
   const managerOptions = [
     { value: '', label: 'No Manager' },
-    ...managers.map(manager => ({
+    ...(managers || []).map(manager => ({
       value: manager.id.toString(),
       label: `${manager.first_name} ${manager.last_name}`,
     })),

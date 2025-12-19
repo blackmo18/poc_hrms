@@ -107,8 +107,30 @@ async function seedDatabase() {
     }
   }
 
+  // Create system organization first
+  console.log('🏢 Creating system organization...');
+  let systemOrg = await prisma.organization.findFirst({
+    where: { name: 'System' }
+  });
+
+  if (!systemOrg) {
+    systemOrg = await prisma.organization.create({
+      data: {
+        name: 'System',
+        email: 'system@hrsystem.com',
+        contact_number: '+1-555-0000',
+        address: 'System Administration',
+        website: 'https://hrsystem.com',
+        description: 'System administration organization',
+        status: 'ACTIVE',
+      },
+    });
+    console.log('✅ Created system organization');
+  } else {
+    console.log('✅ Using existing system organization');
+  }
+
   // Create organization using findFirst and create/update pattern
-  console.log('🏢 Creating organizations...');
   let organization = await prisma.organization.findFirst({
     where: { name: 'Tech Corp Inc.' }
   });
@@ -208,6 +230,16 @@ async function seedDatabase() {
     },
   });
 
+  const superAdminRole = await prisma.role.upsert({
+    where: { name: 'SUPER_ADMIN' },
+    update: {},
+    create: {
+      name: 'SUPER_ADMIN',
+      description: 'System super administrator with full system access',
+      organization_id: systemOrg!.id,
+    },
+  });
+
   console.log('✅ Created roles');
 
   // Create permissions using upsert
@@ -266,6 +298,14 @@ async function seedDatabase() {
           create: { role_id: employeeRole.id, permission_id: permission.id }
         })
       ),
+    // Super Admin gets all permissions
+    ...permissions.map(permission =>
+      prisma.rolePermission.upsert({
+        where: { role_id_permission_id: { role_id: superAdminRole.id, permission_id: permission.id } },
+        update: {},
+        create: { role_id: superAdminRole.id, permission_id: permission.id }
+      })
+    ),
   ]);
 
   console.log('✅ Assigned permissions to roles');
@@ -326,8 +366,10 @@ async function seedDatabase() {
 
   // Create admin user
   const hashedPassword = await bcrypt.hash('admin123', 10);
-  const adminUser = await prisma.user.create({
-    data: {
+  const adminUser = await prisma.user.upsert({
+    where: { email: 'admin@techcorp.com' },
+    update: {},
+    create: {
       organization_id: organization.id,
       email: 'admin@techcorp.com',
       password_hash: hashedPassword,
@@ -368,6 +410,68 @@ async function seedDatabase() {
   });
 
   console.log('✅ Created admin user and employee');
+
+  // Create super admin user
+  const superAdminHashedPassword = await bcrypt.hash('superadmin123', 10);
+  const superAdminUser = await prisma.user.create({
+    data: {
+      organization_id: systemOrg!.id,
+      email: 'superadmin@hrsystem.com',
+      password_hash: superAdminHashedPassword,
+      status: 'ACTIVE',
+    },
+  });
+
+  // Assign super admin role
+  await prisma.userRole.create({
+    data: {
+      user_id: superAdminUser.id,
+      role_id: superAdminRole.id,
+    },
+  });
+
+  // Create system department and job title for super admin
+  const systemDept = await prisma.department.create({
+    data: {
+      organization_id: systemOrg!.id,
+      name: 'System Administration',
+      description: 'System administration department',
+    },
+  });
+
+  const systemJobTitle = await prisma.jobTitle.create({
+    data: {
+      organization_id: systemOrg!.id,
+      name: 'System Administrator',
+      description: 'System administrator role',
+    }
+  });
+
+  // Create super admin employee record
+  const superAdminEmployee = await prisma.employee.create({
+    data: {
+      organization_id: systemOrg!.id,
+      user_id: superAdminUser.id,
+      department_id: systemDept.id,
+      job_title_id: systemJobTitle.id,
+      first_name: 'Super',
+      last_name: 'Admin',
+      email: 'superadmin@hrsystem.com',
+      // Work details
+      work_email: 'superadmin@hrsystem.com',
+      work_contact: '+1-555-0000',
+      // Personal details
+      personal_address: 'System Administration',
+      personal_contact_number: '+1-555-0000',
+      personal_email: 'superadmin@hrsystem.com',
+      date_of_birth: new Date('1980-01-01'),
+      gender: 'Other',
+      employment_status: 'ACTIVE',
+      hire_date: new Date('2023-01-01'),
+    },
+  });
+
+  console.log('✅ Created super admin user and employee');
 
   // Create sample employees
   const employees = await Promise.all([
@@ -530,6 +634,7 @@ async function seedDatabase() {
   console.log('🎉 Database seeding completed successfully!');
   console.log('');
   console.log('Login credentials:');
+  console.log('Super Admin: superadmin@hrsystem.com / superadmin123');
   console.log('Admin: admin@techcorp.com / admin123');
   console.log('Employee: john.doe@techcorp.com / password123');
   console.log('HR: jane.smith@techcorp.com / password123');
