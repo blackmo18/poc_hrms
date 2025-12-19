@@ -45,6 +45,7 @@ import {
   MessageSquare,
   MoreHorizontal,
   Building2,
+  BookUser,
 } from "lucide-react";
 
 // Create wrapper components for consistency
@@ -106,3 +107,4 @@ export const AlertHexaIcon = AlertCircle;
 export const ErrorHexaIcon = AlertTriangle;
 export const OrganizationIcon = Building2;
 export const Building2Icon = Building2;
+export const UserGroupIcon = BookUser;

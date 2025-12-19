@@ -2,19 +2,15 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHeader,
-  TableRow,
-} from '@/app/components/ui/table';
-import { PencilIcon, PlusIcon, OrganizationIcon, TrashBinIcon, Building2Icon } from '@/app/icons';
+import { PlusIcon, Building2Icon } from '@/app/icons';
 import ComponentCard from '@/app/components/common/ComponentCard';
 import PageMeta from '@/app/components/common/PageMeta';
 import PageBreadcrumb from '@/app/components/common/PageBreadCrumb';
 import Pagination from '@/app/components/ui/pagination';
-import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/card';
+import ConfirmationModal from '@/app/components/ui/modal/ConfirmationModal';
+import ErrorModal from '@/app/components/ui/modal/ErrorModal';
+import DepartmentTable from '@/app/components/departments/DepartmentTable';
+import DepartmentCardList from '@/app/components/departments/DepartmentCardList';
 
 interface Department {
   id: number;
@@ -49,6 +45,12 @@ export default function DepartmentsPage() {
   const [error, setError] = useState<string | null>(null);
   const [pagination, setPagination] = useState<ApiResponse['pagination'] | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+  const [departmentToDelete, setDepartmentToDelete] = useState<{ id: number; name: string } | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteSuccess, setDeleteSuccess] = useState(false);
 
   const fetchDepartments = async (page: number = 1) => {
     try {
@@ -93,27 +95,44 @@ export default function DepartmentsPage() {
     fetchDepartments(currentPage);
   }, [currentPage]);
 
-  const handleDelete = async (departmentId: number, departmentName: string) => {
-    if (!confirm(`Are you sure you want to delete the department "${departmentName}"? This action cannot be undone.`)) {
-      return;
-    }
+  const handleDeleteClick = (departmentId: number, departmentName: string) => {
+    setDepartmentToDelete({ id: departmentId, name: departmentName });
+    setDeleteSuccess(false);
+    setShowDeleteModal(true);
+  };
 
+  const handleConfirmDelete = async () => {
+    if (!departmentToDelete) return;
+
+    setIsDeleting(true);
     try {
-      const response = await fetch(`/api/departments/${departmentId}`, {
+      const response = await fetch(`/api/departments/${departmentToDelete.id}`, {
         method: 'DELETE',
         credentials: 'include',
       });
 
       if (response.ok) {
-        // Refresh the list
-        fetchDepartments(currentPage);
+        setDeleteSuccess(true);
+        // Refresh the list after a short delay to show success state
+        setTimeout(() => {
+          setShowDeleteModal(false);
+          setDepartmentToDelete(null);
+          setDeleteSuccess(false);
+          fetchDepartments(currentPage);
+        }, 1500);
       } else {
         const errorData = await response.json();
-        alert(`Failed to delete department: ${errorData.error || 'Unknown error'}`);
+        setShowDeleteModal(false);
+        setErrorMessage(errorData.error || 'Failed to delete department');
+        setShowErrorModal(true);
       }
     } catch (error) {
       console.error('Error deleting department:', error);
-      alert('An error occurred while deleting the department');
+      setShowDeleteModal(false);
+      setErrorMessage('An error occurred while deleting the department');
+      setShowErrorModal(true);
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -186,142 +205,10 @@ export default function DepartmentsPage() {
           </div>
 
           {/* Desktop Table View */}
-          <div className="hidden lg:block overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03]">
-            <div className="w-full overflow-x-auto">
-              <Table>
-                {/* Table Header */}
-                <TableHeader className="border-b border-gray-100 dark:border-white/[0.05]">
-                  <TableRow>
-                    <TableCell
-                      isHeader
-                      className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
-                    >
-                      ID
-                    </TableCell>
-                    <TableCell
-                      isHeader
-                      className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
-                    >
-                      Name
-                    </TableCell>
-                    <TableCell
-                      isHeader
-                      className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
-                    >
-                      Description
-                    </TableCell>
-                    <TableCell
-                      isHeader
-                      className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
-                    >
-                      Organization
-                    </TableCell>
-                    <TableCell
-                      isHeader
-                      className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
-                    >
-                      Employees
-                    </TableCell>
-                    <TableCell
-                      isHeader
-                      className="px-5 py-3 font-medium text-gray-500 text-center text-theme-xs dark:text-gray-400"
-                    >
-                      Actions
-                    </TableCell>
-                  </TableRow>
-                </TableHeader>
-
-                {/* Table Body */}
-                <TableBody className="divide-y divide-gray-100 dark:divide-white/[0.05]">
-                  {departments.map((department) => (
-                    <TableRow key={department.id}>
-                      <TableCell className="px-5 py-4 text-gray-500 text-start text-theme-sm dark:text-gray-400">
-                        {department.id}
-                      </TableCell>
-                      <TableCell className="px-4 py-3 text-start">
-                        <span className="font-medium text-gray-800 text-theme-sm dark:text-white/90">
-                          {department.name}
-                        </span>
-                      </TableCell>
-                      <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
-                        {department.description || 'No description'}
-                      </TableCell>
-                      <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
-                        {department.organization.name}
-                      </TableCell>
-                      <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
-                        {department.employees.length}
-                      </TableCell>
-                      <TableCell className="px-4 py-3 text-center">
-                        <div className="flex items-center justify-center space-x-2">
-                          <Link
-                            href={`/departments/${department.id}/edit`}
-                            className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-800 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white transition-colors"
-                          >
-                            <PencilIcon className="w-4 h-4" />
-                          </Link>
-                          <button
-                            onClick={() => handleDelete(department.id, department.name)}
-                            className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-red-100 text-red-600 hover:bg-red-200 hover:text-red-800 dark:bg-red-900 dark:text-red-400 dark:hover:bg-red-800 dark:hover:text-red-300 transition-colors"
-                          >
-                            <TrashBinIcon className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          </div>
+          <DepartmentTable departments={departments} onDelete={handleDeleteClick} />
 
           {/* Mobile Card View */}
-          <div className="lg:hidden space-y-4">
-            {departments.map((department) => (
-              <Card key={department.id}>
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-2">
-                      <OrganizationIcon className="h-5 w-5 text-blue-600" />
-                      <CardTitle className="text-lg">{department.name}</CardTitle>
-                    </div>
-                    <div className="flex space-x-2">
-                      <Link
-                        href={`/departments/${department.id}/edit`}
-                        className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-800 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white transition-colors"
-                      >
-                        <PencilIcon className="w-4 h-4" />
-                      </Link>
-                      <button
-                        onClick={() => handleDelete(department.id, department.name)}
-                        className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-red-100 text-red-600 hover:bg-red-200 hover:text-red-800 dark:bg-red-900 dark:text-red-400 dark:hover:bg-red-800 dark:hover:text-red-300 transition-colors"
-                      >
-                        <TrashBinIcon className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-2">
-                    <div>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">Organization</p>
-                      <p className="font-medium">{department.organization.name}</p>
-                    </div>
-                    {department.description && (
-                      <div>
-                        <p className="text-sm text-gray-600 dark:text-gray-400">Description</p>
-                        <p className="text-sm">{department.description}</p>
-                      </div>
-                    )}
-                    <div>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">Employees</p>
-                      <p className="font-medium">{department.employees.length} employees</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+          <DepartmentCardList departments={departments} onDelete={handleDeleteClick} />
 
           {/* Empty State */}
           {departments.length === 0 && (
@@ -349,6 +236,35 @@ export default function DepartmentsPage() {
         currentPage={currentPage}
         onPageChange={setCurrentPage}
         itemName="departments"
+      />
+
+      {/* Delete Confirmation Modal */}
+      <ConfirmationModal
+        size='wider'
+        isOpen={showDeleteModal}
+        onClose={() => {
+          if (!deleteSuccess) {
+            setShowDeleteModal(false);
+            setDepartmentToDelete(null);
+          }
+        }}
+        onConfirm={handleConfirmDelete}
+        title={deleteSuccess ? "Deleted Successfully" : "Delete Department"}
+        message={deleteSuccess 
+          ? `The department "${departmentToDelete?.name}" has been deleted successfully.`
+          : `Are you sure you want to delete the department "${departmentToDelete?.name}"? This action cannot be undone.`
+        }
+        variant={deleteSuccess ? "success" : "warning"}
+        confirmText={deleteSuccess ? "Done" : "Delete"}
+        cancelText="Cancel"
+        isLoading={isDeleting}
+      />
+
+      {/* Error Modal */}
+      <ErrorModal
+        isOpen={showErrorModal}
+        onClose={() => setShowErrorModal(false)}
+        errorMessage={errorMessage}
       />
     </div>
   );

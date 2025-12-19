@@ -3,8 +3,9 @@
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
-import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card';
-import { Button } from '../../../components/ui/button';
+import PageBreadcrumb from '@/app/components/common/PageBreadCrumb';
+import PageMeta from '@/app/components/common/PageMeta';
+import Button from '@/app/components/ui/button/Button';
 import Input from '../../../components/form/input/InputField';
 import TextArea from '../../../components/form/input/TextArea';
 import Label from '../../../components/form/Label';
@@ -135,62 +136,79 @@ export default function EditDepartmentPage() {
   }
 
   return (
-    <div className="container mx-auto p-6">
-      <div className="max-w-2xl mx-auto">
-        <div className="mb-6">
-          <Link
-            href="/departments"
-            className="text-blue-600 hover:text-blue-800 flex items-center"
-          >
-            ← Back to Departments
-          </Link>
+    <>
+      <PageMeta title='Edit Department - HR Management System' description='Edit department details and information' />
+      <PageBreadcrumb
+        pageTitle='Edit Department'
+        breadcrumbs={[
+          { label: 'Departments', href: '/departments' },
+          { label: 'Edit' }
+        ]}
+      />
+
+      <div className='rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03] lg:p-6'>
+        <div className='mb-6'>
+          <h3 className='text-lg font-semibold text-gray-800 dark:text-white/90'>
+            Edit Department Details
+          </h3>
+          <p className='text-sm text-gray-500 dark:text-gray-400 mt-1'>
+            Update the department information below.
+          </p>
+          <p className='text-sm text-gray-600 dark:text-gray-400 mt-1'>
+            Organization: {department.organization.name}
+          </p>
         </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Edit Department</CardTitle>
-            <p className="text-sm text-gray-600 dark:text-gray-400">
-              Organization: {department.organization.name}
-            </p>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <Label htmlFor="name">Department Name</Label>
-                <Input
-                  id="name"
-                  type="text"
-                  value={formData.name}
-                  onChange={(e) => handleInputChange('name', e.target.value)}
-                  placeholder="Enter department name"
-                  required
-                />
-              </div>
+        <form className='space-y-6 mb-7'>
+          <div className='grid grid-cols-1 gap-6'>
+            <div>
+              <Label htmlFor="name">Department Name *</Label>
+              <Input
+                id="name"
+                type="text"
+                value={formData.name}
+                onChange={(e) => handleInputChange('name', e.target.value)}
+                placeholder="Enter department name"
+                required
+              />
+            </div>
 
-              <div>
-                <Label htmlFor="description">Description (Optional)</Label>
-                <TextArea
-                  value={formData.description}
-                  onChange={(value) => handleInputChange('description', value)}
-                  placeholder="Enter department description"
-                  rows={3}
-                />
-              </div>
+            <div>
+              <Label htmlFor="description">Description (Optional)</Label>
+              <TextArea
+                value={formData.description}
+                onChange={(value) => handleInputChange('description', value)}
+                placeholder="Enter department description"
+                rows={3}
+              />
+            </div>
+          </div>
+        </form>
 
-              <div className="flex space-x-4 pt-4">
-                <Button type="submit" disabled={saving}>
-                  {saving ? 'Updating...' : 'Update Department'}
-                </Button>
-                <Link href="/departments">
-                  <Button type="button" variant="outline">
-                    Cancel
-                  </Button>
-                </Link>
-              </div>
-            </form>
-          </CardContent>
-        </Card>
+        <div className='flex items-center gap-3 pt-6 border-t border-gray-200 dark:border-gray-700'>
+          <Link href="/departments">
+            <Button
+              variant='outline'
+              size='md'
+              disabled={saving}
+            >
+              Cancel
+            </Button>
+          </Link>
+          <Button
+            variant='primary'
+            size='md'
+            onClick={() => {
+              const fakeEvent = { preventDefault: () => {} } as React.FormEvent;
+              handleSubmit(fakeEvent);
+            }}
+            disabled={saving}
+            className='bg-blue-600 hover:bg-blue-700 text-white'
+          >
+            {saving ? 'Updating...' : 'Update Department'}
+          </Button>
+        </div>
       </div>
-    </div>
+    </>
   );
 }

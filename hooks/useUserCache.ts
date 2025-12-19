@@ -6,7 +6,9 @@ interface User {
   email: string;
   username: string;
   role?: string;
+  roles?: string[];
   permissions?: string[];
+  organization_id?: number;
 }
 
 interface UseUserCacheOptions {
