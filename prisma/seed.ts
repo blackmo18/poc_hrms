@@ -62,22 +62,23 @@ async function dropDatabase() {
   console.log('💣 Dropping all tables...');
   
   try {
-    // Get all table names
-    const tables = await prisma.$queryRaw`SELECT tablename FROM pg_tables WHERE schemaname = 'public'`;
+    // 1. Get all table names in the 'public' schema
+    const tables = await prisma.$queryRaw<Array<{ tablename: string }>>`
+      SELECT tablename FROM pg_tables WHERE schemaname = 'public'
+    `;
     
-    // Disable foreign key constraints
-    await prisma.$executeRawUnsafe('SET session_replication_role = replica;');
-    
-    // Drop all tables
-    for (const table of tables as any[]) {
-      await prisma.$executeRawUnsafe(`DROP TABLE IF EXISTS "${table.tablename}" CASCADE;`);
-      console.log(`💣 Dropped ${table.tablename}`);
+    // 2. Drop all tables using CASCADE
+    // CASCADE removes the foreign key constraints automatically 
+    // without needing superuser replication privileges.
+    for (const { tablename } of tables) {
+      // Skip the migrations table so you don't break Prisma's history
+      if (tablename === '_prisma_migrations') continue;
+
+      await prisma.$executeRawUnsafe(`DROP TABLE IF EXISTS "public"."${tablename}" CASCADE;`);
+      console.log(`💣 Dropped ${tablename}`);
     }
     
-    // Re-enable foreign key constraints
-    await prisma.$executeRawUnsafe('SET session_replication_role = DEFAULT;');
-    
-    console.log('✅ All tables dropped');
+    console.log('✅ All tables dropped successfully');
   } catch (error) {
     console.error('❌ Error dropping tables:', error);
   }
@@ -352,6 +353,15 @@ async function seedDatabase() {
       first_name: 'Admin',
       last_name: 'User',
       email: 'admin@techcorp.com',
+      // Work details
+      work_email: 'admin.work@techcorp.com',
+      work_contact: '+1-555-0001',
+      // Personal details
+      personal_address: '100 Corporate Blvd, Tech City, TC 12345',
+      personal_contact_number: '+1-555-0002',
+      personal_email: 'admin.personal@techcorp.com',
+      date_of_birth: new Date('1985-01-01'),
+      gender: 'Other',
       employment_status: 'ACTIVE',
       hire_date: new Date('2023-01-01'),
     },
@@ -380,6 +390,15 @@ async function seedDatabase() {
           first_name: 'John',
           last_name: 'Doe',
           email: 'john.doe@techcorp.com',
+          // Work details
+          work_email: 'john.doe.work@techcorp.com',
+          work_contact: '+1-555-0123',
+          // Personal details
+          personal_address: '123 Main Street, Springfield, IL 62701',
+          personal_contact_number: '+1-555-0456',
+          personal_email: 'john.doe.personal@gmail.com',
+          date_of_birth: new Date('1990-05-15'),
+          gender: 'Male',
           employment_status: 'ACTIVE',
           hire_date: new Date('2023-03-15'),
         },
@@ -404,6 +423,15 @@ async function seedDatabase() {
           first_name: 'Jane',
           last_name: 'Smith',
           email: 'jane.smith@techcorp.com',
+          // Work details
+          work_email: 'jane.smith.work@techcorp.com',
+          work_contact: '+1-555-0124',
+          // Personal details
+          personal_address: '456 Oak Avenue, Chicago, IL 60601',
+          personal_contact_number: '+1-555-0457',
+          personal_email: 'jane.smith.personal@gmail.com',
+          date_of_birth: new Date('1988-09-22'),
+          gender: 'Female',
           employment_status: 'ACTIVE',
           hire_date: new Date('2023-02-01'),
         },
@@ -428,6 +456,15 @@ async function seedDatabase() {
           first_name: 'Mike',
           last_name: 'Johnson',
           email: 'mike.johnson@techcorp.com',
+          // Work details
+          work_email: 'mike.johnson.work@techcorp.com',
+          work_contact: '+1-555-0125',
+          // Personal details
+          personal_address: '789 Pine Road, Austin, TX 78701',
+          personal_contact_number: '+1-555-0458',
+          personal_email: 'mike.johnson.personal@gmail.com',
+          date_of_birth: new Date('1992-12-08'),
+          gender: 'Male',
           employment_status: 'ACTIVE',
           hire_date: new Date('2023-04-10'),
         },

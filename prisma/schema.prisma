@@ -103,6 +103,15 @@ model Employee {
   first_name        String
   last_name         String
   email             String
+  // Work details
+  work_email        String?
+  work_contact      String?
+  // Personal details
+  personal_address        String
+  personal_contact_number String
+  personal_email          String
+  date_of_birth           DateTime
+  gender                  String
   employment_status String    @default("ACTIVE")
   hire_date         DateTime
   exit_date         DateTime?

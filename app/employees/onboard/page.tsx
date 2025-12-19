@@ -1,0 +1,533 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+import PageBreadcrumb from '../../components/common/PageBreadCrumb';
+import PageMeta from '../../components/common/PageMeta';
+import Button from '../../components/ui/button/Button';
+import Input from '../../components/form/input/InputField';
+import Label from '../../components/form/Label';
+import Select from '../../components/form/Select';
+import EmployeeConfirmModal from '../../components/employees/EmployeeConfirmModal';
+
+interface Organization {
+  id: number;
+  name: string;
+}
+
+interface Department {
+  id: number;
+  name: string;
+  organization_id: number;
+}
+
+interface JobTitle {
+  id: number;
+  name: string;
+  organization_id: number;
+}
+
+interface Employee {
+  id: number;
+  first_name: string;
+  last_name: string;
+  organization_id: number;
+}
+
+export default function EmployeeOnboardingPage() {
+  const router = useRouter();
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+
+  // Data for dropdowns
+  const [organizations, setOrganizations] = useState<Organization[]>([]);
+  const [departments, setDepartments] = useState<Department[]>([]);
+  const [jobTitles, setJobTitles] = useState<JobTitle[]>([]);
+  const [managers, setManagers] = useState<Employee[]>([]);
+
+  // Form state
+  const [formData, setFormData] = useState({
+    organization_id: '',
+    department_id: '',
+    job_title_id: '',
+    manager_id: '',
+    first_name: '',
+    last_name: '',
+    email: '',
+    // Work details (optional)
+    work_email: '',
+    work_contact: '',
+    // Personal details (required)
+    personal_address: '',
+    personal_contact_number: '',
+    personal_email: '',
+    date_of_birth: '',
+    gender: '',
+    employment_status: 'ACTIVE' as 'ACTIVE' | 'INACTIVE' | 'TERMINATED' | 'ON_LEAVE',
+    hire_date: new Date().toISOString().split('T')[0], // Today's date
+  });
+
+  useEffect(() => {
+    fetchOrganizations();
+  }, []);
+
+  useEffect(() => {
+    if (formData.organization_id) {
+      fetchDepartments(Number(formData.organization_id));
+      fetchJobTitles(Number(formData.organization_id));
+      fetchManagers(Number(formData.organization_id));
+    }
+  }, [formData.organization_id]);
+
+  const fetchOrganizations = async () => {
+    try {
+      const response = await fetch('/api/organizations', {
+        credentials: 'include',
+      });
+      if (response.ok) {
+        const result = await response.json();
+        setOrganizations(result.data || []);
+      }
+    } catch (error) {
+      console.error('Failed to fetch organizations:', error);
+    }
+  };
+
+  const fetchDepartments = async (organizationId: number) => {
+    try {
+      const response = await fetch(`/api/departments?organization_id=${organizationId}`, {
+        credentials: 'include',
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setDepartments(data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch departments:', error);
+    }
+  };
+
+  const fetchJobTitles = async (organizationId: number) => {
+    try {
+      const response = await fetch(`/api/job-titles?organization_id=${organizationId}`, {
+        credentials: 'include',
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setJobTitles(data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch job titles:', error);
+    }
+  };
+
+  const fetchManagers = async (organizationId: number) => {
+    try {
+      const response = await fetch(`/api/employees?organizationId=${organizationId}`, {
+        credentials: 'include',
+      });
+      if (response.ok) {
+        const result = await response.json();
+        setManagers(result.data || []);
+      }
+    } catch (error) {
+      console.error('Failed to fetch managers:', error);
+    }
+  };
+
+  const handleInputChange = (field: string, value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      [field]: value,
+    }));
+  };
+
+  const handleSaveClick = () => {
+    // Validate required fields
+    if (!formData.organization_id) {
+      setError('Organization is required');
+      return;
+    }
+    if (!formData.department_id) {
+      setError('Department is required');
+      return;
+    }
+    if (!formData.job_title_id) {
+      setError('Job title is required');
+      return;
+    }
+    if (!formData.first_name.trim()) {
+      setError('First name is required');
+      return;
+    }
+    if (!formData.last_name.trim()) {
+      setError('Last name is required');
+      return;
+    }
+    if (!formData.email.trim()) {
+      setError('Email address is required');
+      return;
+    }
+    if (!formData.personal_address.trim()) {
+      setError('Personal address is required');
+      return;
+    }
+    if (!formData.personal_contact_number.trim()) {
+      setError('Personal contact number is required');
+      return;
+    }
+    if (!formData.personal_email.trim()) {
+      setError('Personal email is required');
+      return;
+    }
+    if (!formData.date_of_birth) {
+      setError('Date of birth is required');
+      return;
+    }
+    if (!formData.gender.trim()) {
+      setError('Gender is required');
+      return;
+    }
+    if (!formData.hire_date) {
+      setError('Hire date is required');
+      return;
+    }
+
+    setError(null);
+    setShowConfirmModal(true);
+  };
+
+  const handleConfirmSave = async () => {
+    setShowConfirmModal(false);
+    await performSave();
+  };
+
+  const performSave = async () => {
+    try {
+      setSaving(true);
+      setError(null);
+
+      const payload = {
+        ...formData,
+        organization_id: Number(formData.organization_id),
+        department_id: Number(formData.department_id),
+        job_title_id: Number(formData.job_title_id),
+        manager_id: formData.manager_id ? Number(formData.manager_id) : undefined,
+        date_of_birth: new Date(formData.date_of_birth),
+        hire_date: new Date(formData.hire_date),
+      };
+
+      const response = await fetch('/api/employees', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to create employee');
+      }
+
+      const data = await response.json();
+      // Redirect to employees page
+      router.push('/employees');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to create employee');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const statusOptions = [
+    { value: 'ACTIVE', label: 'Active' },
+    { value: 'INACTIVE', label: 'Inactive' },
+    { value: 'TERMINATED', label: 'Terminated' },
+    { value: 'ON_LEAVE', label: 'On Leave' },
+  ];
+
+  const organizationOptions = organizations.map(org => ({
+    value: org.id.toString(),
+    label: org.name,
+  }));
+
+  const departmentOptions = departments.map(dept => ({
+    value: dept.id.toString(),
+    label: dept.name,
+  }));
+
+  const jobTitleOptions = jobTitles.map(title => ({
+    value: title.id.toString(),
+    label: title.name,
+  }));
+
+  const managerOptions = [
+    { value: '', label: 'No Manager' },
+    ...managers.map(manager => ({
+      value: manager.id.toString(),
+      label: `${manager.first_name} ${manager.last_name}`,
+    })),
+  ];
+
+  return (
+    <>
+      <PageMeta title='Employee Onboarding - HR Management System' description='Onboard a new employee' />
+      <PageBreadcrumb
+        pageTitle='Employee Onboarding'
+        breadcrumbs={[
+          { label: 'Employees', href: '/employees' },
+          { label: 'Onboarding' }
+        ]}
+      />
+
+      <div className='rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03] lg:p-6'>
+        <div className='mb-6'>
+          <h3 className='text-lg font-semibold text-gray-800 dark:text-white/90'>
+            Onboard New Employee
+          </h3>
+          <p className='text-sm text-gray-500 dark:text-gray-400 mt-1'>
+            Fill in the employee information below to get started.
+          </p>
+        </div>
+
+        {error && (
+          <div className='mb-6 p-4 bg-red-50 border border-red-200 rounded-lg dark:bg-red-900/20 dark:border-red-800'>
+            <p className='text-red-600 dark:text-red-400 text-sm'>{error}</p>
+          </div>
+        )}
+
+        <form className='space-y-6'>
+          <div className='grid grid-cols-1 gap-6 lg:grid-cols-2'>
+            <div>
+              <Label>Organization *</Label>
+              <Select
+                options={organizationOptions}
+                value={formData.organization_id}
+                onChange={(value) => handleInputChange('organization_id', value)}
+                placeholder='Select organization'
+                required
+              />
+            </div>
+
+            <div>
+              <Label>Department *</Label>
+              <Select
+                options={departmentOptions}
+                value={formData.department_id}
+                onChange={(value) => handleInputChange('department_id', value)}
+                placeholder='Select department'
+                required
+                disabled={!formData.organization_id}
+              />
+            </div>
+
+            <div>
+              <Label>Job Title *</Label>
+              <Select
+                options={jobTitleOptions}
+                value={formData.job_title_id}
+                onChange={(value) => handleInputChange('job_title_id', value)}
+                placeholder='Select job title'
+                required
+                disabled={!formData.organization_id}
+              />
+            </div>
+
+            <div>
+              <Label>Manager</Label>
+              <Select
+                options={managerOptions}
+                value={formData.manager_id}
+                onChange={(value) => handleInputChange('manager_id', value)}
+                placeholder='Select manager (optional)'
+                disabled={!formData.organization_id}
+              />
+            </div>
+
+            <div>
+              <Label>First Name *</Label>
+              <Input
+                type='text'
+                value={formData.first_name}
+                onChange={(e) => handleInputChange('first_name', e.target.value)}
+                placeholder='Enter first name'
+                required
+              />
+            </div>
+
+            <div>
+              <Label>Last Name *</Label>
+              <Input
+                type='text'
+                value={formData.last_name}
+                onChange={(e) => handleInputChange('last_name', e.target.value)}
+                placeholder='Enter last name'
+                required
+              />
+            </div>
+
+            <div>
+              <Label>Email Address *</Label>
+              <Input
+                type='email'
+                value={formData.email}
+                onChange={(e) => handleInputChange('email', e.target.value)}
+                placeholder='Enter email address'
+                required
+              />
+            </div>
+
+            <div>
+              <Label>Hire Date *</Label>
+              <Input
+                type='date'
+                value={formData.hire_date}
+                onChange={(e) => handleInputChange('hire_date', e.target.value)}
+                required
+              />
+            </div>
+
+            <div>
+              <Label>Employment Status</Label>
+              <Select
+                options={statusOptions}
+                value={formData.employment_status}
+                onChange={(value) => handleInputChange('employment_status', value)}
+                placeholder='Select status'
+              />
+            </div>
+          </div>
+
+          {/* Work Details Section */}
+          <div className='border-t border-gray-200 dark:border-gray-700 pt-6'>
+            <h4 className='text-lg font-medium text-gray-900 dark:text-white mb-4'>Work Details</h4>
+            <div className='grid grid-cols-1 gap-6 lg:grid-cols-2'>
+              <div>
+                <Label>Work Email</Label>
+                <Input
+                  type='email'
+                  value={formData.work_email}
+                  onChange={(e) => handleInputChange('work_email', e.target.value)}
+                  placeholder='Enter work email (optional)'
+                />
+              </div>
+
+              <div>
+                <Label>Work Contact</Label>
+                <Input
+                  type='text'
+                  value={formData.work_contact}
+                  onChange={(e) => handleInputChange('work_contact', e.target.value)}
+                  placeholder='Enter work contact number (optional)'
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Personal Details Section */}
+          <div className='border-t border-gray-200 dark:border-gray-700 pt-6'>
+            <h4 className='text-lg font-medium text-gray-900 dark:text-white mb-4'>Personal Details</h4>
+            <div className='grid grid-cols-1 gap-6 lg:grid-cols-2'>
+              <div>
+                <Label>Personal Address *</Label>
+                <Input
+                  type='text'
+                  value={formData.personal_address}
+                  onChange={(e) => handleInputChange('personal_address', e.target.value)}
+                  placeholder='Enter personal address'
+                  required
+                />
+              </div>
+
+              <div>
+                <Label>Personal Contact Number *</Label>
+                <Input
+                  type='text'
+                  value={formData.personal_contact_number}
+                  onChange={(e) => handleInputChange('personal_contact_number', e.target.value)}
+                  placeholder='Enter personal contact number'
+                  required
+                />
+              </div>
+
+              <div>
+                <Label>Personal Email *</Label>
+                <Input
+                  type='email'
+                  value={formData.personal_email}
+                  onChange={(e) => handleInputChange('personal_email', e.target.value)}
+                  placeholder='Enter personal email'
+                  required
+                />
+              </div>
+
+              <div>
+                <Label>Date of Birth *</Label>
+                <Input
+                  type='date'
+                  value={formData.date_of_birth}
+                  onChange={(e) => handleInputChange('date_of_birth', e.target.value)}
+                  required
+                />
+              </div>
+
+              <div>
+                <Label>Gender *</Label>
+                <Select
+                  options={[
+                    { value: 'Male', label: 'Male' },
+                    { value: 'Female', label: 'Female' },
+                    { value: 'Other', label: 'Other' },
+                    { value: 'Prefer not to say', label: 'Prefer not to say' },
+                  ]}
+                  value={formData.gender}
+                  onChange={(value) => handleInputChange('gender', value)}
+                  placeholder='Select gender'
+                  required
+                />
+              </div>
+            </div>
+          </div>
+        </form>
+
+        <div className='flex items-center gap-3 pt-6 border-t border-gray-200 dark:border-gray-700'>
+          <Link href='/employees'>
+            <Button
+              variant='outline'
+              size='md'
+              disabled={saving}
+            >
+              Cancel
+            </Button>
+          </Link>
+          <Button
+            variant='primary'
+            size='md'
+            onClick={handleSaveClick}
+            disabled={saving}
+            className='bg-blue-600 hover:bg-blue-700 text-white'
+          >
+            {saving ? 'Onboarding...' : 'Onboard Employee'}
+          </Button>
+        </div>
+      </div>
+
+      {/* Confirmation Modal */}
+      <EmployeeConfirmModal
+        isOpen={showConfirmModal}
+        onClose={() => setShowConfirmModal(false)}
+        onConfirm={handleConfirmSave}
+        employeeData={formData}
+        organizations={organizations}
+        departments={departments}
+        jobTitles={jobTitles}
+        managers={managers}
+        isSaving={saving}
+      />
+    </>
+  );
+}

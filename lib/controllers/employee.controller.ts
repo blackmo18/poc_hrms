@@ -2,9 +2,20 @@ import { prisma } from '../db';
 import { CreateEmployee, UpdateEmployee } from '../models/employee';
 
 export class EmployeeController {
-  async getAll(organizationId?: number) {
-    return await prisma.employee.findMany({
+  async getAll(organizationId?: number, options?: { page?: number; limit?: number }) {
+    const { page = 1, limit = 15 } = options || {};
+    const skip = (page - 1) * limit;
+
+    // First get the total count
+    const total = await prisma.employee.count({
       where: organizationId ? { organization_id: organizationId } : undefined,
+    });
+
+    // Then fetch the paginated employees
+    const employees = await prisma.employee.findMany({
+      where: organizationId ? { organization_id: organizationId } : undefined,
+      skip,
+      take: limit,
       include: {
         organization: true,
         user: true,
@@ -19,7 +30,22 @@ export class EmployeeController {
           },
         },
       },
+      orderBy: {
+        created_at: 'desc'
+      }
     });
+
+    return {
+      data: employees,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+        hasNext: page * limit < total,
+        hasPrev: page > 1
+      }
+    };
   }
 
   async getById(id: number) {

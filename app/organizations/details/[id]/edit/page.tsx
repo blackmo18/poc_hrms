@@ -130,15 +130,9 @@ export default function EditOrganizationPage({ params }: EditOrganizationPagePro
 
   if (loading) {
     return (
-      <>
-        <PageMeta title='Edit Organization - HR Management System' description='Edit organization details and information' />
-        <div className='flex items-center justify-center min-h-screen'>
-          <div className='text-center'>
-            <div className='animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto'></div>
-            <p className='mt-4 text-gray-600 dark:text-gray-400'>Loading organization...</p>
-          </div>
-        </div>
-      </>
+      <div className="flex items-center justify-center h-64">
+        <div className="text-lg text-gray-600 dark:text-gray-300">Loading...</div>
+      </div>
     );
   }
 
