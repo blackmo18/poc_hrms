@@ -10,6 +10,7 @@ import Input from '@/app/components/form/input/InputField';
 import Label from '@/app/components/form/Label';
 import Select from '@/app/components/form/Select';
 import EmployeeConfirmModal from '@/app/components/employees/EmployeeConfirmModal';
+import { useAuth } from '@/app/components/providers/auth-provider';
 
 interface Organization {
   id: number;
@@ -36,6 +37,7 @@ interface Employee {
 }
 
 export default function EmployeeOnboardingPage() {
+  const { user, isLoading } = useAuth();
   const router = useRouter();
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -43,6 +45,7 @@ export default function EmployeeOnboardingPage() {
 
   // Data for dropdowns
   const [organizations, setOrganizations] = useState<Organization[]>([]);
+  const [availableOrganizations, setAvailableOrganizations] = useState<Organization[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [jobTitles, setJobTitles] = useState<JobTitle[]>([]);
   const [managers, setManagers] = useState<Employee[]>([]);
@@ -70,8 +73,14 @@ export default function EmployeeOnboardingPage() {
   });
 
   useEffect(() => {
-    fetchOrganizations();
-  }, []);
+    if (!isLoading && !user) {
+      router.push('/login');
+      return;
+    }
+    if (!isLoading && user) {
+      fetchOrganizations();
+    }
+  }, [isLoading, user, router]);
 
   useEffect(() => {
     if (formData.organization_id) {
@@ -83,12 +92,29 @@ export default function EmployeeOnboardingPage() {
 
   const fetchOrganizations = async () => {
     try {
-      const response = await fetch('/api/organizations', {
+      const response = await fetch('/api/organizations?limit=100', {
         credentials: 'include',
       });
       if (response.ok) {
         const result = await response.json();
-        setOrganizations(result.data || []);
+        const allOrgs = result.data || [];
+        setOrganizations(allOrgs);
+
+        // Filter organizations based on user role
+        const isSuperAdmin = user?.roles?.includes('SUPER_ADMIN') || user?.role === 'SUPER_ADMIN';
+        if (isSuperAdmin) {
+          setAvailableOrganizations(allOrgs);
+        } else if (user?.organization_id) {
+          const userOrg = allOrgs.filter((org: Organization) => org.id === user.organization_id);
+          setAvailableOrganizations(userOrg);
+          // Pre-populate organization for non-super admin
+          if (userOrg.length > 0) {
+            setFormData(prev => ({
+              ...prev,
+              organization_id: userOrg[0].id.toString(),
+            }));
+          }
+        }
       }
     } catch (error) {
       console.error('Failed to fetch organizations:', error);
@@ -102,7 +128,7 @@ export default function EmployeeOnboardingPage() {
       });
       if (response.ok) {
         const data = await response.json();
-        setDepartments(data);
+        setDepartments(data.data || data || []);
       }
     } catch (error) {
       console.error('Failed to fetch departments:', error);
@@ -304,13 +330,22 @@ export default function EmployeeOnboardingPage() {
           <div className='grid grid-cols-1 gap-6 lg:grid-cols-2'>
             <div>
               <Label>Organization *</Label>
-              <Select
-                options={organizationOptions}
-                value={formData.organization_id}
-                onChange={(value) => handleInputChange('organization_id', value)}
-                placeholder='Select organization'
-                required
-              />
+              {(user?.roles?.includes('SUPER_ADMIN') || user?.role === 'SUPER_ADMIN') ? (
+                <Select
+                  options={organizationOptions}
+                  value={formData.organization_id}
+                  onChange={(value) => handleInputChange('organization_id', value)}
+                  placeholder='Select organization'
+                  required
+                />
+              ) : (
+                <Input
+                  type='text'
+                  value={availableOrganizations.find(org => org.id.toString() === formData.organization_id)?.name || ''}
+                  disabled
+                  className='bg-gray-100 dark:bg-gray-800'
+                />
+              )}
             </div>
 
             <div>

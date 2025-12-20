@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import Link from 'next/link';
 import { PlusIcon, Building2Icon } from '@/app/icons';
 import ComponentCard from '@/app/components/common/ComponentCard';
@@ -95,11 +95,31 @@ export default function DepartmentsPage() {
     fetchDepartments(currentPage);
   }, [currentPage]);
 
-  const handleDeleteClick = (departmentId: number, departmentName: string) => {
+  const handleDeleteClick = useCallback((departmentId: number, departmentName: string) => {
     setDepartmentToDelete({ id: departmentId, name: departmentName });
     setDeleteSuccess(false);
     setShowDeleteModal(true);
-  };
+  }, []);
+
+  // Memoize the empty state component to prevent unnecessary re-renders
+  const emptyStateComponent = useMemo(() => (
+    departments.length === 0 && (
+      <div className="text-center py-12">
+        <Building2Icon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+        <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No departments found</h3>
+        <p className="text-gray-600 dark:text-gray-400 mb-4">
+          Get started by adding your first department.
+        </p>
+        <Link
+          href="/departments/add"
+          className="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 transition-colors"
+        >
+          <PlusIcon className="w-4 h-4 mr-2" />
+          Add Department
+        </Link>
+      </div>
+    )
+  ), [departments.length]);
 
   const handleConfirmDelete = async () => {
     if (!departmentToDelete) return;
@@ -197,46 +217,49 @@ export default function DepartmentsPage() {
           <div className="flex justify-end mb-6">
             <Link
               href="/departments/add"
-              className="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 transition-colors"
+              className="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <PlusIcon className="w-4 h-4 mr-2" />
               Add Department
             </Link>
           </div>
 
-          {/* Desktop Table View */}
-          <DepartmentTable departments={departments} onDelete={handleDeleteClick} />
-
-          {/* Mobile Card View */}
-          <DepartmentCardList departments={departments} onDelete={handleDeleteClick} />
-
-          {/* Empty State */}
-          {departments.length === 0 && (
-            <div className="text-center py-12">
-              <Building2Icon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No departments found</h3>
-              <p className="text-gray-600 dark:text-gray-400 mb-4">
-                Get started by adding your first department.
-              </p>
-              <Link
-                href="/departments/add"
-                className="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 transition-colors"
-              >
-                <PlusIcon className="w-4 h-4 mr-2" />
-                Add Department
-              </Link>
+          {/* Loading Overlay */}
+          {loading && (
+            <div className="relative">
+              <div className="absolute inset-0 bg-white/50 dark:bg-gray-900/50 flex items-center justify-center z-10 rounded-xl">
+                <div className="flex items-center space-x-2 text-gray-600 dark:text-gray-300">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                  <span>Loading departments...</span>
+                </div>
+              </div>
             </div>
           )}
+
+          {/* Desktop Table View */}
+          <div className={loading ? 'opacity-50 pointer-events-none' : ''}>
+            <DepartmentTable departments={departments} onDelete={handleDeleteClick} />
+          </div>
+
+          {/* Mobile Card View */}
+          <div className={loading ? 'opacity-50 pointer-events-none' : ''}>
+            <DepartmentCardList departments={departments} onDelete={handleDeleteClick} />
+          </div>
+
+          {/* Empty State */}
+          {!loading && emptyStateComponent}
         </ComponentCard>
       </div>
 
       {/* Pagination */}
-      <Pagination
-        pagination={pagination}
-        currentPage={currentPage}
-        onPageChange={setCurrentPage}
-        itemName="departments"
-      />
+      <div className={loading ? 'opacity-50 pointer-events-none' : ''}>
+        <Pagination
+          pagination={pagination}
+          currentPage={currentPage}
+          onPageChange={setCurrentPage}
+          itemName="departments"
+        />
+      </div>
 
       {/* Delete Confirmation Modal */}
       <ConfirmationModal

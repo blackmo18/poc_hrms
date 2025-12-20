@@ -13,6 +13,7 @@ import Badge, { BadgeColor } from '@/app/components/ui/badge/Badge';
 import { PencilIcon, PlusIcon, OrganizationIcon, UserIcon } from '@/app/icons';
 import RoleComponentWrapper from '@/app/components/common/RoleComponentWrapper';
 import ComponentCard from '@/app/components/common/ComponentCard';
+import { useAuth } from '@/app/components/providers/auth-provider';
 import PageMeta from '@/app/components/common/PageMeta';
 import PageBreadcrumb from '@/app/components/common/PageBreadCrumb';
 import EmployeeCard from '@/app/components/employees/EmployeeCard';
@@ -66,10 +67,12 @@ interface ApiResponse {
 }
 
 export default function EmployeesPage() {
+  const { user, isLoading: authLoading } = useAuth();
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [selectedOrganization, setSelectedOrganization] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
+  const isSuperAdmin = user?.roles?.includes('SUPER_ADMIN') || user?.role === 'SUPER_ADMIN';
   const [error, setError] = useState<string | null>(null);
   const [expandedCards, setExpandedCards] = useState<Set<number>>(new Set());
   const [pagination, setPagination] = useState<ApiResponse['pagination'] | null>(null);
@@ -131,9 +134,20 @@ export default function EmployeesPage() {
   };
 
   useEffect(() => {
-    fetchEmployees(selectedOrganization || undefined, currentPage);
-    fetchOrganizations();
-  }, [selectedOrganization, currentPage]);
+    if (authLoading) return;
+    
+    // For non-super admin, always filter by their organization
+    if (!isSuperAdmin && user?.organization_id) {
+      fetchEmployees(user.organization_id, currentPage);
+    } else {
+      fetchEmployees(selectedOrganization || undefined, currentPage);
+    }
+    
+    // Only fetch organizations for super admin
+    if (isSuperAdmin) {
+      fetchOrganizations();
+    }
+  }, [selectedOrganization, currentPage, authLoading, isSuperAdmin, user?.organization_id]);
 
   const handleOrganizationChange = (orgId: number | null) => {
     setSelectedOrganization(orgId);
@@ -240,8 +254,8 @@ export default function EmployeesPage() {
       {/* Content Container */}
       <div className="w-full overflow-x-auto">
         <ComponentCard title="Employee Management" size="full">
-          {/* Organization Filter for Admin */}
-          <RoleComponentWrapper roles={['ADMIN']}>
+          {/* Organization Filter - Only for Super Admin */}
+          <RoleComponentWrapper roles={['SUPER_ADMIN']}>
             <div className="mb-6">
               <label htmlFor="organization-select" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Filter by Organization

@@ -268,7 +268,7 @@ export const requireAdmin = async (
   request: NextRequest,
   handler: (authRequest: AuthenticatedRequest) => Promise<NextResponse>
 ) => {
-  return requiresRoles(request, ['ADMIN'], handler);
+  return requiresRoles(request, ['ADMIN', 'SUPER_ADMIN'], handler);
 };
 
 /* ===================================================== */

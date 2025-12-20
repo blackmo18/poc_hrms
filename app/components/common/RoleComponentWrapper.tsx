@@ -9,6 +9,7 @@ interface RoleComponentWrapperProps {
   requireAll?: boolean; // If true, user must have ALL roles; if false, user must have ANY role
   fallbackMessage?: string;
   showFallback?: boolean;
+  fallback?: React.ReactNode; // Custom fallback component to render when user doesn't have access
 }
 
 export default function RoleComponentWrapper({
@@ -16,7 +17,8 @@ export default function RoleComponentWrapper({
   roles: requiredRoles = ['ADMIN'],
   requireAll = false,
   fallbackMessage = 'Required permissions not available.',
-  showFallback = true
+  showFallback = true,
+  fallback
 }: RoleComponentWrapperProps) {
   const { user, isLoading } = useAuth();
   const [hasCheckedRole, setHasCheckedRole] = useState(false);
@@ -71,6 +73,11 @@ export default function RoleComponentWrapper({
   // Show content if user has required access
   if (hasAccess) {
     return <>{children}</>;
+  }
+
+  // Show custom fallback component if provided
+  if (fallback) {
+    return <>{fallback}</>;
   }
 
   // Show fallback message if user doesn't have required roles

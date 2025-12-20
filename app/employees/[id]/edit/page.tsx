@@ -10,6 +10,7 @@ import Input from '@/app/components/form/input/InputField';
 import Label from '@/app/components/form/Label';
 import Select from '@/app/components/form/Select';
 import EmployeeConfirmModal from '@/app/components/employees/EmployeeConfirmModal';
+import { useAuth } from '@/app/components/providers/auth-provider';
 
 interface Organization {
   id: number;
@@ -61,9 +62,11 @@ interface EditEmployeePageProps {
 }
 
 export default function EditEmployeePage({ params }: EditEmployeePageProps) {
+  const { user, isLoading: authLoading } = useAuth();
   const router = useRouter();
   const [employee, setEmployee] = useState<Employee | null>(null);
   const [organizations, setOrganizations] = useState<Organization[]>([]);
+  const [availableOrganizations, setAvailableOrganizations] = useState<Organization[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [jobTitles, setJobTitles] = useState<JobTitle[]>([]);
   const [managers, setManagers] = useState<Employee[]>([]);
@@ -105,6 +108,11 @@ export default function EditEmployeePage({ params }: EditEmployeePageProps) {
   // Fetch employee data and related data
   useEffect(() => {
     if (!id) return;
+    if (authLoading) return;
+    if (!user) {
+      router.push('/login');
+      return;
+    }
 
     const fetchData = async () => {
       try {
@@ -128,7 +136,17 @@ export default function EditEmployeePage({ params }: EditEmployeePageProps) {
         });
         if (orgResponse.ok) {
           const orgResult = await orgResponse.json();
-          setOrganizations(orgResult.data || []);
+          const allOrgs = orgResult.data || [];
+          setOrganizations(allOrgs);
+
+          // Filter organizations based on user role
+          const isSuperAdmin = user?.roles?.includes('SUPER_ADMIN') || user?.role === 'SUPER_ADMIN';
+          if (isSuperAdmin) {
+            setAvailableOrganizations(allOrgs);
+          } else if (user?.organization_id) {
+            const userOrg = allOrgs.filter((org: Organization) => org.id === user.organization_id);
+            setAvailableOrganizations(userOrg);
+          }
         }
 
         // Fetch departments for the employee's organization
@@ -187,7 +205,7 @@ export default function EditEmployeePage({ params }: EditEmployeePageProps) {
     };
 
     fetchData();
-  }, [id]);
+  }, [id, authLoading, user, router]);
 
   // Update departments, job titles, and managers when organization changes
   useEffect(() => {
@@ -378,13 +396,22 @@ export default function EditEmployeePage({ params }: EditEmployeePageProps) {
           <div className='grid grid-cols-1 gap-6 lg:grid-cols-2'>
             <div>
               <Label>Organization *</Label>
-              <Select
-                options={organizationOptions}
-                value={formData.organization_id}
-                onChange={(value) => handleInputChange('organization_id', value)}
-                placeholder='Select organization'
-                required
-              />
+              {(user?.roles?.includes('SUPER_ADMIN') || user?.role === 'SUPER_ADMIN') ? (
+                <Select
+                  options={organizationOptions}
+                  value={formData.organization_id}
+                  onChange={(value) => handleInputChange('organization_id', value)}
+                  placeholder='Select organization'
+                  required
+                />
+              ) : (
+                <Input
+                  type='text'
+                  value={availableOrganizations.find(org => org.id.toString() === formData.organization_id)?.name || ''}
+                  disabled
+                  className='bg-gray-100 dark:bg-gray-800'
+                />
+              )}
             </div>
 
             <div>

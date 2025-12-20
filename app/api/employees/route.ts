@@ -23,17 +23,21 @@ export async function GET(request: NextRequest) {
     const user = authRequest.user!;
 
     // Check user role
+    const isSuperAdmin = user.roles.includes('SUPER_ADMIN');
     const isAdmin = user.roles.includes('ADMIN');
     const isHRManager = user.roles.includes('HR_MANAGER');
 
     let result;
 
-    if (isAdmin) {
-      // Admin can see all employees, optionally filtered by organization
+    if (isSuperAdmin) {
+      // Super Admin can see all employees across all organizations
       result = await employeeController.getAll(
         organizationId ? Number(organizationId) : undefined,
         { page, limit }
       );
+    } else if (isAdmin) {
+      // Admin can see employees in their organization only
+      result = await employeeController.getAll(user.organizationId, { page, limit });
     } else if (isHRManager) {
       // HR Manager can only see employees from their own organization
       result = await employeeController.getAll(user.organizationId, { page, limit });
@@ -59,10 +63,21 @@ export async function POST(request: NextRequest) {
       const user = authRequest.user!;
 
       // Check if user can create employees for the specified organization
+      const isSuperAdmin = user.roles.includes('SUPER_ADMIN');
       const isAdmin = user.roles.includes('ADMIN');
       const isHRManager = user.roles.includes('HR_MANAGER');
 
-      if (!isAdmin && (!isHRManager || validatedData.organization_id !== user.organizationId)) {
+      // Super Admin can create employees for any organization
+      // Admin and HR Manager can only create for their own organization
+      if (!isSuperAdmin && !isAdmin && (!isHRManager || validatedData.organization_id !== user.organizationId)) {
+        return NextResponse.json(
+          { error: 'Cannot create employees for this organization' },
+          { status: 403 }
+        );
+      }
+
+      // Admin can only create for their own organization
+      if (isAdmin && !isSuperAdmin && validatedData.organization_id !== user.organizationId) {
         return NextResponse.json(
           { error: 'Cannot create employees for this organization' },
           { status: 403 }

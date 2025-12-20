@@ -20,7 +20,7 @@ interface Organization {
   name: string;
 }
 
-export default function AddDepartmentPage() {
+export default function AddJobTitlePage() {
   const { user, isLoading } = useAuth();
   const router = useRouter();
   const [organizations, setOrganizations] = useState<Organization[]>([]);
@@ -98,7 +98,7 @@ export default function AddDepartmentPage() {
     setLoading(true);
 
     try {
-      const response = await fetch('/api/departments', {
+      const response = await fetch('/api/job-titles', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -111,15 +111,15 @@ export default function AddDepartmentPage() {
       });
 
       if (response.ok) {
-        router.push('/departments');
+        router.push('/job-titles');
       } else {
         const error = await response.json();
         setErrorMessage(error.error || 'Unknown error occurred');
         setShowErrorModal(true);
       }
     } catch (error) {
-      console.error('Error creating department:', error);
-      setErrorMessage('An error occurred while creating department');
+      console.error('Error creating job title:', error);
+      setErrorMessage('An error occurred while creating job title');
       setShowErrorModal(true);
     } finally {
       setLoading(false);
@@ -135,11 +135,11 @@ export default function AddDepartmentPage() {
 
   return (
     <>
-      <PageMeta title='Add Department - HR Management System' description='Add a new department to the system' />
+      <PageMeta title='Add Job Title - HR Management System' description='Add a new job title to the system' />
       <PageBreadcrumb
-        pageTitle='Add Department'
+        pageTitle='Add Job Title'
         breadcrumbs={[
-          { label: 'Departments', href: '/departments' },
+          { label: 'Job Titles', href: '/job-titles' },
           { label: 'Add' }
         ]}
       />
@@ -147,10 +147,10 @@ export default function AddDepartmentPage() {
       <div className='rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03] lg:p-6'>
         <div className='mb-6'>
           <h3 className='text-lg font-semibold text-gray-800 dark:text-white/90'>
-            Add New Department
+            Add New Job Title
           </h3>
           <p className='text-sm text-gray-500 dark:text-gray-400 mt-1'>
-            Add a new department to the system.
+            Add a new job title to the system.
           </p>
         </div>
 
@@ -180,13 +180,13 @@ export default function AddDepartmentPage() {
             </div>
 
             <div>
-              <Label htmlFor="name">Department Name *</Label>
+              <Label htmlFor="name">Job Title Name *</Label>
               <Input
                 id="name"
                 type="text"
                 value={formData.name}
                 onChange={(e) => handleInputChange('name', e.target.value)}
-                placeholder="Enter department name"
+                placeholder="Enter job title name"
                 required
               />
             </div>
@@ -196,7 +196,7 @@ export default function AddDepartmentPage() {
               <TextArea
                 value={formData.description}
                 onChange={(value) => handleInputChange('description', value)}
-                placeholder="Enter department description"
+                placeholder="Enter job title description"
                 rows={3}
               />
             </div>
@@ -204,7 +204,7 @@ export default function AddDepartmentPage() {
         </form>
 
         <div className='flex items-center gap-3 pt-6 border-t border-gray-200 dark:border-gray-700'>
-          <Link href="/departments">
+          <Link href="/job-titles">
             <Button
               variant='outline'
               size='md'
@@ -220,7 +220,7 @@ export default function AddDepartmentPage() {
             disabled={loading}
             className='bg-blue-600 hover:bg-blue-700 text-white'
           >
-            {loading ? 'Creating...' : 'Create Department'}
+            {loading ? 'Creating...' : 'Create Job Title'}
           </Button>
         </div>
       </div>
@@ -232,14 +232,14 @@ export default function AddDepartmentPage() {
         isOpen={showConfirmModal}
         onClose={() => setShowConfirmModal(false)}
         onConfirm={handleConfirmCreate}
-        title="Confirm Department Creation"
-        description="Please review the department details before creating."
+        title="Confirm Job Title Creation"
+        description="Please review the job title details before creating."
         details={[
           { label: 'Organization', value: availableOrganizations.find(org => org.id.toString() === formData.organization_id)?.name || 'Unknown' },
-          { label: 'Department Name', value: formData.name },
+          { label: 'Job Title Name', value: formData.name },
           { label: 'Description', value: formData.description || 'No description' },
         ]}
-        confirmText={loading ? 'Creating...' : 'Create Department'}
+        confirmText={loading ? 'Creating...' : 'Create Job Title'}
         cancelText="Cancel"
         isLoading={loading}
       />

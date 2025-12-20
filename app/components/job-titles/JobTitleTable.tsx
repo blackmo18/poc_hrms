@@ -9,7 +9,7 @@ import {
 } from '@/app/components/ui/table';
 import { PencilIcon, TrashBinIcon } from '@/app/icons';
 
-interface Department {
+interface JobTitle {
   id: number;
   name: string;
   description?: string;
@@ -24,43 +24,43 @@ interface Department {
   }>;
 }
 
-interface DepartmentTableBodyProps {
-  departments: Department[];
-  onDelete: (departmentId: number, departmentName: string) => void;
+interface JobTitleTableBodyProps {
+  jobTitles: JobTitle[];
+  onDelete: (jobTitleId: number, jobTitleName: string) => void;
 }
 
-const DepartmentTableBody = memo(function DepartmentTableBody({ departments, onDelete }: DepartmentTableBodyProps) {
+const JobTitleTableBody = memo(function JobTitleTableBody({ jobTitles, onDelete }: JobTitleTableBodyProps) {
   return (
     <TableBody className="divide-y divide-gray-100 dark:divide-white/[0.05]">
-      {departments.map((department) => (
-        <TableRow key={department.id}>
+      {jobTitles.map((jobTitle) => (
+        <TableRow key={jobTitle.id}>
           <TableCell className="px-5 py-4 text-gray-500 text-start text-theme-sm dark:text-gray-400">
-            {department.id}
+            {jobTitle.id}
           </TableCell>
           <TableCell className="px-4 py-3 text-start">
             <span className="font-medium text-gray-800 text-theme-sm dark:text-white/90">
-              {department.name}
+              {jobTitle.name}
             </span>
           </TableCell>
           <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
-            {department.description || 'No description'}
+            {jobTitle.description || 'No description'}
           </TableCell>
           <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
-            {department.organization.name}
+            {jobTitle.organization.name}
           </TableCell>
           <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
-            {department.employees.length}
+            {jobTitle.employees.length}
           </TableCell>
           <TableCell className="px-4 py-3 text-center">
             <div className="flex items-center justify-center space-x-2">
               <Link
-                href={`/departments/${department.id}/edit`}
+                href={`/job-titles/${jobTitle.id}/edit`}
                 className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-800 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white transition-colors"
               >
                 <PencilIcon className="w-4 h-4" />
               </Link>
               <button
-                onClick={() => onDelete(department.id, department.name)}
+                onClick={() => onDelete(jobTitle.id, jobTitle.name)}
                 className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-red-100 text-red-600 hover:bg-red-200 hover:text-red-800 dark:bg-red-900 dark:text-red-400 dark:hover:bg-red-800 dark:hover:text-red-300 transition-colors"
               >
                 <TrashBinIcon className="w-4 h-4" />
@@ -73,12 +73,12 @@ const DepartmentTableBody = memo(function DepartmentTableBody({ departments, onD
   );
 });
 
-interface DepartmentTableProps {
-  departments: Department[];
-  onDelete: (departmentId: number, departmentName: string) => void;
+interface JobTitleTableProps {
+  jobTitles: JobTitle[];
+  onDelete: (jobTitleId: number, jobTitleName: string) => void;
 }
 
-export default function DepartmentTable({ departments, onDelete }: DepartmentTableProps) {
+export default function JobTitleTable({ jobTitles, onDelete }: JobTitleTableProps) {
   return (
     <div className="hidden lg:block overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03]">
       <div className="w-full overflow-x-auto">
@@ -126,7 +126,7 @@ export default function DepartmentTable({ departments, onDelete }: DepartmentTab
           </TableHeader>
 
           {/* Table Body - Only re-renders when data changes */}
-          <DepartmentTableBody departments={departments} onDelete={onDelete} />
+          <JobTitleTableBody jobTitles={jobTitles} onDelete={onDelete} />
         </Table>
       </div>
     </div>

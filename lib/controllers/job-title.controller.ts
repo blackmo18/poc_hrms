@@ -2,14 +2,40 @@ import { prisma } from '../db';
 import { CreateJobTitle, UpdateJobTitle } from '../models/job-title';
 
 export class JobTitleController {
-  async getAll(organizationId?: number) {
-    return await prisma.jobTitle.findMany({
+  async getAll(organizationId?: number, options?: { page?: number; limit?: number }) {
+    const { page = 1, limit = 10 } = options || {};
+    const skip = (page - 1) * limit;
+
+    // First get the total count
+    const total = await prisma.jobTitle.count({
       where: organizationId ? { organization_id: organizationId } : undefined,
+    });
+
+    // Then fetch the paginated job titles
+    const jobTitles = await prisma.jobTitle.findMany({
+      where: organizationId ? { organization_id: organizationId } : undefined,
+      skip,
+      take: limit,
       include: {
         organization: true,
         employees: true,
       },
+      orderBy: {
+        id: 'desc',
+      },
     });
+
+    return {
+      data: jobTitles,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+        hasNext: page * limit < total,
+        hasPrev: page > 1,
+      },
+    };
   }
 
   async getById(id: number) {
