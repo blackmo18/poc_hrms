@@ -2,17 +2,14 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
-import { Organization } from '@/lib/models/organization';
-import PageBreadcrumb from '../../../../components/common/PageBreadCrumb';
-import PageMeta from '../../../../components/common/PageMeta';
-import Button from '../../../../components/ui/button/Button';
-import { Modal } from '../../../../components/ui/modal';
-import Input from '../../../../components/form/input/InputField';
-import Label from '../../../../components/form/Label';
-import Select from '../../../../components/form/Select';
-import OrganizationConfirmModal from '../../../../components/organizations/OrganizationConfirmModal';
+import { Organization } from '@/lib/models';
 
+import OrganizationForm from '@/app/components/organizations/OrganizationForm';
+import Link from 'next/link';
+import PageBreadcrumb from '@/app/components/common/PageBreadCrumb';
+import PageMeta from '@/app/components/common/PageMeta';
+import Button from '@/app/components/ui/button/Button';
+import OrganizationConfirmModal from '@/app/components/organizations/OrganizationConfirmModal';
 interface EditOrganizationPageProps {
   params: Promise<{ id: string }>;
 }
@@ -122,12 +119,6 @@ export default function EditOrganizationPage({ params }: EditOrganizationPagePro
     }
   };
 
-  const statusOptions = [
-    { value: 'ACTIVE', label: 'Active' },
-    { value: 'INACTIVE', label: 'Inactive' },
-    { value: 'SUSPENDED', label: 'Suspended' },
-  ];
-
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -181,82 +172,10 @@ export default function EditOrganizationPage({ params }: EditOrganizationPagePro
           </div>
         )}
 
-        <form className='space-y-6'>
-          <div className='grid grid-cols-1 gap-6 lg:grid-cols-2'>
-            <div>
-              <Label>Organization Name *</Label>
-              <Input
-                type='text'
-                value={formData.name}
-                onChange={(e) => handleInputChange('name', e.target.value)}
-                placeholder='Enter organization name'
-                required
-              />
-            </div>
-
-            <div>
-              <Label>Email Address *</Label>
-              <Input
-                type='email'
-                value={formData.email}
-                onChange={(e) => handleInputChange('email', e.target.value)}
-                placeholder='Enter email address'
-                required
-              />
-            </div>
-
-            <div>
-              <Label>Contact Number</Label>
-              <Input
-                type='text'
-                value={formData.contact_number}
-                onChange={(e) => handleInputChange('contact_number', e.target.value)}
-                placeholder='Enter contact number'
-              />
-            </div>
-
-            <div>
-              <Label>Website</Label>
-              <Input
-                type='url'
-                value={formData.website}
-                onChange={(e) => handleInputChange('website', e.target.value)}
-                placeholder='https://example.com'
-              />
-            </div>
-
-            <div>
-              <Label>Status</Label>
-              <Select
-                options={statusOptions}
-                value={formData.status}
-                onChange={(value) => handleInputChange('status', value)}
-                placeholder='Select status'
-              />
-            </div>
-          </div>
-
-          <div>
-            <Label>Address</Label>
-            <Input
-              type='text'
-              value={formData.address}
-              onChange={(e) => handleInputChange('address', e.target.value)}
-              placeholder='Enter address'
-            />
-          </div>
-
-          <div>
-            <Label>Description</Label>
-            <textarea
-              value={formData.description}
-              onChange={(e) => handleInputChange('description', e.target.value)}
-              placeholder='Enter organization description'
-              rows={4}
-              className='w-full px-4 py-3 border border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-white'
-            />
-          </div>
-        </form>
+        <OrganizationForm
+          formData={formData}
+          onInputChange={handleInputChange}
+        />
 
         <div className='flex items-center gap-3 pt-6 border-t border-gray-200 dark:border-gray-700'>
           <Link href={`/organizations/details/${organization?.id}`}>

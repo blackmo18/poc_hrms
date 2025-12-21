@@ -6,14 +6,15 @@ import Link from 'next/link';
 import PageBreadcrumb from '@/app/components/common/PageBreadCrumb';
 import PageMeta from '@/app/components/common/PageMeta';
 import Button from '@/app/components/ui/button/Button';
-import Input from '../../components/form/input/InputField';
-import TextArea from '../../components/form/input/TextArea';
-import Label from '../../components/form/Label';
-import Select from '../../components/form/Select';
+import Input from '@/app/components/form/input/InputField';
+import TextArea from '@/app/components/form/input/TextArea';
+import Label from '@/app/components/form/Label';
+import Select from '@/app/components/form/Select';
 import { useAuth } from '@/app/components/providers/auth-provider';
 import DetailsConfirmationModal from '@/app/components/ui/modal/DetailsConfirmationModal';
 import ErrorModal from '@/app/components/ui/modal/ErrorModal';
 import RoleComponentWrapper from '@/app/components/common/RoleComponentWrapper';
+import JobTitleForm from '@/app/components/job-titles/JobTitleForm';
 
 interface Organization {
   id: number;
@@ -155,52 +156,13 @@ export default function AddJobTitlePage() {
         </div>
 
         <form className='space-y-6 mb-7'>
-          <div className='grid grid-cols-1 gap-6'>
-            <div>
-              <Label>Organization *</Label>
-              <RoleComponentWrapper
-                roles={['SUPER_ADMIN']}
-                fallback={
-                  <Input
-                    type="text"
-                    value={availableOrganizations.find(org => org.id.toString() === formData.organization_id)?.name || ''}
-                    disabled
-                    className="bg-gray-100 dark:bg-gray-800 cursor-not-allowed"
-                  />
-                }
-              >
-                <Select
-                  options={availableOrganizations.map(org => ({ value: org.id.toString(), label: org.name }))}
-                  placeholder="Select organization"
-                  onChange={(value) => handleInputChange('organization_id', value)}
-                  value={formData.organization_id}
-                  required
-                />
-              </RoleComponentWrapper>
-            </div>
-
-            <div>
-              <Label htmlFor="name">Job Title Name *</Label>
-              <Input
-                id="name"
-                type="text"
-                value={formData.name}
-                onChange={(e) => handleInputChange('name', e.target.value)}
-                placeholder="Enter job title name"
-                required
-              />
-            </div>
-
-            <div>
-              <Label htmlFor="description">Description (Optional)</Label>
-              <TextArea
-                value={formData.description}
-                onChange={(value) => handleInputChange('description', value)}
-                placeholder="Enter job title description"
-                rows={3}
-              />
-            </div>
-          </div>
+          <JobTitleForm
+            formData={formData}
+            onInputChange={handleInputChange}
+            availableOrganizations={availableOrganizations}
+            user={user}
+            isEdit={false}
+          />
         </form>
 
         <div className='flex items-center gap-3 pt-6 border-t border-gray-200 dark:border-gray-700'>

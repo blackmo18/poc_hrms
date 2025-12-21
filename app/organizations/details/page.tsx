@@ -16,6 +16,7 @@ import ComponentCard from '@/app/components/common/ComponentCard';
 import PageMeta from '@/app/components/common/PageMeta';
 import PageBreadcrumb from '@/app/components/common/PageBreadCrumb';
 import OrganizationCard from '../../components/organizations/OrganizationCard';
+import OrganizationTable from '../../components/organizations/OrganizationTable';
 import Pagination from '../../components/ui/pagination';
 
 interface Organization {
@@ -172,103 +173,10 @@ export default function OrganizationDetailsPage() {
       {/* Content Container */}
       <div className="w-full overflow-x-auto">
         <ComponentCard title="Organization Details" size="full">
-          <RoleComponentWrapper roles={['ADMIN']}>
+          <RoleComponentWrapper roles={['ADMIN', 'SUPER_ADMIN']}>
 
             {/* Desktop Table View */}
-            <div className="hidden lg:block overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03]">
-              <div className="w-full overflow-x-auto">
-                <Table>
-                  {/* Table Header */}
-                  <TableHeader className="border-b border-gray-100 dark:border-white/[0.05]">
-                    <TableRow>
-                      <TableCell
-                        isHeader
-                        className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
-                      >
-                        ID
-                      </TableCell>
-                      <TableCell
-                        isHeader
-                        className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
-                      >
-                        Organization Name
-                      </TableCell>
-                      <TableCell
-                        isHeader
-                        className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
-                      >
-                        Email
-                      </TableCell>
-                      <TableCell
-                        isHeader
-                        className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
-                      >
-                        Contact Number
-                      </TableCell>
-                      <TableCell
-                        isHeader
-                        className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
-                      >
-                        Address
-                      </TableCell>
-                      <TableCell
-                        isHeader
-                        className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
-                      >
-                        Status
-                      </TableCell>
-                      <TableCell
-                        isHeader
-                        className="px-5 py-3 font-medium text-gray-500 text-center text-theme-xs dark:text-gray-400"
-                      >
-                        Actions
-                      </TableCell>
-                    </TableRow>
-                  </TableHeader>
-
-                  {/* Table Body */}
-                  <TableBody className="divide-y divide-gray-100 dark:divide-white/[0.05]">
-                    {organizations.map((org) => (
-                      <TableRow key={org.id}>
-                        <TableCell className="px-5 py-4 text-gray-500 text-start text-theme-sm dark:text-gray-400">
-                          {org.id}
-                        </TableCell>
-                        <TableCell className="px-4 py-3 text-start">
-                          <span className="font-medium text-gray-800 text-theme-sm dark:text-white/90">
-                            {org.name}
-                          </span>
-                        </TableCell>
-                        <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
-                          {org.email || 'N/A'}
-                        </TableCell>
-                        <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
-                          {org.contact_number || 'N/A'}
-                        </TableCell>
-                        <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
-                          {org.address || 'N/A'}
-                        </TableCell>
-                        <TableCell className="px-4 py-3 text-start">
-                          <Badge
-                            size="sm"
-                            color={getStatusColor(org.status)}
-                          >
-                            {org.status}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="px-4 py-3 text-center">
-                          <Link
-                            href={`/organizations/details/${org.id}`}
-                            className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-800 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white transition-colors"
-                          >
-                            <PencilIcon className="w-4 h-4" />
-                          </Link>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            </div>
+            <OrganizationTable organizations={organizations} getStatusColor={getStatusColor} />
 
             {/* Mobile Card View */}
             <div className="lg:hidden space-y-4">

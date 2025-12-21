@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useReducer } from 'react';
 import Link from 'next/link';
 import { PlusIcon, BriefcaseIcon } from '@/app/icons';
 import ComponentCard from '@/app/components/common/ComponentCard';
@@ -46,21 +46,150 @@ interface ApiResponse {
   };
 }
 
+interface JobTitlesState {
+  // Data states
+  jobTitles: JobTitle[];
+  organizations: Organization[];
+  pagination: ApiResponse['pagination'] | null;
+
+  // Loading states
+  loading: boolean;
+  initialLoading: boolean;
+  isOrganizationFilterLoading: boolean;
+  isDeleting: boolean;
+
+  // UI states
+  selectedOrganization: number | null;
+  currentPage: number;
+  showDeleteModal: boolean;
+  showErrorModal: boolean;
+  deleteSuccess: boolean;
+
+  // Error states
+  error: string | null;
+  errorMessage: string;
+  jobTitleToDelete: { id: number; name: string } | null;
+}
+
+type JobTitlesAction =
+  // Data actions
+  | { type: 'SET_JOB_TITLES'; payload: JobTitle[] }
+  | { type: 'SET_ORGANIZATIONS'; payload: Organization[] }
+  | { type: 'SET_PAGINATION'; payload: ApiResponse['pagination'] | null }
+
+  // Loading actions
+  | { type: 'SET_LOADING'; payload: boolean }
+  | { type: 'SET_INITIAL_LOADING'; payload: boolean }
+  | { type: 'SET_ORGANIZATION_FILTER_LOADING'; payload: boolean }
+  | { type: 'SET_DELETING'; payload: boolean }
+
+  // UI actions
+  | { type: 'SET_SELECTED_ORGANIZATION'; payload: number | null }
+  | { type: 'SET_CURRENT_PAGE'; payload: number }
+  | { type: 'SET_SHOW_DELETE_MODAL'; payload: boolean }
+  | { type: 'SET_SHOW_ERROR_MODAL'; payload: boolean }
+  | { type: 'SET_DELETE_SUCCESS'; payload: boolean }
+
+  // Error actions
+  | { type: 'SET_ERROR'; payload: string | null }
+  | { type: 'SET_ERROR_MESSAGE'; payload: string }
+  | { type: 'SET_JOB_TITLE_TO_DELETE'; payload: { id: number; name: string } | null }
+
+  // Combined actions
+  | { type: 'START_LOADING' }
+  | { type: 'FINISH_LOADING' }
+  | { type: 'START_ORGANIZATION_FILTER'; payload: number | null }
+  | { type: 'START_DELETE'; payload: { id: number; name: string } }
+  | { type: 'CANCEL_DELETE' }
+  | { type: 'FINISH_DELETE' };
+
+function jobTitlesReducer(state: JobTitlesState, action: JobTitlesAction): JobTitlesState {
+  switch (action.type) {
+    // Data actions
+    case 'SET_JOB_TITLES':
+      return { ...state, jobTitles: action.payload };
+    case 'SET_ORGANIZATIONS':
+      return { ...state, organizations: action.payload };
+    case 'SET_PAGINATION':
+      return { ...state, pagination: action.payload };
+
+    // Loading actions
+    case 'SET_LOADING':
+      return { ...state, loading: action.payload };
+    case 'SET_INITIAL_LOADING':
+      return { ...state, initialLoading: action.payload };
+    case 'SET_ORGANIZATION_FILTER_LOADING':
+      return { ...state, isOrganizationFilterLoading: action.payload };
+    case 'SET_DELETING':
+      return { ...state, isDeleting: action.payload };
+
+    // UI actions
+    case 'SET_SELECTED_ORGANIZATION':
+      return { ...state, selectedOrganization: action.payload };
+    case 'SET_CURRENT_PAGE':
+      return { ...state, currentPage: action.payload };
+    case 'SET_SHOW_DELETE_MODAL':
+      return { ...state, showDeleteModal: action.payload };
+    case 'SET_SHOW_ERROR_MODAL':
+      return { ...state, showErrorModal: action.payload };
+    case 'SET_DELETE_SUCCESS':
+      return { ...state, deleteSuccess: action.payload };
+
+    // Error actions
+    case 'SET_ERROR':
+      return { ...state, error: action.payload };
+    case 'SET_ERROR_MESSAGE':
+      return { ...state, errorMessage: action.payload };
+    case 'SET_JOB_TITLE_TO_DELETE':
+      return { ...state, jobTitleToDelete: action.payload };
+
+    // Combined actions
+    case 'START_LOADING':
+      return { ...state, loading: true, error: null };
+    case 'FINISH_LOADING':
+      return { ...state, loading: false, initialLoading: false, isOrganizationFilterLoading: false };
+    case 'START_ORGANIZATION_FILTER':
+      return { ...state, selectedOrganization: action.payload, currentPage: 1, isOrganizationFilterLoading: true };
+    case 'START_DELETE':
+      return { ...state, jobTitleToDelete: action.payload, showDeleteModal: true, deleteSuccess: false };
+    case 'CANCEL_DELETE':
+      return { ...state, showDeleteModal: false, jobTitleToDelete: null };
+    case 'FINISH_DELETE':
+      return { ...state, isDeleting: false, showDeleteModal: false, jobTitleToDelete: null, deleteSuccess: false };
+
+    default:
+      return state;
+  }
+}
+
+const initialState: JobTitlesState = {
+  // Data states
+  jobTitles: [],
+  organizations: [],
+  pagination: null,
+
+  // Loading states
+  loading: true,
+  initialLoading: true,
+  isOrganizationFilterLoading: false,
+  isDeleting: false,
+
+  // UI states
+  selectedOrganization: null,
+  currentPage: 1,
+  showDeleteModal: false,
+  showErrorModal: false,
+  deleteSuccess: false,
+
+  // Error states
+  error: null,
+  errorMessage: '',
+  jobTitleToDelete: null,
+};
+
 export default function JobTitlesPage() {
   const { user, isLoading: authLoading } = useAuth();
-  const [jobTitles, setJobTitles] = useState<JobTitle[]>([]);
-  const [organizations, setOrganizations] = useState<Organization[]>([]);
-  const [selectedOrganization, setSelectedOrganization] = useState<number | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [pagination, setPagination] = useState<ApiResponse['pagination'] | null>(null);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [showErrorModal, setShowErrorModal] = useState(false);
-  const [errorMessage, setErrorMessage] = useState('');
-  const [jobTitleToDelete, setJobTitleToDelete] = useState<{ id: number; name: string } | null>(null);
-  const [isDeleting, setIsDeleting] = useState(false);
-  const [deleteSuccess, setDeleteSuccess] = useState(false);
+  const [state, dispatch] = useReducer(jobTitlesReducer, initialState);
 
   const isSuperAdmin = user?.roles?.includes('SUPER_ADMIN') || user?.role === 'SUPER_ADMIN';
 
@@ -71,28 +200,25 @@ export default function JobTitlesPage() {
   );
 
   const organizationOptions = useMemo(() => 
-    organizations.map((org) => ({
+    state.organizations.map((org) => ({
       value: org.id.toString(),
       label: org.name,
     })), 
-    [organizations]
+    [state.organizations]
   );
 
   // Memoize event handlers to prevent unnecessary re-renders
   const handleOrganizationChange = useCallback((orgId: number | null) => {
-    setSelectedOrganization(orgId);
-    setCurrentPage(1); // Reset to first page when changing organization filter
+    dispatch({ type: 'START_ORGANIZATION_FILTER', payload: orgId });
   }, []);
 
   const handleDeleteClick = useCallback((jobTitleId: number, jobTitleName: string) => {
-    setJobTitleToDelete({ id: jobTitleId, name: jobTitleName });
-    setDeleteSuccess(false);
-    setShowDeleteModal(true);
+    dispatch({ type: 'START_DELETE', payload: { id: jobTitleId, name: jobTitleName } });
   }, []);
 
   // Memoize the empty state component to prevent unnecessary re-renders
   const emptyStateComponent = useMemo(() => (
-    jobTitles.length === 0 && (
+    state.jobTitles.length === 0 && (
       <div className="text-center py-12">
         <BriefcaseIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
         <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No job titles found</h3>
@@ -108,12 +234,11 @@ export default function JobTitlesPage() {
         </Link>
       </div>
     )
-  ), [jobTitles.length]);
+  ), [state.jobTitles.length]);
 
   const fetchJobTitles = async (orgId?: number | null, page: number = 1) => {
     try {
-      setLoading(true);
-      setError(null);
+      dispatch({ type: 'START_LOADING' });
 
       const params = new URLSearchParams();
       params.set('page', page.toString());
@@ -129,12 +254,12 @@ export default function JobTitlesPage() {
       });
 
       if (response.status === 401) {
-        setError('Unauthorized access. Please log in.');
+        dispatch({ type: 'SET_ERROR', payload: 'Unauthorized access. Please log in.' });
         return;
       }
 
       if (response.status === 403) {
-        setError('Access denied. Insufficient permissions.');
+        dispatch({ type: 'SET_ERROR', payload: 'Access denied. Insufficient permissions.' });
         return;
       }
 
@@ -143,13 +268,13 @@ export default function JobTitlesPage() {
       }
 
       const result = await response.json();
-      setJobTitles(result.data || []);
-      setPagination(result.pagination);
+      dispatch({ type: 'SET_JOB_TITLES', payload: result.data || [] });
+      dispatch({ type: 'SET_PAGINATION', payload: result.pagination });
     } catch (error) {
       console.error('Error fetching job titles:', error);
-      setError('Failed to load job titles. Please try again.');
+      dispatch({ type: 'SET_ERROR', payload: 'Failed to load job titles. Please try again.' });
     } finally {
-      setLoading(false);
+      dispatch({ type: 'FINISH_LOADING' });
     }
   };
 
@@ -161,7 +286,7 @@ export default function JobTitlesPage() {
 
       if (response.ok) {
         const result = await response.json();
-        setOrganizations(result.data || []);
+        dispatch({ type: 'SET_ORGANIZATIONS', payload: result.data || [] });
       }
     } catch (error) {
       console.error('Error fetching organizations:', error);
@@ -173,57 +298,53 @@ export default function JobTitlesPage() {
 
     // For non-super admin, always filter by their organization
     if (!isSuperAdminMemo && user?.organization_id) {
-      fetchJobTitles(user.organization_id, currentPage);
+      fetchJobTitles(user.organization_id, state.currentPage);
     } else {
-      fetchJobTitles(selectedOrganization, currentPage);
+      fetchJobTitles(state.selectedOrganization, state.currentPage);
     }
 
     // Only fetch organizations for super admin
     if (isSuperAdminMemo) {
       fetchOrganizations();
     }
-  }, [selectedOrganization, currentPage, authLoading, isSuperAdminMemo, user?.organization_id]);
+  }, [state.selectedOrganization, state.currentPage, authLoading, isSuperAdminMemo, user?.organization_id]);
 
   const handleConfirmDelete = async () => {
-    if (!jobTitleToDelete) return;
+    if (!state.jobTitleToDelete) return;
 
-    setIsDeleting(true);
+    dispatch({ type: 'SET_DELETING', payload: true });
     try {
-      const response = await fetch(`/api/job-titles/${jobTitleToDelete.id}`, {
+      const response = await fetch(`/api/job-titles/${state.jobTitleToDelete.id}`, {
         method: 'DELETE',
         credentials: 'include',
       });
 
       if (response.ok) {
-        setDeleteSuccess(true);
+        dispatch({ type: 'SET_DELETE_SUCCESS', payload: true });
         // Refresh the list after a short delay to show success state
         setTimeout(() => {
-          setShowDeleteModal(false);
-          setJobTitleToDelete(null);
-          setDeleteSuccess(false);
-          if (!isSuperAdmin && user?.organization_id) {
-            fetchJobTitles(user.organization_id, currentPage);
+          dispatch({ type: 'FINISH_DELETE' });
+          if (!isSuperAdminMemo && user?.organization_id) {
+            fetchJobTitles(user.organization_id, state.currentPage);
           } else {
-            fetchJobTitles(selectedOrganization, currentPage);
+            fetchJobTitles(state.selectedOrganization, state.currentPage);
           }
         }, 1500);
       } else {
         const errorData = await response.json();
-        setShowDeleteModal(false);
-        setErrorMessage(errorData.error || 'Failed to delete job title');
-        setShowErrorModal(true);
+        dispatch({ type: 'FINISH_DELETE' });
+        dispatch({ type: 'SET_ERROR_MESSAGE', payload: errorData.error || 'Failed to delete job title' });
+        dispatch({ type: 'SET_SHOW_ERROR_MODAL', payload: true });
       }
     } catch (error) {
       console.error('Error deleting job title:', error);
-      setShowDeleteModal(false);
-      setErrorMessage('An error occurred while deleting the job title');
-      setShowErrorModal(true);
-    } finally {
-      setIsDeleting(false);
+      dispatch({ type: 'FINISH_DELETE' });
+      dispatch({ type: 'SET_ERROR_MESSAGE', payload: 'An error occurred while deleting the job title' });
+      dispatch({ type: 'SET_SHOW_ERROR_MODAL', payload: true });
     }
   };
 
-  if (loading) {
+  if (state.initialLoading) { // display this only on first page load
     return (
       <div className="space-y-6">
         <div className="flex items-center justify-between">
@@ -243,7 +364,7 @@ export default function JobTitlesPage() {
     );
   }
 
-  if (error) {
+  if (state.error) {
     return (
       <div className="space-y-6">
         <div className="flex items-center justify-between">
@@ -259,7 +380,7 @@ export default function JobTitlesPage() {
         <div className="flex items-center justify-center h-64">
           <div className="text-center">
             <div className="text-red-600 dark:text-red-400 text-lg mb-2">Error</div>
-            <div className="text-gray-600 dark:text-gray-300">{error}</div>
+            <div className="text-gray-600 dark:text-gray-300">{state.error}</div>
           </div>
         </div>
       </div>
@@ -288,9 +409,9 @@ export default function JobTitlesPage() {
               </label>
               <select
                 id="organization-select"
-                value={selectedOrganization || ''}
+                value={state.selectedOrganization || ''}
                 onChange={(e) => handleOrganizationChange(e.target.value ? Number(e.target.value) : null)}
-                disabled={loading}
+                disabled={state.loading}
                 className="block w-full max-w-xs px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <option value="">All Organizations</option>
@@ -314,39 +435,23 @@ export default function JobTitlesPage() {
             </Link>
           </div>
 
-          {/* Loading Overlay */}
-          {loading && (
-            <div className="relative">
-              <div className="absolute inset-0 bg-white/50 dark:bg-gray-900/50 flex items-center justify-center z-10 rounded-xl">
-                <div className="flex items-center space-x-2 text-gray-600 dark:text-gray-300">
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
-                  <span>Loading job titles...</span>
-                </div>
-              </div>
-            </div>
-          )}
-
           {/* Desktop Table View */}
-          <div className={loading ? 'opacity-50 pointer-events-none' : ''}>
-            <JobTitleTable jobTitles={jobTitles} onDelete={handleDeleteClick} />
-          </div>
+          <JobTitleTable jobTitles={state.jobTitles} onDelete={handleDeleteClick} loading={state.isOrganizationFilterLoading} />
 
           {/* Mobile Card View */}
-          <div className={loading ? 'opacity-50 pointer-events-none' : ''}>
-            <JobTitleCardList jobTitles={jobTitles} onDelete={handleDeleteClick} />
-          </div>
+          <JobTitleCardList jobTitles={state.jobTitles} onDelete={handleDeleteClick} />
 
           {/* Empty State */}
-          {!loading && emptyStateComponent}
+          {!state.isOrganizationFilterLoading && emptyStateComponent}
         </ComponentCard>
       </div>
 
       {/* Pagination */}
-      <div className={loading ? 'opacity-50 pointer-events-none' : ''}>
+      <div className={state.loading ? 'opacity-50 pointer-events-none' : ''}>
         <Pagination
-          pagination={pagination}
-          currentPage={currentPage}
-          onPageChange={setCurrentPage}
+          pagination={state.pagination}
+          currentPage={state.currentPage}
+          onPageChange={(page) => dispatch({ type: 'SET_CURRENT_PAGE', payload: page })}
           itemName="job titles"
         />
       </div>
@@ -354,30 +459,29 @@ export default function JobTitlesPage() {
       {/* Delete Confirmation Modal */}
       <ConfirmationModal
         size='wider'
-        isOpen={showDeleteModal}
+        isOpen={state.showDeleteModal}
         onClose={() => {
-          if (!deleteSuccess) {
-            setShowDeleteModal(false);
-            setJobTitleToDelete(null);
+          if (!state.deleteSuccess) {
+            dispatch({ type: 'CANCEL_DELETE' });
           }
         }}
         onConfirm={handleConfirmDelete}
-        title={deleteSuccess ? "Deleted Successfully" : "Delete Job Title"}
-        message={deleteSuccess
-          ? `The job title "${jobTitleToDelete?.name}" has been deleted successfully.`
-          : `Are you sure you want to delete the job title "${jobTitleToDelete?.name}"? This action cannot be undone.`
+        title={state.deleteSuccess ? "Deleted Successfully" : "Delete Job Title"}
+        message={state.deleteSuccess
+          ? `The job title "${state.jobTitleToDelete?.name}" has been deleted successfully.`
+          : `Are you sure you want to delete the job title "${state.jobTitleToDelete?.name}"? This action cannot be undone.`
         }
-        variant={deleteSuccess ? "success" : "warning"}
-        confirmText={deleteSuccess ? "Done" : "Delete"}
+        variant={state.deleteSuccess ? "success" : "warning"}
+        confirmText={state.deleteSuccess ? "Done" : "Delete"}
         cancelText="Cancel"
-        isLoading={isDeleting}
+        isLoading={state.isDeleting}
       />
 
       {/* Error Modal */}
       <ErrorModal
-        isOpen={showErrorModal}
-        onClose={() => setShowErrorModal(false)}
-        errorMessage={errorMessage}
+        isOpen={state.showErrorModal}
+        onClose={() => dispatch({ type: 'SET_SHOW_ERROR_MODAL', payload: false })}
+        errorMessage={state.errorMessage}
       />
     </div>
   );

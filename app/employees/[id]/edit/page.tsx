@@ -9,7 +9,9 @@ import Button from '@/app/components/ui/button/Button';
 import Input from '@/app/components/form/input/InputField';
 import Label from '@/app/components/form/Label';
 import Select from '@/app/components/form/Select';
-import EmployeeConfirmModal from '@/app/components/employees/EmployeeConfirmModal';
+import { getEmployeeGroupedDetails } from '@/lib/utils/employeeDetails';
+import DetailsConfirmationModal from '@/app/components/ui/modal/DetailsConfirmationModal';
+import EmployeeForm from '@/app/components/employees/EmployeeForm';
 import { useAuth } from '@/app/components/providers/auth-provider';
 
 interface Organization {
@@ -84,11 +86,10 @@ export default function EditEmployeePage({ params }: EditEmployeePageProps) {
     manager_id: '',
     first_name: '',
     last_name: '',
-    email: '',
-    // Work details (optional)
+    // Work details (required work email)
     work_email: '',
     work_contact: '',
-    // Personal details (required)
+    // Personal details (required except personal_email)
     personal_address: '',
     personal_contact_number: '',
     personal_email: '',
@@ -97,6 +98,9 @@ export default function EditEmployeePage({ params }: EditEmployeePageProps) {
     employment_status: 'ACTIVE' as 'ACTIVE' | 'INACTIVE' | 'TERMINATED' | 'ON_LEAVE',
     hire_date: '',
   });
+
+  // Grouped details for confirmation
+  const grouped = getEmployeeGroupedDetails(formData, organizations, departments, jobTitles, managers);
 
   // Initialize id from params
   useEffect(() => {
@@ -164,7 +168,7 @@ export default function EditEmployeePage({ params }: EditEmployeePageProps) {
         });
         if (jobResponse.ok) {
           const jobData = await jobResponse.json();
-          setJobTitles(jobData || []);
+          setJobTitles(jobData.data || jobData || []);
         }
 
         // Fetch managers for the employee's organization
@@ -184,11 +188,10 @@ export default function EditEmployeePage({ params }: EditEmployeePageProps) {
           manager_id: employeeData.manager_id?.toString() || '',
           first_name: employeeData.first_name || '',
           last_name: employeeData.last_name || '',
-          email: employeeData.email || '',
-          // Work details (optional)
-          work_email: employeeData.work_email || '',
+          // Work details (required work email)
+          work_email: employeeData.email || '', // Map existing email to work_email
           work_contact: employeeData.work_contact || '',
-          // Personal details (required)
+          // Personal details (required except personal_email)
           personal_address: employeeData.personal_address || '',
           personal_contact_number: employeeData.personal_contact_number || '',
           personal_email: employeeData.personal_email || '',
@@ -227,7 +230,7 @@ export default function EditEmployeePage({ params }: EditEmployeePageProps) {
           });
           if (jobResponse.ok) {
             const jobData = await jobResponse.json();
-            setJobTitles(jobData || []);
+            setJobTitles(jobData.data || jobData || []);
           }
 
           // Fetch managers
@@ -256,7 +259,7 @@ export default function EditEmployeePage({ params }: EditEmployeePageProps) {
 
   const handleSaveClick = () => {
     // Basic validation
-    if (!formData.first_name.trim() || !formData.last_name.trim() || !formData.email.trim()) {
+    if (!formData.first_name.trim() || !formData.last_name.trim() || !formData.work_email.trim()) {
       setError('Please fill in all required fields');
       return;
     }
@@ -282,6 +285,7 @@ export default function EditEmployeePage({ params }: EditEmployeePageProps) {
         department_id: Number(formData.department_id),
         job_title_id: Number(formData.job_title_id),
         manager_id: formData.manager_id ? Number(formData.manager_id) : undefined,
+        email: formData.work_email, // Map work_email to required email field
         date_of_birth: new Date(formData.date_of_birth),
         hire_date: new Date(formData.hire_date),
       };
@@ -392,208 +396,17 @@ export default function EditEmployeePage({ params }: EditEmployeePageProps) {
           </div>
         )}
 
-        <form className='space-y-6 mb-7'>
-          <div className='grid grid-cols-1 gap-6 lg:grid-cols-2'>
-            <div>
-              <Label>Organization *</Label>
-              {(user?.roles?.includes('SUPER_ADMIN') || user?.role === 'SUPER_ADMIN') ? (
-                <Select
-                  options={organizationOptions}
-                  value={formData.organization_id}
-                  onChange={(value) => handleInputChange('organization_id', value)}
-                  placeholder='Select organization'
-                  required
-                />
-              ) : (
-                <Input
-                  type='text'
-                  value={availableOrganizations.find(org => org.id.toString() === formData.organization_id)?.name || ''}
-                  disabled
-                  className='bg-gray-100 dark:bg-gray-800'
-                />
-              )}
-            </div>
-
-            <div>
-              <Label>Department *</Label>
-              <Select
-                options={departmentOptions}
-                value={formData.department_id}
-                onChange={(value) => handleInputChange('department_id', value)}
-                placeholder='Select department'
-                disabled={!formData.organization_id}
-                required
-              />
-            </div>
-
-            <div>
-              <Label>Job Title *</Label>
-              <Select
-                options={jobTitleOptions}
-                value={formData.job_title_id}
-                onChange={(value) => handleInputChange('job_title_id', value)}
-                placeholder='Select job title'
-                disabled={!formData.organization_id}
-                required
-              />
-            </div>
-
-            <div>
-              <Label>Manager</Label>
-              <Select
-                options={managerOptions}
-                value={formData.manager_id}
-                onChange={(value) => handleInputChange('manager_id', value)}
-                placeholder='Select manager (optional)'
-                disabled={!formData.organization_id}
-              />
-            </div>
-
-            <div>
-              <Label>First Name *</Label>
-              <Input
-                type='text'
-                value={formData.first_name}
-                onChange={(e) => handleInputChange('first_name', e.target.value)}
-                placeholder='Enter first name'
-                required
-              />
-            </div>
-
-            <div>
-              <Label>Last Name *</Label>
-              <Input
-                type='text'
-                value={formData.last_name}
-                onChange={(e) => handleInputChange('last_name', e.target.value)}
-                placeholder='Enter last name'
-                required
-              />
-            </div>
-
-            <div>
-              <Label>Email Address *</Label>
-              <Input
-                type='email'
-                value={formData.email}
-                onChange={(e) => handleInputChange('email', e.target.value)}
-                placeholder='Enter email address'
-                required
-              />
-            </div>
-
-            <div>
-              <Label>Hire Date *</Label>
-              <Input
-                type='date'
-                value={formData.hire_date}
-                onChange={(e) => handleInputChange('hire_date', e.target.value)}
-                required
-              />
-            </div>
-
-            <div>
-              <Label>Employment Status</Label>
-              <Select
-                options={statusOptions}
-                value={formData.employment_status}
-                onChange={(value) => handleInputChange('employment_status', value)}
-                placeholder='Select status'
-              />
-            </div>
-          </div>
-
-          {/* Work Details Section */}
-          <div className='border-t border-gray-200 dark:border-gray-700 pt-6'>
-            <h4 className='text-lg font-medium text-gray-900 dark:text-white mb-4'>Work Details</h4>
-            <div className='grid grid-cols-1 gap-6 lg:grid-cols-2'>
-              <div>
-                <Label>Work Email</Label>
-                <Input
-                  type='email'
-                  value={formData.work_email}
-                  onChange={(e) => handleInputChange('work_email', e.target.value)}
-                  placeholder='Enter work email (optional)'
-                />
-              </div>
-
-              <div>
-                <Label>Work Contact</Label>
-                <Input
-                  type='text'
-                  value={formData.work_contact}
-                  onChange={(e) => handleInputChange('work_contact', e.target.value)}
-                  placeholder='Enter work contact number (optional)'
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Personal Details Section */}
-          <div className='border-t border-gray-200 dark:border-gray-700 pt-6'>
-            <h4 className='text-lg font-medium text-gray-900 dark:text-white mb-4'>Personal Details</h4>
-            <div className='grid grid-cols-1 gap-6 lg:grid-cols-2'>
-              <div>
-                <Label>Personal Address *</Label>
-                <Input
-                  type='text'
-                  value={formData.personal_address}
-                  onChange={(e) => handleInputChange('personal_address', e.target.value)}
-                  placeholder='Enter personal address'
-                  required
-                />
-              </div>
-
-              <div>
-                <Label>Personal Contact Number *</Label>
-                <Input
-                  type='text'
-                  value={formData.personal_contact_number}
-                  onChange={(e) => handleInputChange('personal_contact_number', e.target.value)}
-                  placeholder='Enter personal contact number'
-                  required
-                />
-              </div>
-
-              <div>
-                <Label>Personal Email *</Label>
-                <Input
-                  type='email'
-                  value={formData.personal_email}
-                  onChange={(e) => handleInputChange('personal_email', e.target.value)}
-                  placeholder='Enter personal email'
-                  required
-                />
-              </div>
-
-              <div>
-                <Label>Date of Birth *</Label>
-                <Input
-                  type='date'
-                  value={formData.date_of_birth}
-                  onChange={(e) => handleInputChange('date_of_birth', e.target.value)}
-                  required
-                />
-              </div>
-
-              <div>
-                <Label>Gender *</Label>
-                <Select
-                  options={[
-                    { value: 'Male', label: 'Male' },
-                    { value: 'Female', label: 'Female' },
-                    { value: 'Other', label: 'Other' },
-                    { value: 'Prefer not to say', label: 'Prefer not to say' },
-                  ]}
-                  value={formData.gender}
-                  onChange={(value) => handleInputChange('gender', value)}
-                  placeholder='Select gender'
-                  required
-                />
-              </div>
-            </div>
-          </div>
-        </form>
+        <EmployeeForm
+          formData={formData}
+          handleInputChange={handleInputChange}
+          organizations={organizations}
+          availableOrganizations={availableOrganizations}
+          departments={departments}
+          jobTitles={jobTitles}
+          managers={managers}
+          user={user}
+          isEdit={true}
+        />
 
         <div className='flex items-center gap-3 pt-6 border-t border-gray-200 dark:border-gray-700'>
           <Link href='/employees'>
@@ -618,16 +431,18 @@ export default function EditEmployeePage({ params }: EditEmployeePageProps) {
       </div>
 
       {/* Confirmation Modal */}
-      <EmployeeConfirmModal
+      <DetailsConfirmationModal
         isOpen={showConfirmModal}
+        displayStyle='plain'
         onClose={() => setShowConfirmModal(false)}
         onConfirm={handleConfirmSave}
-        employeeData={formData}
-        organizations={organizations}
-        departments={departments}
-        jobTitles={jobTitles}
-        managers={managers}
-        isSaving={saving}
+        title="Confirm Employee Update"
+        description="Please review the employee details before updating. Are you sure you want to proceed?"
+        groupedDetails={grouped}
+        confirmText="Confirm Update"
+        cancelText="Cancel"
+        isLoading={saving}
+        size="wide"
       />
     </>
   );

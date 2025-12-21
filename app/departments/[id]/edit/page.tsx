@@ -6,12 +6,10 @@ import Link from 'next/link';
 import PageBreadcrumb from '@/app/components/common/PageBreadCrumb';
 import PageMeta from '@/app/components/common/PageMeta';
 import Button from '@/app/components/ui/button/Button';
-import Input from '../../../components/form/input/InputField';
-import TextArea from '../../../components/form/input/TextArea';
-import Label from '../../../components/form/Label';
 import { useAuth } from '@/app/components/providers/auth-provider';
 import DetailsConfirmationModal from '@/app/components/ui/modal/DetailsConfirmationModal';
 import ErrorModal from '@/app/components/ui/modal/ErrorModal';
+import DepartmentForm from '@/app/components/departments/DepartmentForm';
 
 interface Department {
   id: number;
@@ -177,29 +175,11 @@ export default function EditDepartmentPage() {
         </div>
 
         <form className='space-y-6 mb-7'>
-          <div className='grid grid-cols-1 gap-6'>
-            <div>
-              <Label htmlFor="name">Department Name *</Label>
-              <Input
-                id="name"
-                type="text"
-                value={formData.name}
-                onChange={(e) => handleInputChange('name', e.target.value)}
-                placeholder="Enter department name"
-                required
-              />
-            </div>
-
-            <div>
-              <Label htmlFor="description">Description (Optional)</Label>
-              <TextArea
-                value={formData.description}
-                onChange={(value) => handleInputChange('description', value)}
-                placeholder="Enter department description"
-                rows={3}
-              />
-            </div>
-          </div>
+          <DepartmentForm
+            formData={formData}
+            onInputChange={handleInputChange}
+            isEdit={true}
+          />
         </form>
 
         <div className='flex items-center gap-3 pt-6 border-t border-gray-200 dark:border-gray-700'>

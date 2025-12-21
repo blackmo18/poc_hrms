@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback, useReducer } from 'react';
 import Link from 'next/link';
 import {
   Table,
@@ -17,6 +17,7 @@ import { useAuth } from '@/app/components/providers/auth-provider';
 import PageMeta from '@/app/components/common/PageMeta';
 import PageBreadcrumb from '@/app/components/common/PageBreadCrumb';
 import EmployeeCard from '@/app/components/employees/EmployeeCard';
+import EmployeeTable from '@/app/components/employees/EmployeeTable';
 import Pagination from '@/app/components/ui/pagination';
 
 interface Employee {
@@ -66,22 +67,129 @@ interface ApiResponse {
   };
 }
 
+interface EmployeesState {
+  // Data states
+  employees: Employee[];
+  organizations: Organization[];
+  pagination: ApiResponse['pagination'] | null;
+
+  // Loading states
+  loading: boolean;
+  initialLoading: boolean;
+  isOrganizationFilterLoading: boolean;
+
+  // UI states
+  selectedOrganization: number | null;
+  currentPage: number;
+  expandedCards: Set<number>;
+
+  // Error states
+  error: string | null;
+}
+
+type EmployeesAction =
+  // Data actions
+  | { type: 'SET_EMPLOYEES'; payload: Employee[] }
+  | { type: 'SET_ORGANIZATIONS'; payload: Organization[] }
+  | { type: 'SET_PAGINATION'; payload: ApiResponse['pagination'] | null }
+
+  // Loading actions
+  | { type: 'SET_LOADING'; payload: boolean }
+  | { type: 'SET_INITIAL_LOADING'; payload: boolean }
+  | { type: 'SET_ORGANIZATION_FILTER_LOADING'; payload: boolean }
+
+  // UI actions
+  | { type: 'SET_SELECTED_ORGANIZATION'; payload: number | null }
+  | { type: 'SET_CURRENT_PAGE'; payload: number }
+  | { type: 'TOGGLE_CARD_EXPANSION'; payload: number }
+
+  // Error actions
+  | { type: 'SET_ERROR'; payload: string | null }
+
+  // Combined actions
+  | { type: 'START_LOADING' }
+  | { type: 'FINISH_LOADING' }
+  | { type: 'START_ORGANIZATION_FILTER'; payload: number | null };
+
+function employeesReducer(state: EmployeesState, action: EmployeesAction): EmployeesState {
+  switch (action.type) {
+    // Data actions
+    case 'SET_EMPLOYEES':
+      return { ...state, employees: action.payload };
+    case 'SET_ORGANIZATIONS':
+      return { ...state, organizations: action.payload };
+    case 'SET_PAGINATION':
+      return { ...state, pagination: action.payload };
+
+    // Loading actions
+    case 'SET_LOADING':
+      return { ...state, loading: action.payload };
+    case 'SET_INITIAL_LOADING':
+      return { ...state, initialLoading: action.payload };
+    case 'SET_ORGANIZATION_FILTER_LOADING':
+      return { ...state, isOrganizationFilterLoading: action.payload };
+
+    // UI actions
+    case 'SET_SELECTED_ORGANIZATION':
+      return { ...state, selectedOrganization: action.payload };
+    case 'SET_CURRENT_PAGE':
+      return { ...state, currentPage: action.payload };
+    case 'TOGGLE_CARD_EXPANSION': {
+      const newExpanded = new Set(state.expandedCards);
+      if (newExpanded.has(action.payload)) {
+        newExpanded.delete(action.payload);
+      } else {
+        newExpanded.add(action.payload);
+      }
+      return { ...state, expandedCards: newExpanded };
+    }
+
+    // Error actions
+    case 'SET_ERROR':
+      return { ...state, error: action.payload };
+
+    // Combined actions
+    case 'START_LOADING':
+      return { ...state, loading: true, error: null };
+    case 'FINISH_LOADING':
+      return { ...state, loading: false, initialLoading: false, isOrganizationFilterLoading: false };
+    case 'START_ORGANIZATION_FILTER':
+      return { ...state, selectedOrganization: action.payload, currentPage: 1, isOrganizationFilterLoading: true };
+
+    default:
+      return state;
+  }
+}
+
+const initialEmployeesState: EmployeesState = {
+  // Data states
+  employees: [],
+  organizations: [],
+  pagination: null,
+
+  // Loading states
+  loading: true,
+  initialLoading: true,
+  isOrganizationFilterLoading: false,
+
+  // UI states
+  selectedOrganization: null,
+  currentPage: 1,
+  expandedCards: new Set(),
+
+  // Error states
+  error: null,
+};
+
 export default function EmployeesPage() {
   const { user, isLoading: authLoading } = useAuth();
-  const [employees, setEmployees] = useState<Employee[]>([]);
-  const [organizations, setOrganizations] = useState<Organization[]>([]);
-  const [selectedOrganization, setSelectedOrganization] = useState<number | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [state, dispatch] = useReducer(employeesReducer, initialEmployeesState);
+
   const isSuperAdmin = user?.roles?.includes('SUPER_ADMIN') || user?.role === 'SUPER_ADMIN';
-  const [error, setError] = useState<string | null>(null);
-  const [expandedCards, setExpandedCards] = useState<Set<number>>(new Set());
-  const [pagination, setPagination] = useState<ApiResponse['pagination'] | null>(null);
-  const [currentPage, setCurrentPage] = useState(1);
 
   const fetchEmployees = async (orgId?: number, page: number = 1) => {
     try {
-      setLoading(true);
-      setError(null);
+      dispatch({ type: 'START_LOADING' });
 
       const params = new URLSearchParams();
       if (orgId) params.set('organizationId', orgId.toString());
@@ -94,12 +202,12 @@ export default function EmployeesPage() {
       });
 
       if (response.status === 401) {
-        setError('Unauthorized access. Please log in.');
+        dispatch({ type: 'SET_ERROR', payload: 'Unauthorized access. Please log in.' });
         return;
       }
 
       if (response.status === 403) {
-        setError('Access denied. Insufficient permissions.');
+        dispatch({ type: 'SET_ERROR', payload: 'Access denied. Insufficient permissions.' });
         return;
       }
 
@@ -108,13 +216,13 @@ export default function EmployeesPage() {
       }
 
       const result: ApiResponse = await response.json();
-      setEmployees(result.data);
-      setPagination(result.pagination);
+      dispatch({ type: 'SET_EMPLOYEES', payload: result.data });
+      dispatch({ type: 'SET_PAGINATION', payload: result.pagination });
     } catch (error) {
       console.error('Error fetching employees:', error);
-      setError('Failed to load employees. Please try again.');
+      dispatch({ type: 'SET_ERROR', payload: 'Failed to load employees. Please try again.' });
     } finally {
-      setLoading(false);
+      dispatch({ type: 'FINISH_LOADING' });
     }
   };
 
@@ -126,7 +234,7 @@ export default function EmployeesPage() {
 
       if (response.ok) {
         const result = await response.json();
-        setOrganizations(result.data || []);
+        dispatch({ type: 'SET_ORGANIZATIONS', payload: result.data || [] });
       }
     } catch (error) {
       console.error('Error fetching organizations:', error);
@@ -135,24 +243,38 @@ export default function EmployeesPage() {
 
   useEffect(() => {
     if (authLoading) return;
-    
+
     // For non-super admin, always filter by their organization
     if (!isSuperAdmin && user?.organization_id) {
-      fetchEmployees(user.organization_id, currentPage);
+      fetchEmployees(user.organization_id, state.currentPage);
     } else {
-      fetchEmployees(selectedOrganization || undefined, currentPage);
+      fetchEmployees(state.selectedOrganization || undefined, state.currentPage);
     }
-    
+
     // Only fetch organizations for super admin
     if (isSuperAdmin) {
       fetchOrganizations();
     }
-  }, [selectedOrganization, currentPage, authLoading, isSuperAdmin, user?.organization_id]);
+  }, [state.selectedOrganization, state.currentPage, authLoading, isSuperAdmin, user?.organization_id]);
 
-  const handleOrganizationChange = (orgId: number | null) => {
-    setSelectedOrganization(orgId);
-    setCurrentPage(1); // Reset to first page when changing organization filter
-  };
+  // Memoize expensive calculations to prevent unnecessary re-renders
+  const isSuperAdminMemo = useMemo(() =>
+    user?.roles?.includes('SUPER_ADMIN') || user?.role === 'SUPER_ADMIN',
+    [user?.roles, user?.role]
+  );
+
+  const organizationOptions = useMemo(() =>
+    state.organizations.map((org) => ({
+      value: org.id.toString(),
+      label: org.name,
+    })),
+    [state.organizations]
+  );
+
+  // Memoize event handlers to prevent unnecessary re-renders
+  const handleOrganizationChange = useCallback((orgId: number | null) => {
+    dispatch({ type: 'START_ORGANIZATION_FILTER', payload: orgId });
+  }, []);
 
   const getStatusColor = (status: string): BadgeColor => {
     switch (status) {
@@ -170,20 +292,14 @@ export default function EmployeesPage() {
   };
 
   const toggleCardExpansion = (empId: number) => {
-    const newExpanded = new Set(expandedCards);
-    if (newExpanded.has(empId)) {
-      newExpanded.delete(empId);
-    } else {
-      newExpanded.add(empId);
-    }
-    setExpandedCards(newExpanded);
+    dispatch({ type: 'TOGGLE_CARD_EXPANSION', payload: empId });
   };
 
   // Group employees by organization for admin view
   const employeesByOrganization = useMemo(() => {
     const grouped: { [key: number]: { org: Organization; employees: Employee[] } } = {};
 
-    employees.forEach(employee => {
+    state.employees.forEach(employee => {
       const orgId = employee.organization.id;
       if (!grouped[orgId]) {
         grouped[orgId] = {
@@ -195,9 +311,9 @@ export default function EmployeesPage() {
     });
 
     return Object.values(grouped);
-  }, [employees]);
+  }, [state.employees]);
 
-  if (loading) {
+  if (state.initialLoading) { // display this only on first page load
     return (
       <div className="space-y-6">
         <div className="flex items-center justify-between">
@@ -217,7 +333,7 @@ export default function EmployeesPage() {
     );
   }
 
-  if (error) {
+  if (state.error) {
     return (
       <div className="space-y-6">
         <div className="flex items-center justify-between">
@@ -233,7 +349,7 @@ export default function EmployeesPage() {
         <div className="flex items-center justify-center h-64">
           <div className="text-center">
             <div className="text-red-600 dark:text-red-400 text-lg mb-2">Error</div>
-            <div className="text-gray-600 dark:text-gray-300">{error}</div>
+            <div className="text-gray-600 dark:text-gray-300">{state.error}</div>
           </div>
         </div>
       </div>
@@ -262,14 +378,15 @@ export default function EmployeesPage() {
               </label>
               <select
                 id="organization-select"
-                value={selectedOrganization || ''}
+                value={state.selectedOrganization || ''}
                 onChange={(e) => handleOrganizationChange(e.target.value ? Number(e.target.value) : null)}
-                className="block w-full max-w-xs px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                disabled={state.loading}
+                className="block w-full max-w-xs px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <option value="">All Organizations</option>
-                {organizations.map((org) => (
-                  <option key={org.id} value={org.id}>
-                    {org.name}
+                {organizationOptions.map((org) => (
+                  <option key={org.value} value={org.value}>
+                    {org.label}
                   </option>
                 ))}
               </select>
@@ -280,125 +397,35 @@ export default function EmployeesPage() {
           <div className="flex justify-end mb-6">
             <Link
               href="/employees/onboard"
-              className="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 transition-colors"
+              className="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <PlusIcon className="w-4 h-4 mr-2" />
               Onboard Employee
             </Link>
           </div>
 
-          {/* Desktop Table View */}
-          <div className="hidden lg:block overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03]">
-            <div className="w-full overflow-x-auto">
-              <Table>
-                {/* Table Header */}
-                <TableHeader className="border-b border-gray-100 dark:border-white/[0.05]">
-                  <TableRow>
-                    <TableCell
-                      isHeader
-                      className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
-                    >
-                      ID
-                    </TableCell>
-                    <TableCell
-                      isHeader
-                      className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
-                    >
-                      Name
-                    </TableCell>
-                    <TableCell
-                      isHeader
-                      className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
-                    >
-                      Email
-                    </TableCell>
-                    <TableCell
-                      isHeader
-                      className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
-                    >
-                      Department
-                    </TableCell>
-                    <TableCell
-                      isHeader
-                      className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
-                    >
-                      Job Title
-                    </TableCell>
-                    <TableCell
-                      isHeader
-                      className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
-                    >
-                      Organization
-                    </TableCell>
-                    <TableCell
-                      isHeader
-                      className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
-                    >
-                      Status
-                    </TableCell>
-                    <TableCell
-                      isHeader
-                      className="px-5 py-3 font-medium text-gray-500 text-center text-theme-xs dark:text-gray-400"
-                    >
-                      Actions
-                    </TableCell>
-                  </TableRow>
-                </TableHeader>
-
-                {/* Table Body */}
-                <TableBody className="divide-y divide-gray-100 dark:divide-white/[0.05]">
-                  {employees.map((employee) => (
-                    <TableRow key={employee.id}>
-                      <TableCell className="px-5 py-4 text-gray-500 text-start text-theme-sm dark:text-gray-400">
-                        {employee.id}
-                      </TableCell>
-                      <TableCell className="px-4 py-3 text-start">
-                        <span className="font-medium text-gray-800 text-theme-sm dark:text-white/90">
-                          {employee.first_name} {employee.last_name}
-                        </span>
-                      </TableCell>
-                      <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
-                        {employee.email}
-                      </TableCell>
-                      <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
-                        {employee.department.name}
-                      </TableCell>
-                      <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
-                        {employee.jobTitle.name}
-                      </TableCell>
-                      <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
-                        {employee.organization.name}
-                      </TableCell>
-                      <TableCell className="px-4 py-3 text-start">
-                        <Badge
-                          size="sm"
-                          color={getStatusColor(employee.employment_status)}
-                        >
-                          {employee.employment_status}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="px-4 py-3 text-center">
-                        <Link
-                          href={`/employees/${employee.id}/edit`}
-                          className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-800 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white transition-colors"
-                        >
-                          <PencilIcon className="w-4 h-4" />
-                        </Link>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+          {/* Loading Overlay - Only for Organization Filter Changes */}
+          {state.isOrganizationFilterLoading && (
+            <div className="relative">
+              <div className="absolute inset-0 bg-white/50 dark:bg-gray-900/50 flex items-center justify-center z-10 rounded-xl">
+                <div className="flex items-center space-x-2 text-gray-600 dark:text-gray-300">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                  <span>Loading employees...</span>
+                </div>
+              </div>
             </div>
-          </div>
+          )}
+
+          {/* Desktop Table View */}
+          <EmployeeTable employees={state.employees} getStatusColor={getStatusColor} loading={state.isOrganizationFilterLoading} />
 
           {/* Mobile Card View */}
           <div className="lg:hidden space-y-4">
-            {employees.map((employee) => (
+            {state.employees.map((employee) => (
               <EmployeeCard
                 key={employee.id}
                 employee={employee}
-                isExpanded={expandedCards.has(employee.id)}
+                isExpanded={state.expandedCards.has(employee.id)}
                 onToggle={toggleCardExpansion}
                 getStatusColor={getStatusColor}
               />
@@ -406,12 +433,12 @@ export default function EmployeesPage() {
           </div>
 
           {/* Empty State */}
-          {employees.length === 0 && (
+          {!state.isOrganizationFilterLoading && state.employees.length === 0 && (
             <div className="text-center py-12">
               <UserIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
               <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No employees found</h3>
               <p className="text-gray-600 dark:text-gray-400 mb-4">
-                {selectedOrganization
+                {state.selectedOrganization
                   ? 'No employees in the selected organization.'
                   : 'Get started by onboarding your first employee.'
                 }
@@ -429,12 +456,14 @@ export default function EmployeesPage() {
       </div>
 
       {/* Pagination */}
-      <Pagination
-        pagination={pagination}
-        currentPage={currentPage}
-        onPageChange={setCurrentPage}
-        itemName="employees"
-      />
+      <div className={state.loading ? 'opacity-50 pointer-events-none' : ''}>
+        <Pagination
+          pagination={state.pagination}
+          currentPage={state.currentPage}
+          onPageChange={(page) => dispatch({ type: 'SET_CURRENT_PAGE', payload: page })}
+          itemName="employees"
+        />
+      </div>
     </div>
   );
 }

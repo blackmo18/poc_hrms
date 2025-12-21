@@ -1,5 +1,7 @@
-import Link from 'next/link';
+'use client';
+
 import { memo } from 'react';
+import Link from 'next/link';
 import {
   Table,
   TableBody,
@@ -7,65 +9,60 @@ import {
   TableHeader,
   TableRow,
 } from '@/app/components/ui/table';
-import { PencilIcon, TrashBinIcon } from '@/app/icons';
+import Badge, { BadgeColor } from '@/app/components/ui/badge/Badge';
+import { PencilIcon } from '@/app/icons';
 
-interface JobTitle {
+interface Organization {
   id: number;
   name: string;
-  description?: string;
-  organization: {
-    id: number;
-    name: string;
-  };
-  employees: Array<{
-    id: number;
-    first_name: string;
-    last_name: string;
-  }>;
+  email?: string;
+  contact_number?: string;
+  address?: string;
+  status: 'ACTIVE' | 'INACTIVE' | 'SUSPENDED';
 }
 
-interface JobTitleTableBodyProps {
-  jobTitles: JobTitle[];
-  onDelete: (jobTitleId: number, jobTitleName: string) => void;
+interface OrganizationTableBodyProps {
+  organizations: Organization[];
+  getStatusColor: (status: string) => BadgeColor;
 }
 
-const JobTitleTableBody = memo(function JobTitleTableBody({ jobTitles, onDelete }: JobTitleTableBodyProps) {
+const OrganizationTableBody = memo(function OrganizationTableBody({ organizations, getStatusColor }: OrganizationTableBodyProps) {
   return (
     <>
-      {jobTitles.map((jobTitle) => (
-        <TableRow key={jobTitle.id}>
+      {organizations.map((org) => (
+        <TableRow key={org.id}>
           <TableCell className="px-5 py-4 text-gray-500 text-start text-theme-sm dark:text-gray-400">
-            {jobTitle.id}
+            {org.id}
           </TableCell>
           <TableCell className="px-4 py-3 text-start">
             <span className="font-medium text-gray-800 text-theme-sm dark:text-white/90">
-              {jobTitle.name}
+              {org.name}
             </span>
           </TableCell>
           <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
-            {jobTitle.description || 'No description'}
+            {org.email || 'N/A'}
           </TableCell>
           <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
-            {jobTitle.organization.name}
+            {org.contact_number || 'N/A'}
           </TableCell>
           <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
-            {jobTitle.employees.length}
+            {org.address || 'N/A'}
+          </TableCell>
+          <TableCell className="px-4 py-3 text-start">
+            <Badge
+              size="sm"
+              color={getStatusColor(org.status)}
+            >
+              {org.status}
+            </Badge>
           </TableCell>
           <TableCell className="px-4 py-3 text-center">
-            <div className="flex items-center justify-center space-x-2">
-              <Link
-                href={`/job-titles/${jobTitle.id}/edit`}
-                className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-800 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white transition-colors"
-              >
-                <PencilIcon className="w-4 h-4" />
-              </Link>
-              <button
-                onClick={() => onDelete(jobTitle.id, jobTitle.name)}
-                className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-red-100 text-red-600 hover:bg-red-200 hover:text-red-800 dark:bg-red-900 dark:text-red-400 dark:hover:bg-red-800 dark:hover:text-red-300 transition-colors"
-              >
-                <TrashBinIcon className="w-4 h-4" />
-              </button>
-            </div>
+            <Link
+              href={`/organizations/details/${org.id}`}
+              className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-800 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white transition-colors"
+            >
+              <PencilIcon className="w-4 h-4" />
+            </Link>
           </TableCell>
         </TableRow>
       ))}
@@ -73,14 +70,14 @@ const JobTitleTableBody = memo(function JobTitleTableBody({ jobTitles, onDelete 
   );
 });
 
-interface JobTitleTableProps {
-  jobTitles: JobTitle[];
-  onDelete: (jobTitleId: number, jobTitleName: string) => void;
+interface OrganizationTableProps {
+  organizations: Organization[];
+  getStatusColor: (status: string) => BadgeColor;
   loading?: boolean;
   fallback?: React.ReactNode;
 }
 
-export default function JobTitleTable({ jobTitles, onDelete, loading = false, fallback }: JobTitleTableProps) {
+export default function OrganizationTable({ organizations, getStatusColor, loading = false, fallback }: OrganizationTableProps) {
   // Loading skeleton rows
   const LoadingSkeleton = () => (
     <>
@@ -101,11 +98,11 @@ export default function JobTitleTable({ jobTitles, onDelete, loading = false, fa
           <TableCell className="px-4 py-3">
             <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
           </TableCell>
+          <TableCell className="px-4 py-3">
+            <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+          </TableCell>
           <TableCell className="px-4 py-3 text-center">
-            <div className="flex items-center justify-center space-x-2">
-              <div className="w-8 h-8 bg-gray-200 dark:bg-gray-700 rounded-lg animate-pulse"></div>
-              <div className="w-8 h-8 bg-gray-200 dark:bg-gray-700 rounded-lg animate-pulse"></div>
-            </div>
+            <div className="w-8 h-8 bg-gray-200 dark:bg-gray-700 rounded-lg animate-pulse"></div>
           </TableCell>
         </TableRow>
       ))}
@@ -129,25 +126,31 @@ export default function JobTitleTable({ jobTitles, onDelete, loading = false, fa
                 isHeader
                 className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
               >
-                Name
+                Organization Name
               </TableCell>
               <TableCell
                 isHeader
                 className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
               >
-                Description
+                Email
               </TableCell>
               <TableCell
                 isHeader
                 className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
               >
-                Organization
+                Contact Number
               </TableCell>
               <TableCell
                 isHeader
                 className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
               >
-                Employees
+                Address
+              </TableCell>
+              <TableCell
+                isHeader
+                className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
+              >
+                Status
               </TableCell>
               <TableCell
                 isHeader
@@ -163,7 +166,7 @@ export default function JobTitleTable({ jobTitles, onDelete, loading = false, fa
             {loading ? (
               fallback || <LoadingSkeleton />
             ) : (
-              <JobTitleTableBody jobTitles={jobTitles} onDelete={onDelete} />
+              <OrganizationTableBody organizations={organizations} getStatusColor={getStatusColor} />
             )}
           </TableBody>
         </Table>

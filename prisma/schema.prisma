@@ -109,7 +109,7 @@ model Employee {
   // Personal details
   personal_address        String
   personal_contact_number String
-  personal_email          String
+  personal_email          String?
   date_of_birth           DateTime
   gender                  String
   employment_status String    @default("ACTIVE")

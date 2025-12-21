@@ -14,13 +14,19 @@ interface DetailSection {
   items: DetailItem[];
 }
 
+interface GroupedItem {
+  name: string;
+  fields: DetailItem[];
+}
+
 interface DetailsConfirmationModalProps {
   isOpen: boolean;
   onClose: () => void;
   onConfirm: () => void;
   title: string;
   description?: string;
-  details: DetailItem[] | DetailSection[];
+  details?: DetailItem[];
+  groupedDetails?: GroupedItem[];
   size?: ModalSize;
   displayStyle?: DisplayStyle;
   confirmText?: string;
@@ -46,7 +52,8 @@ export default function DetailsConfirmationModal({
   onConfirm,
   title,
   description,
-  details,
+  details: defaultDetails,
+  groupedDetails: grouped,
   size = 'default',
   displayStyle = 'separated',
   confirmText = 'Confirm',
@@ -69,30 +76,28 @@ export default function DetailsConfirmationModal({
   );
 
   const renderDetails = () => {
-    if (details.length === 0) return null;
-
-    // Check if first item is a section
-    if (isDetailSection(details[0])) {
-      return (details as DetailSection[]).map((section, sectionIndex) => (
-        <div key={sectionIndex} className="mb-4 last:mb-0">
-          {section.title && (
-            <h6 className="text-sm font-semibold text-gray-800 dark:text-white/90 mb-2">
-              {section.title}
-            </h6>
-          )}
+    if (grouped && grouped.length > 0) {
+      return grouped.map((group, groupIndex) => (
+        <div key={groupIndex} className="mb-4 last:mb-0">
+          <h6 className="text-sm font-semibold text-gray-800 dark:text-white/90 mb-2">
+            {group.name}
+          </h6>
           <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4">
-            {section.items.map((item, itemIndex) => renderDetailItem(item, itemIndex))}
+            {group.fields.map((item, itemIndex) => renderDetailItem(item, itemIndex))}
           </div>
         </div>
       ));
     }
 
-    // Simple list of items
-    return (
-      <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4">
-        {(details as DetailItem[]).map((item, index) => renderDetailItem(item, index))}
-      </div>
-    );
+    if (defaultDetails && defaultDetails.length > 0) {
+      return (
+        <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4">
+          {defaultDetails.map((item, index) => renderDetailItem(item, index))}
+        </div>
+      );
+    }
+
+    return null;
   };
 
   return (

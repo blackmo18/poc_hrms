@@ -8,8 +8,12 @@ import PageMeta from '@/app/components/common/PageMeta';
 import Button from '@/app/components/ui/button/Button';
 import Input from '@/app/components/form/input/InputField';
 import Label from '@/app/components/form/Label';
+import DatePicker from '@/app/components/form/DatePicker';
 import Select from '@/app/components/form/Select';
-import EmployeeConfirmModal from '@/app/components/employees/EmployeeConfirmModal';
+import { getEmployeeGroupedDetails } from '@/lib/utils/employeeDetails';
+import DetailsConfirmationModal from '@/app/components/ui/modal/DetailsConfirmationModal';
+import ConfirmationModal from '@/app/components/ui/modal/ConfirmationModal';
+import EmployeeForm from '@/app/components/employees/EmployeeForm';
 import { useAuth } from '@/app/components/providers/auth-provider';
 
 interface Organization {
@@ -42,6 +46,30 @@ export default function EmployeeOnboardingPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+
+  // Form state
+  const initialFormData = {
+    organization_id: '',
+    department_id: '',
+    job_title_id: '',
+    manager_id: '',
+    first_name: '',
+    last_name: '',
+    // Work details (required work email)
+    work_email: '',
+    work_contact: '',
+    // Personal details (required except personal_email)
+    personal_address: '',
+    personal_contact_number: '',
+    personal_email: '',
+    date_of_birth: new Date(new Date().setFullYear(new Date().getFullYear() - 18)).toISOString().split('T')[0],
+    gender: '',
+    employment_status: 'ACTIVE' as 'ACTIVE' | 'INACTIVE' | 'TERMINATED' | 'ON_LEAVE',
+    hire_date: new Date().toISOString().split('T')[0], // Today's date
+  };
+
+  const [formData, setFormData] = useState(initialFormData);
 
   // Data for dropdowns
   const [organizations, setOrganizations] = useState<Organization[]>([]);
@@ -50,27 +78,8 @@ export default function EmployeeOnboardingPage() {
   const [jobTitles, setJobTitles] = useState<JobTitle[]>([]);
   const [managers, setManagers] = useState<Employee[]>([]);
 
-  // Form state
-  const [formData, setFormData] = useState({
-    organization_id: '',
-    department_id: '',
-    job_title_id: '',
-    manager_id: '',
-    first_name: '',
-    last_name: '',
-    email: '',
-    // Work details (optional)
-    work_email: '',
-    work_contact: '',
-    // Personal details (required)
-    personal_address: '',
-    personal_contact_number: '',
-    personal_email: '',
-    date_of_birth: '',
-    gender: '',
-    employment_status: 'ACTIVE' as 'ACTIVE' | 'INACTIVE' | 'TERMINATED' | 'ON_LEAVE',
-    hire_date: new Date().toISOString().split('T')[0], // Today's date
-  });
+  // Grouped details for confirmation
+  const grouped = getEmployeeGroupedDetails(formData, organizations, departments, jobTitles, managers);
 
   useEffect(() => {
     if (!isLoading && !user) {
@@ -142,7 +151,7 @@ export default function EmployeeOnboardingPage() {
       });
       if (response.ok) {
         const data = await response.json();
-        setJobTitles(data);
+        setJobTitles(data.data || data || []);
       }
     } catch (error) {
       console.error('Failed to fetch job titles:', error);
@@ -192,8 +201,8 @@ export default function EmployeeOnboardingPage() {
       setError('Last name is required');
       return;
     }
-    if (!formData.email.trim()) {
-      setError('Email address is required');
+    if (!formData.work_email.trim()) {
+      setError('Work email is required');
       return;
     }
     if (!formData.personal_address.trim()) {
@@ -204,10 +213,7 @@ export default function EmployeeOnboardingPage() {
       setError('Personal contact number is required');
       return;
     }
-    if (!formData.personal_email.trim()) {
-      setError('Personal email is required');
-      return;
-    }
+    // Personal email is now optional
     if (!formData.date_of_birth) {
       setError('Date of birth is required');
       return;
@@ -241,6 +247,8 @@ export default function EmployeeOnboardingPage() {
         department_id: Number(formData.department_id),
         job_title_id: Number(formData.job_title_id),
         manager_id: formData.manager_id ? Number(formData.manager_id) : undefined,
+        email: formData.work_email, // Map work_email to required email field
+        personal_email: formData.personal_email.trim() === '' ? null : formData.personal_email.trim(),
         date_of_birth: new Date(formData.date_of_birth),
         hire_date: new Date(formData.hire_date),
       };
@@ -260,8 +268,8 @@ export default function EmployeeOnboardingPage() {
       }
 
       const data = await response.json();
-      // Redirect to employees page
-      router.push('/employees');
+      // Show success modal instead of redirecting
+      setShowSuccessModal(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create employee');
     } finally {
@@ -326,208 +334,17 @@ export default function EmployeeOnboardingPage() {
           </div>
         )}
 
-        <form className='space-y-6'>
-          <div className='grid grid-cols-1 gap-6 lg:grid-cols-2'>
-            <div>
-              <Label>Organization *</Label>
-              {(user?.roles?.includes('SUPER_ADMIN') || user?.role === 'SUPER_ADMIN') ? (
-                <Select
-                  options={organizationOptions}
-                  value={formData.organization_id}
-                  onChange={(value) => handleInputChange('organization_id', value)}
-                  placeholder='Select organization'
-                  required
-                />
-              ) : (
-                <Input
-                  type='text'
-                  value={availableOrganizations.find(org => org.id.toString() === formData.organization_id)?.name || ''}
-                  disabled
-                  className='bg-gray-100 dark:bg-gray-800'
-                />
-              )}
-            </div>
-
-            <div>
-              <Label>Department *</Label>
-              <Select
-                options={departmentOptions}
-                value={formData.department_id}
-                onChange={(value) => handleInputChange('department_id', value)}
-                placeholder='Select department'
-                required
-                disabled={!formData.organization_id}
-              />
-            </div>
-
-            <div>
-              <Label>Job Title *</Label>
-              <Select
-                options={jobTitleOptions}
-                value={formData.job_title_id}
-                onChange={(value) => handleInputChange('job_title_id', value)}
-                placeholder='Select job title'
-                required
-                disabled={!formData.organization_id}
-              />
-            </div>
-
-            <div>
-              <Label>Manager</Label>
-              <Select
-                options={managerOptions}
-                value={formData.manager_id}
-                onChange={(value) => handleInputChange('manager_id', value)}
-                placeholder='Select manager (optional)'
-                disabled={!formData.organization_id}
-              />
-            </div>
-
-            <div>
-              <Label>First Name *</Label>
-              <Input
-                type='text'
-                value={formData.first_name}
-                onChange={(e) => handleInputChange('first_name', e.target.value)}
-                placeholder='Enter first name'
-                required
-              />
-            </div>
-
-            <div>
-              <Label>Last Name *</Label>
-              <Input
-                type='text'
-                value={formData.last_name}
-                onChange={(e) => handleInputChange('last_name', e.target.value)}
-                placeholder='Enter last name'
-                required
-              />
-            </div>
-
-            <div>
-              <Label>Email Address *</Label>
-              <Input
-                type='email'
-                value={formData.email}
-                onChange={(e) => handleInputChange('email', e.target.value)}
-                placeholder='Enter email address'
-                required
-              />
-            </div>
-
-            <div>
-              <Label>Hire Date *</Label>
-              <Input
-                type='date'
-                value={formData.hire_date}
-                onChange={(e) => handleInputChange('hire_date', e.target.value)}
-                required
-              />
-            </div>
-
-            <div>
-              <Label>Employment Status</Label>
-              <Select
-                options={statusOptions}
-                value={formData.employment_status}
-                onChange={(value) => handleInputChange('employment_status', value)}
-                placeholder='Select status'
-              />
-            </div>
-          </div>
-
-          {/* Work Details Section */}
-          <div className='border-t border-gray-200 dark:border-gray-700 pt-6'>
-            <h4 className='text-lg font-medium text-gray-900 dark:text-white mb-4'>Work Details</h4>
-            <div className='grid grid-cols-1 gap-6 lg:grid-cols-2'>
-              <div>
-                <Label>Work Email</Label>
-                <Input
-                  type='email'
-                  value={formData.work_email}
-                  onChange={(e) => handleInputChange('work_email', e.target.value)}
-                  placeholder='Enter work email (optional)'
-                />
-              </div>
-
-              <div>
-                <Label>Work Contact</Label>
-                <Input
-                  type='text'
-                  value={formData.work_contact}
-                  onChange={(e) => handleInputChange('work_contact', e.target.value)}
-                  placeholder='Enter work contact number (optional)'
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Personal Details Section */}
-          <div className='border-t border-gray-200 dark:border-gray-700 pt-6'>
-            <h4 className='text-lg font-medium text-gray-900 dark:text-white mb-4'>Personal Details</h4>
-            <div className='grid grid-cols-1 gap-6 lg:grid-cols-2'>
-              <div>
-                <Label>Personal Address *</Label>
-                <Input
-                  type='text'
-                  value={formData.personal_address}
-                  onChange={(e) => handleInputChange('personal_address', e.target.value)}
-                  placeholder='Enter personal address'
-                  required
-                />
-              </div>
-
-              <div>
-                <Label>Personal Contact Number *</Label>
-                <Input
-                  type='text'
-                  value={formData.personal_contact_number}
-                  onChange={(e) => handleInputChange('personal_contact_number', e.target.value)}
-                  placeholder='Enter personal contact number'
-                  required
-                />
-              </div>
-
-              <div>
-                <Label>Personal Email *</Label>
-                <Input
-                  type='email'
-                  value={formData.personal_email}
-                  onChange={(e) => handleInputChange('personal_email', e.target.value)}
-                  placeholder='Enter personal email'
-                  required
-                />
-              </div>
-
-              <div>
-                <Label>Date of Birth *</Label>
-                <Input
-                  type='date'
-                  value={formData.date_of_birth}
-                  onChange={(e) => handleInputChange('date_of_birth', e.target.value)}
-                  required
-                />
-              </div>
-
-              <div>
-                <Label>Gender *</Label>
-                <Select
-                  options={[
-                    { value: 'Male', label: 'Male' },
-                    { value: 'Female', label: 'Female' },
-                    { value: 'Other', label: 'Other' },
-                    { value: 'Prefer not to say', label: 'Prefer not to say' },
-                  ]}
-                  value={formData.gender}
-                  onChange={(value) => handleInputChange('gender', value)}
-                  placeholder='Select gender'
-                  required
-                />
-              </div>
-            </div>
-          </div>
-        </form>
+        <EmployeeForm
+          formData={formData}
+          handleInputChange={handleInputChange}
+          organizations={organizations}
+          availableOrganizations={availableOrganizations}
+          departments={departments}
+          jobTitles={jobTitles}
+          managers={managers}
+          user={user}
+          isEdit={false}
+        />
 
         <div className='flex items-center gap-3 pt-6 border-t border-gray-200 dark:border-gray-700'>
           <Link href='/employees'>
@@ -552,16 +369,29 @@ export default function EmployeeOnboardingPage() {
       </div>
 
       {/* Confirmation Modal */}
-      <EmployeeConfirmModal
+      <DetailsConfirmationModal
         isOpen={showConfirmModal}
         onClose={() => setShowConfirmModal(false)}
         onConfirm={handleConfirmSave}
-        employeeData={formData}
-        organizations={organizations}
-        departments={departments}
-        jobTitles={jobTitles}
-        managers={managers}
-        isSaving={saving}
+        title="Confirm Employee Onboarding"
+        description="Please review the employee details before onboarding. Are you sure you want to proceed?"
+        groupedDetails={grouped}
+        confirmText="Confirm Onboard"
+        cancelText="Cancel"
+        isLoading={saving}
+        size="wide"
+      />
+
+      {/* Success Modal */}
+      <ConfirmationModal
+        isOpen={showSuccessModal}
+        onClose={() => { setShowSuccessModal(false); setFormData(initialFormData); }}
+        onConfirm={() => { setShowSuccessModal(false); router.push('/employees'); }}
+        title="Employee Onboarded Successfully!"
+        message="The employee has been added to the system."
+        variant="success"
+        confirmText="Go to Employee List"
+        cancelText="Add Another Employee"
       />
     </>
   );

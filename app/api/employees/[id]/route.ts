@@ -19,7 +19,7 @@ export async function GET(
       }
 
       const user = authRequest.user!;
-      const isAdmin = user.roles.includes('ADMIN');
+      const isAdmin = user.roles.includes('ADMIN') || user.roles.includes('SUPER_ADMIN');
       const isHRManager = user.roles.includes('HR_MANAGER');
 
       const employee = await employeeController.getById(employeeId);
@@ -69,7 +69,7 @@ export async function PUT(
       const validatedData = UpdateEmployeeSchema.parse(body);
 
       const user = authRequest.user!;
-      const isAdmin = user.roles.includes('ADMIN');
+      const isAdmin = user.roles.includes('ADMIN') || user.roles.includes('SUPER_ADMIN');
       const isHRManager = user.roles.includes('HR_MANAGER');
 
       // Check if employee exists and user has access
@@ -117,7 +117,7 @@ export async function DELETE(
       }
 
       const user = authRequest.user!;
-      const isAdmin = user.roles.includes('ADMIN');
+      const isAdmin = user.roles.includes('ADMIN') || user.roles.includes('SUPER_ADMIN');
       const isHRManager = user.roles.includes('HR_MANAGER');
 
       // Check if employee exists and user has access
