@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { organizationController } from '@/lib/controllers/organization.controller';
 import { CreateOrganizationSchema } from '@/lib/models/organization';
 import { requireAdmin } from '@/lib/auth/middleware';
+import { ulid } from 'ulid';
 
 export async function GET(request: NextRequest) {
   return requireAdmin(request, async (authRequest) => {
@@ -28,7 +29,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const validatedData = CreateOrganizationSchema.parse(body);
     
-    const organization = await organizationController.create(validatedData);
+    const organization = await organizationController.create({ ...validatedData, public_id: ulid() });
     return NextResponse.json(organization, { status: 201 });
   } catch (error) {
     console.error('Error creating organization:', error);

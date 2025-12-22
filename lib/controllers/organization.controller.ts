@@ -24,7 +24,19 @@ export class OrganizationController {
     });
 
     return {
-      data: organizations,
+      data: organizations.map(org => ({
+        id: org.public_id,
+        name: org.name,
+        email: org.email,
+        contact_number: org.contact_number,
+        address: org.address,
+        logo: org.logo,
+        website: org.website,
+        description: org.description,
+        status: org.status,
+        created_at: org.created_at,
+        updated_at: org.updated_at,
+      })),
       pagination: {
         page,
         limit,
@@ -53,6 +65,54 @@ export class OrganizationController {
     });
   }
 
+  async getByPublicId(public_id: string) {
+    const org = await prisma.organization.findUnique({
+      where: { public_id },
+      include: {
+        departments: true,
+        employees: {
+          include: {
+            department: true,
+            jobTitle: true,
+            manager: true,
+          },
+        },
+        admins: true,
+      },
+    });
+
+    if (!org) return null;
+
+    return {
+      id: org.public_id,
+      name: org.name,
+      email: org.email,
+      contact_number: org.contact_number,
+      address: org.address,
+      logo: org.logo,
+      website: org.website,
+      description: org.description,
+      status: org.status,
+      created_at: org.created_at,
+      updated_at: org.updated_at,
+      departments: org.departments.map(d => ({
+        id: d.public_id,
+        name: d.name,
+        description: d.description,
+      })),
+      employees: org.employees.map(e => ({
+        id: e.public_id,
+        first_name: e.first_name,
+        last_name: e.last_name,
+        email: e.email,
+        employment_status: e.employment_status,
+      })),
+      admins: org.admins.map(a => ({
+        id: a.public_id,
+      })),
+    };
+  }
+
   async create(data: CreateOrganization) {
     return await prisma.organization.create({
       data,
@@ -76,9 +136,27 @@ export class OrganizationController {
     });
   }
 
+  async updateByPublicId(public_id: string, data: UpdateOrganization) {
+    return await prisma.organization.update({
+      where: { public_id },
+      data,
+      include: {
+        departments: true,
+        employees: true,
+        admins: true,
+      },
+    });
+  }
+
   async delete(id: number) {
     return await prisma.organization.delete({
       where: { id },
+    });
+  }
+
+  async deleteByPublicId(public_id: string) {
+    return await prisma.organization.delete({
+      where: { public_id },
     });
   }
 }

@@ -10,15 +10,15 @@ import {
 import { PencilIcon, TrashBinIcon } from '@/app/icons';
 
 interface JobTitle {
-  id: number;
+  id: string;
   name: string;
   description?: string;
   organization: {
-    id: number;
+    id: string;
     name: string;
   };
   employees: Array<{
-    id: number;
+    id: string;
     first_name: string;
     last_name: string;
   }>;
@@ -26,16 +26,18 @@ interface JobTitle {
 
 interface JobTitleTableBodyProps {
   jobTitles: JobTitle[];
-  onDelete: (jobTitleId: number, jobTitleName: string) => void;
+  onDelete: (jobTitleId: string, jobTitleName: string) => void;
+  page?: number;
+  limit?: number;
 }
 
-const JobTitleTableBody = memo(function JobTitleTableBody({ jobTitles, onDelete }: JobTitleTableBodyProps) {
+const JobTitleTableBody = memo(function JobTitleTableBody({ jobTitles, onDelete, page = 1, limit = 10 }: JobTitleTableBodyProps) {
   return (
     <>
-      {jobTitles.map((jobTitle) => (
+      {jobTitles.map((jobTitle, index) => (
         <TableRow key={jobTitle.id}>
           <TableCell className="px-5 py-4 text-gray-500 text-start text-theme-sm dark:text-gray-400">
-            {jobTitle.id}
+            {(page - 1) * limit + index + 1}
           </TableCell>
           <TableCell className="px-4 py-3 text-start">
             <span className="font-medium text-gray-800 text-theme-sm dark:text-white/90">
@@ -75,12 +77,14 @@ const JobTitleTableBody = memo(function JobTitleTableBody({ jobTitles, onDelete 
 
 interface JobTitleTableProps {
   jobTitles: JobTitle[];
-  onDelete: (jobTitleId: number, jobTitleName: string) => void;
+  onDelete: (jobTitleId: string, jobTitleName: string) => void;
   loading?: boolean;
   fallback?: React.ReactNode;
+  page?: number;
+  limit?: number;
 }
 
-export default function JobTitleTable({ jobTitles, onDelete, loading = false, fallback }: JobTitleTableProps) {
+export default function JobTitleTable({ jobTitles, onDelete, loading = false, fallback, page = 1, limit = 10 }: JobTitleTableProps) {
   // Loading skeleton rows
   const LoadingSkeleton = () => (
     <>
@@ -123,7 +127,7 @@ export default function JobTitleTable({ jobTitles, onDelete, loading = false, fa
                 isHeader
                 className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
               >
-                ID
+                #
               </TableCell>
               <TableCell
                 isHeader
@@ -163,7 +167,7 @@ export default function JobTitleTable({ jobTitles, onDelete, loading = false, fa
             {loading ? (
               fallback || <LoadingSkeleton />
             ) : (
-              <JobTitleTableBody jobTitles={jobTitles} onDelete={onDelete} />
+              <JobTitleTableBody jobTitles={jobTitles} onDelete={onDelete} page={page} limit={limit} />
             )}
           </TableBody>
         </Table>

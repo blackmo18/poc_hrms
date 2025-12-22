@@ -10,11 +10,11 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
 model Organization {
   id              Int   @id @default(autoincrement())
+  public_id       String @unique
   name            String
   email           String?
   contact_number  String?
@@ -46,6 +46,7 @@ model Organization {
 
 model Department {
   id              Int   @id @default(autoincrement())
+  public_id       String @unique
   organization_id Int
   name            String
   description     String?
@@ -58,6 +59,7 @@ model Department {
 
 model JobTitle {
   id              Int   @id @default(autoincrement())
+  public_id       String @unique
   organization_id Int
   name            String
   description     String?
@@ -70,6 +72,7 @@ model JobTitle {
 
 model User {
   id              Int   @id @default(autoincrement())
+  public_id       String @unique
   name            String?
   email           String    @unique
   emailVerified   DateTime?
@@ -95,6 +98,7 @@ model User {
 
 model Employee {
   id                Int   @id @default(autoincrement())
+  public_id         String @unique
   organization_id   Int
   user_id           Int?  @unique
   department_id     Int
@@ -140,6 +144,7 @@ model Employee {
 
 model Compensation {
   id             Int   @id @default(autoincrement())
+  public_id      String @unique
   employee_id    Int
   base_salary    Float
   pay_frequency  String
@@ -153,6 +158,7 @@ model Compensation {
 
 model Benefit {
   id              Int   @id @default(autoincrement())
+  public_id       String @unique
   organization_id Int
   name            String
   description     String?
@@ -179,6 +185,7 @@ model EmployeeBenefit {
 
 model Document {
   id                 Int   @id @default(autoincrement())
+  public_id          String @unique
   organization_id    Int
   name               String
   file_type          String
@@ -207,6 +214,7 @@ model EmployeeDocument {
 
 model AuditLog {
   id              Int   @id @default(autoincrement())
+  public_id       String @unique
   organization_id Int
   user_id         Int
   action_type     String
@@ -225,6 +233,7 @@ model AuditLog {
 
 model Role {
   id              Int   @id @default(autoincrement())
+  public_id       String @unique
   organization_id Int
   name            String   @unique
   description     String?
@@ -240,6 +249,7 @@ model Role {
 
 model Permission {
   id              Int   @id @default(autoincrement())
+  public_id       String @unique
   name            String   @unique
   description     String?
   created_at      DateTime @default(now())
@@ -280,6 +290,7 @@ model RolePermission {
 
 model Admin {
   id              Int   @id @default(autoincrement())
+  public_id       String @unique
   organization_id Int
   name            String
   email           String
@@ -294,6 +305,7 @@ model Admin {
 
 model EmployeeOnboarding {
   id             Int   @id @default(autoincrement())
+  public_id      String @unique
   employee_id    Int   @unique
   date_started   DateTime  @default(now())
   date_completed DateTime?
@@ -308,6 +320,7 @@ model EmployeeOnboarding {
 
 model EmployeeOffboarding {
   id             Int   @id @default(autoincrement())
+  public_id      String @unique
   employee_id    Int   @unique
   date_started   DateTime  @default(now())
   date_completed DateTime?
@@ -352,6 +365,7 @@ model OrganizationOffboarding {
 
 model Timesheet {
   id          Int   @id @default(autoincrement())
+  public_id   String @unique
   employee_id Int
   work_date   DateTime
   time_in     DateTime
@@ -368,6 +382,7 @@ model Timesheet {
 
 model LeaveRequest {
   id          Int   @id @default(autoincrement())
+  public_id   String @unique
   employee_id Int
   leave_type  String
   start_date  DateTime
@@ -384,6 +399,7 @@ model LeaveRequest {
 
 model Payroll {
   id           Int   @id @default(autoincrement())
+  public_id    String @unique
   employee_id  Int
   period_start DateTime
   period_end   DateTime
@@ -401,6 +417,7 @@ model Payroll {
 
 model Deduction {
   id         Int   @id @default(autoincrement())
+  public_id  String @unique
   payroll_id Int
   type       String
   amount     Float
@@ -414,6 +431,7 @@ model Deduction {
 
 model HolidayTemplate {
   id              Int   @id @default(autoincrement())
+  public_id       String @unique
   organization_id Int
   name            String
   description     String?
@@ -428,6 +446,7 @@ model HolidayTemplate {
 
 model Holiday {
   id                  Int   @id @default(autoincrement())
+  public_id           String @unique
   organization_id     Int
   holiday_template_id Int
   date                DateTime
@@ -459,6 +478,7 @@ model EmployeeHolidayAssignment {
 
 model Calendar {
   id              Int   @id @default(autoincrement())
+  public_id       String @unique
   organization_id Int
   name            String
   description     String?

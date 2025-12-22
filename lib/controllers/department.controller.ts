@@ -135,6 +135,63 @@ export class DepartmentController {
     return department;
   }
 
+  async getByPublicId(session: any, public_id: string) {
+    // Get authenticated user
+    if (!session?.user?.id) {
+      throw new Error('Unauthorized');
+    }
+
+    // Get user with roles
+    const userWithRoles = await prisma.user.findUnique({
+      where: { id: parseInt(session.user.id) },
+      include: {
+        userRoles: {
+          include: {
+            role: true,
+          },
+        },
+        organization: true,
+      },
+    });
+
+    if (!userWithRoles) {
+      throw new Error('User not found');
+    }
+
+    // Check permissions
+    const isSuperAdmin = userWithRoles.userRoles.some(ur => ur.role.name === 'SUPER_ADMIN');
+    const isAdmin = userWithRoles.userRoles.some(ur => ur.role.name === 'ADMIN');
+    const isHR = userWithRoles.userRoles.some(ur => ur.role.name === 'HR_MANAGER');
+
+    if (!isSuperAdmin && !isAdmin && !isHR) {
+      throw new Error('Access denied');
+    }
+
+    const department = await prisma.department.findUnique({
+      where: { public_id },
+      include: {
+        organization: true,
+        employees: {
+          include: {
+            jobTitle: true,
+            manager: true,
+          },
+        },
+      },
+    });
+
+    if (!department) {
+      throw new Error('Department not found');
+    }
+
+    // Check if user can access this department's organization
+    if (!isSuperAdmin && department.organization_id !== userWithRoles.organization_id) {
+      throw new Error('Access denied');
+    }
+
+    return department;
+  }
+
   async create(session: any, data: CreateDepartment) {
     // Get authenticated user
     if (!session?.user?.id) {
@@ -237,6 +294,61 @@ export class DepartmentController {
     });
   }
 
+  async updateByPublicId(session: any, public_id: string, data: UpdateDepartment) {
+    // Get authenticated user
+    if (!session?.user?.id) {
+      throw new Error('Unauthorized');
+    }
+
+    // Get user with roles
+    const userWithRoles = await prisma.user.findUnique({
+      where: { id: parseInt(session.user.id) },
+      include: {
+        userRoles: {
+          include: {
+            role: true,
+          },
+        },
+        organization: true,
+      },
+    });
+
+    if (!userWithRoles) {
+      throw new Error('User not found');
+    }
+
+    // Check permissions
+    const isSuperAdmin = userWithRoles.userRoles.some(ur => ur.role.name === 'SUPER_ADMIN');
+    const isAdmin = userWithRoles.userRoles.some(ur => ur.role.name === 'ADMIN');
+    const isHR = userWithRoles.userRoles.some(ur => ur.role.name === 'HR_MANAGER');
+
+    if (!isSuperAdmin && !isAdmin && !isHR) {
+      throw new Error('Access denied');
+    }
+
+    // Check if department exists and user can access it
+    const existingDepartment = await prisma.department.findUnique({
+      where: { public_id },
+    });
+
+    if (!existingDepartment) {
+      throw new Error('Department not found');
+    }
+
+    if (!isSuperAdmin && existingDepartment.organization_id !== userWithRoles.organization_id) {
+      throw new Error('Access denied');
+    }
+
+    return await prisma.department.update({
+      where: { public_id },
+      data,
+      include: {
+        organization: true,
+        employees: true,
+      },
+    });
+  }
+
   async delete(session: any, id: number) {
     // Get authenticated user
     if (!session?.user?.id) {
@@ -284,6 +396,56 @@ export class DepartmentController {
 
     return await prisma.department.delete({
       where: { id },
+    });
+  }
+
+  async deleteByPublicId(session: any, public_id: string) {
+    // Get authenticated user
+    if (!session?.user?.id) {
+      throw new Error('Unauthorized');
+    }
+
+    // Get user with roles
+    const userWithRoles = await prisma.user.findUnique({
+      where: { id: parseInt(session.user.id) },
+      include: {
+        userRoles: {
+          include: {
+            role: true,
+          },
+        },
+        organization: true,
+      },
+    });
+
+    if (!userWithRoles) {
+      throw new Error('User not found');
+    }
+
+    // Check permissions - only admin and HR can delete
+    const isSuperAdmin = userWithRoles.userRoles.some(ur => ur.role.name === 'SUPER_ADMIN');
+    const isAdmin = userWithRoles.userRoles.some(ur => ur.role.name === 'ADMIN');
+    const isHR = userWithRoles.userRoles.some(ur => ur.role.name === 'HR_MANAGER');
+
+    if (!isSuperAdmin && !isAdmin && !isHR) {
+      throw new Error('Access denied');
+    }
+
+    // Check if department exists and user can access it
+    const existingDepartment = await prisma.department.findUnique({
+      where: { public_id },
+    });
+
+    if (!existingDepartment) {
+      throw new Error('Department not found');
+    }
+
+    if (!isSuperAdmin && existingDepartment.organization_id !== userWithRoles.organization_id) {
+      throw new Error('Access denied');
+    }
+
+    return await prisma.department.delete({
+      where: { public_id },
     });
   }
 }

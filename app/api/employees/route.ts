@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { employeeController } from '@/lib/controllers/employee.controller';
 import { CreateEmployeeSchema } from '@/lib/models/employee';
 import { requiresPermissions } from '@/lib/auth/middleware';
+import { ulid } from 'ulid';
 
 export async function GET(request: NextRequest) {
   return requiresPermissions(request, ['employees.read'], async (authRequest) => {
@@ -98,7 +99,7 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      const employee = await employeeController.create(validatedData);
+      const employee = await employeeController.create({ ...validatedData, public_id: ulid() });
       return NextResponse.json(employee, { status: 201 });
     } catch (error) {
       console.error('Error creating employee:', error);

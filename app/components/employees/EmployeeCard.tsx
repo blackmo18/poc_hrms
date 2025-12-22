@@ -5,26 +5,26 @@ import Badge, { BadgeColor } from '../../components/ui/badge/Badge';
 import { Card, CardContent, CardHeader } from '../../components/ui/card';
 
 interface Employee {
-  id: number;
+  id: string;
   first_name: string;
   last_name: string;
   email: string;
   employment_status: string;
   hire_date: string;
   organization: {
-    id: number;
+    id: string;
     name: string;
   };
   department: {
-    id: number;
+    id: string;
     name: string;
   };
   jobTitle: {
-    id: number;
+    id: string;
     name: string;
   };
   manager?: {
-    id: number;
+    id: string;
     first_name: string;
     last_name: string;
   };
@@ -37,7 +37,7 @@ interface Employee {
 interface EmployeeCardProps {
   employee: Employee;
   isExpanded: boolean;
-  onToggle: (empId: number) => void;
+  onToggle: (empId: string) => void;
   getStatusColor: (status: string) => BadgeColor;
 }
 

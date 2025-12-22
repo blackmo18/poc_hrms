@@ -10,15 +10,15 @@ import {
 import { PencilIcon, TrashBinIcon } from '@/app/icons';
 
 interface Department {
-  id: number;
+  id: string;
   name: string;
   description?: string;
   organization: {
-    id: number;
+    id: string;
     name: string;
   };
   employees: Array<{
-    id: number;
+    id: string;
     first_name: string;
     last_name: string;
   }>;
@@ -26,16 +26,18 @@ interface Department {
 
 interface DepartmentTableBodyProps {
   departments: Department[];
-  onDelete: (departmentId: number, departmentName: string) => void;
+  onDelete: (departmentId: string, departmentName: string) => void;
+  page?: number;
+  limit?: number;
 }
 
-const DepartmentTableBody = memo(function DepartmentTableBody({ departments, onDelete }: DepartmentTableBodyProps) {
+const DepartmentTableBody = memo(function DepartmentTableBody({ departments, onDelete, page = 1, limit = 10 }: DepartmentTableBodyProps) {
   return (
     <TableBody className="divide-y divide-gray-100 dark:divide-white/[0.05]">
-      {departments.map((department) => (
+      {departments.map((department, index) => (
         <TableRow key={department.id}>
           <TableCell className="px-5 py-4 text-gray-500 text-start text-theme-sm dark:text-gray-400">
-            {department.id}
+            {(page - 1) * limit + index + 1}
           </TableCell>
           <TableCell className="px-4 py-3 text-start">
             <span className="font-medium text-gray-800 text-theme-sm dark:text-white/90">
@@ -75,10 +77,14 @@ const DepartmentTableBody = memo(function DepartmentTableBody({ departments, onD
 
 interface DepartmentTableProps {
   departments: Department[];
-  onDelete: (departmentId: number, departmentName: string) => void;
+  onDelete: (departmentId: string, departmentName: string) => void;
+  loading?: boolean;
+  fallback?: React.ReactNode;
+  page?: number;
+  limit?: number;
 }
 
-export default function DepartmentTable({ departments, onDelete }: DepartmentTableProps) {
+export default function DepartmentTable({ departments, onDelete, loading = false, fallback, page = 1, limit = 10 }: DepartmentTableProps) {
   return (
     <div className="hidden lg:block overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03]">
       <div className="w-full overflow-x-auto">
@@ -90,7 +96,7 @@ export default function DepartmentTable({ departments, onDelete }: DepartmentTab
                 isHeader
                 className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
               >
-                ID
+                #
               </TableCell>
               <TableCell
                 isHeader
@@ -126,7 +132,7 @@ export default function DepartmentTable({ departments, onDelete }: DepartmentTab
           </TableHeader>
 
           {/* Table Body - Only re-renders when data changes */}
-          <DepartmentTableBody departments={departments} onDelete={onDelete} />
+          <DepartmentTableBody departments={departments} onDelete={onDelete} page={page} limit={limit} />
         </Table>
       </div>
     </div>

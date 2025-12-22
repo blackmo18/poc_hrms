@@ -5,7 +5,7 @@ import Badge, { BadgeColor } from '../../components/ui/badge/Badge';
 import { Card, CardContent, CardHeader } from '../../components/ui/card';
 
 interface Organization {
-  id: number;
+  id: string;
   name: string;
   email?: string;
   contact_number?: string;
@@ -20,7 +20,7 @@ interface Organization {
 interface OrganizationCardProps {
   org: Organization;
   isExpanded: boolean;
-  onToggle: (orgId: number) => void;
+  onToggle: (orgId: string) => void;
   getStatusColor: (status: string) => BadgeColor;
 }
 

@@ -13,7 +13,7 @@ import Badge, { BadgeColor } from '@/app/components/ui/badge/Badge';
 import { PencilIcon } from '@/app/icons';
 
 interface Organization {
-  id: number;
+  id: string;
   name: string;
   email?: string;
   contact_number?: string;
@@ -24,15 +24,17 @@ interface Organization {
 interface OrganizationTableBodyProps {
   organizations: Organization[];
   getStatusColor: (status: string) => BadgeColor;
+  page?: number;
+  limit?: number;
 }
 
-const OrganizationTableBody = memo(function OrganizationTableBody({ organizations, getStatusColor }: OrganizationTableBodyProps) {
+const OrganizationTableBody = memo(function OrganizationTableBody({ organizations, getStatusColor, page = 1, limit = 15 }: OrganizationTableBodyProps) {
   return (
     <>
-      {organizations.map((org) => (
+      {organizations.map((org, index) => (
         <TableRow key={org.id}>
           <TableCell className="px-5 py-4 text-gray-500 text-start text-theme-sm dark:text-gray-400">
-            {org.id}
+            {(page - 1) * limit + index + 1}
           </TableCell>
           <TableCell className="px-4 py-3 text-start">
             <span className="font-medium text-gray-800 text-theme-sm dark:text-white/90">
@@ -75,9 +77,11 @@ interface OrganizationTableProps {
   getStatusColor: (status: string) => BadgeColor;
   loading?: boolean;
   fallback?: React.ReactNode;
+  page?: number;
+  limit?: number;
 }
 
-export default function OrganizationTable({ organizations, getStatusColor, loading = false, fallback }: OrganizationTableProps) {
+export default function OrganizationTable({ organizations, getStatusColor, loading = false, fallback, page = 1, limit = 15 }: OrganizationTableProps) {
   // Loading skeleton rows
   const LoadingSkeleton = () => (
     <>
@@ -120,7 +124,7 @@ export default function OrganizationTable({ organizations, getStatusColor, loadi
                 isHeader
                 className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
               >
-                ID
+                #
               </TableCell>
               <TableCell
                 isHeader
@@ -166,7 +170,7 @@ export default function OrganizationTable({ organizations, getStatusColor, loadi
             {loading ? (
               fallback || <LoadingSkeleton />
             ) : (
-              <OrganizationTableBody organizations={organizations} getStatusColor={getStatusColor} />
+              <OrganizationTableBody organizations={organizations} getStatusColor={getStatusColor} page={page} limit={limit} />
             )}
           </TableBody>
         </Table>

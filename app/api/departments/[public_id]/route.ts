@@ -4,16 +4,16 @@ import { requiresRoles } from '@/lib/auth/middleware';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ public_id: string }> }
 ) {
   return requiresRoles(request, ['ADMIN', 'HR_MANAGER', 'SUPER_ADMIN'], async (authRequest) => {
     try {
-      const { id } = await params;
+      const { public_id } = await params;
 
       // Create session object for controller
       const session = { user: { id: authRequest.user.id.toString() } };
 
-      const department = await departmentController.getById(session, Number(id));
+      const department = await departmentController.getByPublicId(session, public_id);
 
       if (!department) {
         return NextResponse.json(
@@ -57,17 +57,17 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ public_id: string }> }
 ) {
   return requiresRoles(request, ['ADMIN', 'HR_MANAGER', 'SUPER_ADMIN'], async (authRequest) => {
     try {
-      const { id } = await params;
+      const { public_id } = await params;
       const body = await request.json();
 
       // Create session object for controller
       const session = { user: { id: authRequest.user.id.toString() } };
 
-      const department = await departmentController.update(session, Number(id), body);
+      const department = await departmentController.updateByPublicId(session, public_id, body);
 
       return NextResponse.json(department);
     } catch (error: any) {
@@ -104,16 +104,16 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ public_id: string }> }
 ) {
   return requiresRoles(request, ['ADMIN', 'HR_MANAGER', 'SUPER_ADMIN'], async (authRequest) => {
     try {
-      const { id } = await params;
+      const { public_id } = await params;
 
       // Create session object for controller
       const session = { user: { id: authRequest.user.id.toString() } };
 
-      await departmentController.delete(session, Number(id));
+      await departmentController.deleteByPublicId(session, public_id);
       return NextResponse.json({ message: 'Department deleted successfully' });
     } catch (error: any) {
       console.error('Error deleting department:', error);

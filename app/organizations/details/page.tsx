@@ -20,7 +20,7 @@ import OrganizationTable from '../../components/organizations/OrganizationTable'
 import Pagination from '../../components/ui/pagination';
 
 interface Organization {
-  id: number;
+  id: string;
   name: string;
   email?: string;
   contact_number?: string;
@@ -53,7 +53,7 @@ export default function OrganizationDetailsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const [expandedCards, setExpandedCards] = useState<Set<number>>(new Set());
+  const [expandedCards, setExpandedCards] = useState<Set<string>>(new Set());
 
   const fetchOrganizations = async (page: number = 1) => {
     try {
@@ -106,7 +106,7 @@ export default function OrganizationDetailsPage() {
     }
   };
 
-  const toggleCardExpansion = (orgId: number) => {
+  const toggleCardExpansion = (orgId: string) => {
     const newExpanded = new Set(expandedCards);
     if (newExpanded.has(orgId)) {
       newExpanded.delete(orgId);
@@ -176,7 +176,7 @@ export default function OrganizationDetailsPage() {
           <RoleComponentWrapper roles={['ADMIN', 'SUPER_ADMIN']}>
 
             {/* Desktop Table View */}
-            <OrganizationTable organizations={organizations} getStatusColor={getStatusColor} />
+            <OrganizationTable organizations={organizations} getStatusColor={getStatusColor} page={currentPage} limit={15} />
 
             {/* Mobile Card View */}
             <div className="lg:hidden space-y-4">

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { leaveRequestController } from '@/lib/controllers/leave-request.controller';
 import { CreateLeaveRequestSchema } from '@/lib/models/leave-request';
+import { ulid } from 'ulid';
 
 export async function GET(request: NextRequest) {
   try {
@@ -28,7 +29,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const validatedData = CreateLeaveRequestSchema.parse(body);
     
-    const leaveRequest = await leaveRequestController.create(validatedData);
+    const leaveRequest = await leaveRequestController.create({ ...validatedData, public_id: ulid() });
     return NextResponse.json(leaveRequest, { status: 201 });
   } catch (error) {
     console.error('Error creating leave request:', error);

@@ -2,12 +2,14 @@ import { NextRequest, NextResponse } from 'next/server';
 import { jobTitleController } from '@/lib/controllers/job-title.controller';
 import { CreateJobTitleSchema } from '@/lib/models/job-title';
 import { requiresRoles } from '@/lib/auth/middleware';
+import { ulid } from 'ulid';
+import { prisma } from '@/lib/db';
 
 export async function GET(request: NextRequest) {
   return requiresRoles(request, ['ADMIN', 'SUPER_ADMIN'], async (authRequest) => {
     // Parse query parameters
     const { searchParams } = new URL(request.url);
-    const organizationId = searchParams.get('organization_id');
+    const organizationPublicId = searchParams.get('organization_id');
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '10');
 
@@ -30,8 +32,17 @@ export async function GET(request: NextRequest) {
 
     if (isSuperAdmin) {
       // Super Admin can see all job titles across all organizations
+      let numericOrgId: number | undefined;
+      if (organizationPublicId) {
+        // Look up the organization by public_id to get its numeric ID
+        const org = await prisma.organization.findUnique({
+          where: { public_id: organizationPublicId },
+          select: { id: true },
+        });
+        numericOrgId = org?.id;
+      }
       result = await jobTitleController.getAll(
-        organizationId ? Number(organizationId) : undefined,
+        numericOrgId,
         { page, limit }
       );
     } else if (isAdmin) {
@@ -71,7 +82,7 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      const jobTitle = await jobTitleController.create(validatedData);
+      const jobTitle = await jobTitleController.create({ ...validatedData, public_id: ulid() });
       return NextResponse.json(jobTitle, { status: 201 });
     } catch (error) {
       console.error('Error creating job title:', error);

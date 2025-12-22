@@ -9,26 +9,27 @@ import PageBreadcrumb from '@/app/components/common/PageBreadCrumb';
 import Pagination from '@/app/components/ui/pagination';
 import ConfirmationModal from '@/app/components/ui/modal/ConfirmationModal';
 import ErrorModal from '@/app/components/ui/modal/ErrorModal';
+import Badge, { BadgeColor } from '@/app/components/ui/badge/Badge';
 import JobTitleTable from '@/app/components/job-titles/JobTitleTable';
 import JobTitleCardList from '@/app/components/job-titles/JobTitleCardList';
 import RoleComponentWrapper from '@/app/components/common/RoleComponentWrapper';
 import { useAuth } from '@/app/components/providers/auth-provider';
 
 interface Organization {
-  id: number;
+  id: string;
   name: string;
 }
 
 interface JobTitle {
-  id: number;
+  id: string;
   name: string;
   description?: string;
   organization: {
-    id: number;
+    id: string;
     name: string;
   };
   employees: Array<{
-    id: number;
+    id: string;
     first_name: string;
     last_name: string;
   }>;
@@ -64,11 +65,12 @@ interface JobTitlesState {
   showDeleteModal: boolean;
   showErrorModal: boolean;
   deleteSuccess: boolean;
+  expandedCards: Set<string>;
 
   // Error states
   error: string | null;
   errorMessage: string;
-  jobTitleToDelete: { id: number; name: string } | null;
+  jobTitleToDelete: { id: string; name: string } | null;
 }
 
 type JobTitlesAction =
@@ -89,17 +91,18 @@ type JobTitlesAction =
   | { type: 'SET_SHOW_DELETE_MODAL'; payload: boolean }
   | { type: 'SET_SHOW_ERROR_MODAL'; payload: boolean }
   | { type: 'SET_DELETE_SUCCESS'; payload: boolean }
+  | { type: 'TOGGLE_CARD_EXPANSION'; payload: string }
 
   // Error actions
   | { type: 'SET_ERROR'; payload: string | null }
   | { type: 'SET_ERROR_MESSAGE'; payload: string }
-  | { type: 'SET_JOB_TITLE_TO_DELETE'; payload: { id: number; name: string } | null }
+  | { type: 'SET_JOB_TITLE_TO_DELETE'; payload: { id: string; name: string } | null }
 
   // Combined actions
   | { type: 'START_LOADING' }
   | { type: 'FINISH_LOADING' }
   | { type: 'START_ORGANIZATION_FILTER'; payload: number | null }
-  | { type: 'START_DELETE'; payload: { id: number; name: string } }
+  | { type: 'START_DELETE'; payload: { id: string; name: string } }
   | { type: 'CANCEL_DELETE' }
   | { type: 'FINISH_DELETE' };
 
@@ -134,6 +137,16 @@ function jobTitlesReducer(state: JobTitlesState, action: JobTitlesAction): JobTi
       return { ...state, showErrorModal: action.payload };
     case 'SET_DELETE_SUCCESS':
       return { ...state, deleteSuccess: action.payload };
+
+    case 'TOGGLE_CARD_EXPANSION': {
+      const newExpanded = new Set(state.expandedCards);
+      if (newExpanded.has(action.payload)) {
+        newExpanded.delete(action.payload);
+      } else {
+        newExpanded.add(action.payload);
+      }
+      return { ...state, expandedCards: newExpanded };
+    }
 
     // Error actions
     case 'SET_ERROR':
@@ -180,6 +193,7 @@ const initialState: JobTitlesState = {
   showDeleteModal: false,
   showErrorModal: false,
   deleteSuccess: false,
+  expandedCards: new Set<string>(),
 
   // Error states
   error: null,
@@ -208,13 +222,36 @@ export default function JobTitlesPage() {
   );
 
   // Memoize event handlers to prevent unnecessary re-renders
-  const handleOrganizationChange = useCallback((orgId: number | null) => {
-    dispatch({ type: 'START_ORGANIZATION_FILTER', payload: orgId });
-  }, []);
+  const handleOrganizationChange = useCallback((orgId: string | null) => {
+    // Find the index of the selected organization in the organizations array
+    if (orgId) {
+      const selectedIndex = state.organizations.findIndex(org => org.id === orgId);
+      dispatch({ type: 'START_ORGANIZATION_FILTER', payload: selectedIndex >= 0 ? selectedIndex : null });
+    } else {
+      dispatch({ type: 'START_ORGANIZATION_FILTER', payload: null });
+    }
+  }, [state.organizations]);
 
-  const handleDeleteClick = useCallback((jobTitleId: number, jobTitleName: string) => {
+  const handleDeleteClick = useCallback((jobTitleId: string, jobTitleName: string) => {
     dispatch({ type: 'START_DELETE', payload: { id: jobTitleId, name: jobTitleName } });
   }, []);
+
+  const toggleCardExpansion = useCallback((jobTitleId: string) => {
+    dispatch({ type: 'TOGGLE_CARD_EXPANSION', payload: jobTitleId });
+  }, []);
+
+  const getStatusColor = (status: string): BadgeColor => {
+    switch (status) {
+      case 'ACTIVE':
+        return 'success';
+      case 'INACTIVE':
+        return 'warning';
+      case 'SUSPENDED':
+        return 'error';
+      default:
+        return 'info';
+    }
+  };
 
   // Memoize the empty state component to prevent unnecessary re-renders
   const emptyStateComponent = useMemo(() => (
@@ -236,16 +273,16 @@ export default function JobTitlesPage() {
     )
   ), [state.jobTitles.length]);
 
-  const fetchJobTitles = async (orgId?: number | null, page: number = 1) => {
+  const fetchJobTitles = useCallback(async (orgPublicId?: string | null, page: number = 1) => {
     try {
       dispatch({ type: 'START_LOADING' });
 
       const params = new URLSearchParams();
       params.set('page', page.toString());
-      params.set('limit', '10');
+      params.set('limit', '5');
 
-      if (orgId) {
-        params.set('organization_id', orgId.toString());
+      if (orgPublicId) {
+        params.set('organization_id', orgPublicId);
       }
 
       const url = `/api/job-titles?${params.toString()}`;
@@ -276,11 +313,11 @@ export default function JobTitlesPage() {
     } finally {
       dispatch({ type: 'FINISH_LOADING' });
     }
-  };
+  }, []);
 
   const fetchOrganizations = async () => {
     try {
-      const response = await fetch('/api/organizations?limit=100', {
+      const response = await fetch('/api/organizations?limit=50', {
         credentials: 'include',
       });
 
@@ -298,16 +335,25 @@ export default function JobTitlesPage() {
 
     // For non-super admin, always filter by their organization
     if (!isSuperAdminMemo && user?.organization_id) {
-      fetchJobTitles(user.organization_id, state.currentPage);
+      const orgId = typeof user.organization_id === 'string' ? user.organization_id : String(user.organization_id);
+      fetchJobTitles(orgId, state.currentPage);
+    } else if (state.selectedOrganization !== null && state.organizations.length > 0) {
+      // Convert selectedOrganization index to organization public_id
+      const selectedOrg = state.organizations[state.selectedOrganization];
+      if (selectedOrg?.id) {
+        fetchJobTitles(selectedOrg.id, state.currentPage);
+      } else {
+        fetchJobTitles(null, state.currentPage);
+      }
     } else {
-      fetchJobTitles(state.selectedOrganization, state.currentPage);
+      fetchJobTitles(null, state.currentPage);
     }
 
     // Only fetch organizations for super admin
     if (isSuperAdminMemo) {
       fetchOrganizations();
     }
-  }, [state.selectedOrganization, state.currentPage, authLoading, isSuperAdminMemo, user?.organization_id]);
+  }, [state.selectedOrganization, state.currentPage, authLoading, isSuperAdminMemo, user?.organization_id, fetchJobTitles]);
 
   const handleConfirmDelete = async () => {
     if (!state.jobTitleToDelete) return;
@@ -325,9 +371,17 @@ export default function JobTitlesPage() {
         setTimeout(() => {
           dispatch({ type: 'FINISH_DELETE' });
           if (!isSuperAdminMemo && user?.organization_id) {
-            fetchJobTitles(user.organization_id, state.currentPage);
+            const orgId = typeof user.organization_id === 'string' ? user.organization_id : String(user.organization_id);
+            fetchJobTitles(orgId, state.currentPage);
+          } else if (state.selectedOrganization !== null && state.organizations.length > 0) {
+            const selectedOrg = state.organizations[state.selectedOrganization];
+            if (selectedOrg?.id) {
+              fetchJobTitles(selectedOrg.id, state.currentPage);
+            } else {
+              fetchJobTitles(null, state.currentPage);
+            }
           } else {
-            fetchJobTitles(state.selectedOrganization, state.currentPage);
+            fetchJobTitles(null, state.currentPage);
           }
         }, 1500);
       } else {
@@ -409,8 +463,8 @@ export default function JobTitlesPage() {
               </label>
               <select
                 id="organization-select"
-                value={state.selectedOrganization || ''}
-                onChange={(e) => handleOrganizationChange(e.target.value ? Number(e.target.value) : null)}
+                value={state.selectedOrganization !== null && state.organizations[state.selectedOrganization] ? state.organizations[state.selectedOrganization].id : ''}
+                onChange={(e) => handleOrganizationChange(e.target.value || null)}
                 disabled={state.loading}
                 className="block w-full max-w-xs px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white disabled:opacity-50 disabled:cursor-not-allowed"
               >
@@ -436,10 +490,16 @@ export default function JobTitlesPage() {
           </div>
 
           {/* Desktop Table View */}
-          <JobTitleTable jobTitles={state.jobTitles} onDelete={handleDeleteClick} loading={state.isOrganizationFilterLoading} />
+          <JobTitleTable jobTitles={state.jobTitles} onDelete={handleDeleteClick} loading={state.isOrganizationFilterLoading} page={state.currentPage} limit={5} />
 
           {/* Mobile Card View */}
-          <JobTitleCardList jobTitles={state.jobTitles} onDelete={handleDeleteClick} />
+          <JobTitleCardList 
+            jobTitles={state.jobTitles} 
+            onDelete={handleDeleteClick}
+            expandedCards={state.expandedCards}
+            onToggle={toggleCardExpansion}
+            getStatusColor={getStatusColor}
+          />
 
           {/* Empty State */}
           {!state.isOrganizationFilterLoading && emptyStateComponent}

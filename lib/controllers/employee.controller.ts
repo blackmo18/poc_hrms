@@ -36,7 +36,41 @@ export class EmployeeController {
     });
 
     return {
-      data: employees,
+      data: employees.map(emp => ({
+        id: emp.public_id,
+        organization: {
+          id: emp.organization.public_id,
+          name: emp.organization.name,
+        },
+        department: {
+          id: emp.department.public_id,
+          name: emp.department.name,
+        },
+        jobTitle: {
+          id: emp.jobTitle.public_id,
+          name: emp.jobTitle.name,
+        },
+        manager: emp.manager ? {
+          id: emp.manager.public_id,
+          first_name: emp.manager.first_name,
+          last_name: emp.manager.last_name,
+        } : null,
+        first_name: emp.first_name,
+        last_name: emp.last_name,
+        email: emp.email,
+        work_email: emp.work_email,
+        work_contact: emp.work_contact,
+        personal_address: emp.personal_address,
+        personal_contact_number: emp.personal_contact_number,
+        personal_email: emp.personal_email,
+        date_of_birth: emp.date_of_birth,
+        gender: emp.gender,
+        employment_status: emp.employment_status,
+        hire_date: emp.hire_date,
+        exit_date: emp.exit_date,
+        created_at: emp.created_at,
+        updated_at: emp.updated_at,
+      })),
       pagination: {
         page,
         limit,
@@ -75,6 +109,76 @@ export class EmployeeController {
     });
   }
 
+  async getByPublicId(public_id: string) {
+    const emp = await prisma.employee.findUnique({
+      where: { public_id },
+      include: {
+        organization: true,
+        user: true,
+        department: true,
+        jobTitle: true,
+        manager: true,
+        directReports: true,
+        compensations: true,
+        employeeBenefits: {
+          include: {
+            benefit: true,
+          },
+        },
+        timesheets: true,
+        leaveRequests: true,
+        payrolls: {
+          include: {
+            deductions: true,
+          },
+        },
+      },
+    });
+
+    if (!emp) return null;
+
+    return {
+      id: emp.public_id,
+      organization: {
+        id: emp.organization.public_id,
+        name: emp.organization.name,
+      },
+      department: {
+        id: emp.department.public_id,
+        name: emp.department.name,
+      },
+      jobTitle: {
+        id: emp.jobTitle.public_id,
+        name: emp.jobTitle.name,
+      },
+      manager: emp.manager ? {
+        id: emp.manager.public_id,
+        first_name: emp.manager.first_name,
+        last_name: emp.manager.last_name,
+      } : null,
+      first_name: emp.first_name,
+      last_name: emp.last_name,
+      email: emp.email,
+      work_email: emp.work_email,
+      work_contact: emp.work_contact,
+      personal_address: emp.personal_address,
+      personal_contact_number: emp.personal_contact_number,
+      personal_email: emp.personal_email,
+      date_of_birth: emp.date_of_birth,
+      gender: emp.gender,
+      employment_status: emp.employment_status,
+      hire_date: emp.hire_date,
+      exit_date: emp.exit_date,
+      created_at: emp.created_at,
+      updated_at: emp.updated_at,
+      directReports: emp.directReports.map(dr => ({
+        id: dr.public_id,
+        first_name: dr.first_name,
+        last_name: dr.last_name,
+      })),
+    };
+  }
+
   async create(data: CreateEmployee) {
     return await prisma.employee.create({
       data,
@@ -104,9 +208,30 @@ export class EmployeeController {
     });
   }
 
+  async updateByPublicId(public_id: string, data: UpdateEmployee) {
+    return await prisma.employee.update({
+      where: { public_id },
+      data,
+      include: {
+        organization: true,
+        user: true,
+        department: true,
+        jobTitle: true,
+        manager: true,
+        directReports: true,
+      },
+    });
+  }
+
   async delete(id: number) {
     return await prisma.employee.delete({
       where: { id },
+    });
+  }
+
+  async deleteByPublicId(public_id: string) {
+    return await prisma.employee.delete({
+      where: { public_id },
     });
   }
 

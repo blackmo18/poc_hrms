@@ -21,26 +21,26 @@ import EmployeeTable from '@/app/components/employees/EmployeeTable';
 import Pagination from '@/app/components/ui/pagination';
 
 interface Employee {
-  id: number;
+  id: string;
   first_name: string;
   last_name: string;
   email: string;
   employment_status: 'ACTIVE' | 'INACTIVE' | 'TERMINATED' | 'ON_LEAVE';
   hire_date: string;
   organization: {
-    id: number;
+    id: string;
     name: string;
   };
   department: {
-    id: number;
+    id: string;
     name: string;
   };
   jobTitle: {
-    id: number;
+    id: string;
     name: string;
   };
   manager?: {
-    id: number;
+    id: string;
     first_name: string;
     last_name: string;
   };
@@ -81,7 +81,7 @@ interface EmployeesState {
   // UI states
   selectedOrganization: number | null;
   currentPage: number;
-  expandedCards: Set<number>;
+  expandedCards: Set<string>;
 
   // Error states
   error: string | null;
@@ -101,7 +101,7 @@ type EmployeesAction =
   // UI actions
   | { type: 'SET_SELECTED_ORGANIZATION'; payload: number | null }
   | { type: 'SET_CURRENT_PAGE'; payload: number }
-  | { type: 'TOGGLE_CARD_EXPANSION'; payload: number }
+  | { type: 'TOGGLE_CARD_EXPANSION'; payload: string }
 
   // Error actions
   | { type: 'SET_ERROR'; payload: string | null }
@@ -291,13 +291,13 @@ export default function EmployeesPage() {
     }
   };
 
-  const toggleCardExpansion = (empId: number) => {
+  const toggleCardExpansion = (empId: string) => {
     dispatch({ type: 'TOGGLE_CARD_EXPANSION', payload: empId });
   };
 
   // Group employees by organization for admin view
   const employeesByOrganization = useMemo(() => {
-    const grouped: { [key: number]: { org: Organization; employees: Employee[] } } = {};
+    const grouped: { [key: string]: { org: { id: string; name: string }; employees: Employee[] } } = {};
 
     state.employees.forEach(employee => {
       const orgId = employee.organization.id;
@@ -417,7 +417,7 @@ export default function EmployeesPage() {
           )}
 
           {/* Desktop Table View */}
-          <EmployeeTable employees={state.employees} getStatusColor={getStatusColor} loading={state.isOrganizationFilterLoading} />
+          <EmployeeTable employees={state.employees} getStatusColor={getStatusColor} loading={state.isOrganizationFilterLoading} page={state.currentPage} limit={15} />
 
           {/* Mobile Card View */}
           <div className="lg:hidden space-y-4">

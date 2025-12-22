@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { departmentController } from '@/lib/controllers/department.controller';
 import { CreateDepartmentSchema } from '@/lib/models/department';
 import { requiresRoles } from '@/lib/auth/middleware';
+import { ulid } from 'ulid';
 
 export async function GET(request: NextRequest) {
   return requiresRoles(request, ['ADMIN', 'HR_MANAGER', 'SUPER_ADMIN'], async (authRequest) => {
@@ -51,7 +52,7 @@ export async function POST(request: NextRequest) {
       // Create session object for controller
       const session = { user: { id: authRequest.user.id.toString() } };
 
-      const department = await departmentController.create(session, validatedData);
+      const department = await departmentController.create(session, { ...validatedData, public_id: ulid() });
       return NextResponse.json(department, { status: 201 });
     } catch (error: any) {
       console.error('Error creating department:', error);

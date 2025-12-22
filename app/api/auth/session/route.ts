@@ -20,21 +20,25 @@ export async function GET() {
     const roles = await getUserRoles(payload.userId);
     const permissions = await getUserPermissions(payload.userId);
 
-    // Get user's organization_id from the database
+    // Get user's public_id and organization public_id from the database
     const user = await prisma.user.findUnique({
       where: { id: payload.userId },
-      select: { organization_id: true }
+      include: {
+        organization: {
+          select: { public_id: true }
+        }
+      }
     });
 
     return NextResponse.json({ 
       user: {
-        id: payload.userId.toString(),
+        id: user?.public_id,
         email: payload.email,
         username: payload.username,
         role: roles[0]?.name || 'EMPLOYEE',
         roles: roles.map(role => role.name),
         permissions,
-        organization_id: user?.organization_id
+        organization_id: user?.organization?.public_id
       }
     });
 

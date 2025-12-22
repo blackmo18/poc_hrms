@@ -9,19 +9,20 @@ import PageBreadcrumb from '@/app/components/common/PageBreadCrumb';
 import Pagination from '@/app/components/ui/pagination';
 import ConfirmationModal from '@/app/components/ui/modal/ConfirmationModal';
 import ErrorModal from '@/app/components/ui/modal/ErrorModal';
+import Badge, { BadgeColor } from '@/app/components/ui/badge/Badge';
 import DepartmentTable from '@/app/components/departments/DepartmentTable';
 import DepartmentCardList from '@/app/components/departments/DepartmentCardList';
 
 interface Department {
-  id: number;
+  id: string;
   name: string;
   description?: string;
   organization: {
-    id: number;
+    id: string;
     name: string;
   };
   employees: Array<{
-    id: number;
+    id: string;
     first_name: string;
     last_name: string;
   }>;
@@ -48,9 +49,10 @@ export default function DepartmentsPage() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showErrorModal, setShowErrorModal] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
-  const [departmentToDelete, setDepartmentToDelete] = useState<{ id: number; name: string } | null>(null);
+  const [departmentToDelete, setDepartmentToDelete] = useState<{ id: string; name: string } | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteSuccess, setDeleteSuccess] = useState(false);
+  const [expandedCards, setExpandedCards] = useState<Set<string>>(new Set());
 
   const fetchDepartments = async (page: number = 1) => {
     try {
@@ -95,11 +97,34 @@ export default function DepartmentsPage() {
     fetchDepartments(currentPage);
   }, [currentPage]);
 
-  const handleDeleteClick = useCallback((departmentId: number, departmentName: string) => {
+  const handleDeleteClick = useCallback((departmentId: string, departmentName: string) => {
     setDepartmentToDelete({ id: departmentId, name: departmentName });
     setDeleteSuccess(false);
     setShowDeleteModal(true);
   }, []);
+
+  const toggleCardExpansion = useCallback((departmentId: string) => {
+    const newExpanded = new Set(expandedCards);
+    if (newExpanded.has(departmentId)) {
+      newExpanded.delete(departmentId);
+    } else {
+      newExpanded.add(departmentId);
+    }
+    setExpandedCards(newExpanded);
+  }, [expandedCards]);
+
+  const getStatusColor = (status: string): BadgeColor => {
+    switch (status) {
+      case 'ACTIVE':
+        return 'success';
+      case 'INACTIVE':
+        return 'warning';
+      case 'SUSPENDED':
+        return 'error';
+      default:
+        return 'info';
+    }
+  };
 
   // Memoize the empty state component to prevent unnecessary re-renders
   const emptyStateComponent = useMemo(() => (
@@ -238,12 +263,18 @@ export default function DepartmentsPage() {
 
           {/* Desktop Table View */}
           <div className={loading ? 'opacity-50 pointer-events-none' : ''}>
-            <DepartmentTable departments={departments} onDelete={handleDeleteClick} />
+            <DepartmentTable departments={departments} onDelete={handleDeleteClick} page={currentPage} limit={10} />
           </div>
 
           {/* Mobile Card View */}
           <div className={loading ? 'opacity-50 pointer-events-none' : ''}>
-            <DepartmentCardList departments={departments} onDelete={handleDeleteClick} />
+            <DepartmentCardList 
+              departments={departments} 
+              onDelete={handleDeleteClick}
+              expandedCards={expandedCards}
+              onToggle={toggleCardExpansion}
+              getStatusColor={getStatusColor}
+            />
           </div>
 
           {/* Empty State */}

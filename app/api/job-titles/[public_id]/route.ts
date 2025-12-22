@@ -5,21 +5,13 @@ import { requiresRoles } from '@/lib/auth/middleware';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ public_id: string }> }
 ) {
   return requiresRoles(request, ['ADMIN', 'SUPER_ADMIN'], async (authRequest) => {
     try {
-      const { id } = await params;
-      const jobTitleId = parseInt(id);
+      const { public_id } = await params;
 
-      if (isNaN(jobTitleId)) {
-        return NextResponse.json(
-          { error: 'Invalid job title ID' },
-          { status: 400 }
-        );
-      }
-
-      const jobTitle = await jobTitleController.getById(jobTitleId);
+      const jobTitle = await jobTitleController.getByPublicId(public_id);
 
       if (!jobTitle) {
         return NextResponse.json(
@@ -55,20 +47,11 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ public_id: string }> }
 ) {
   return requiresRoles(request, ['ADMIN', 'SUPER_ADMIN'], async (authRequest) => {
     try {
-      const { id } = await params;
-      const jobTitleId = parseInt(id);
-
-      if (isNaN(jobTitleId)) {
-        return NextResponse.json(
-          { error: 'Invalid job title ID' },
-          { status: 400 }
-        );
-      }
-
+      const { public_id } = await params;
       const body = await request.json();
       const validatedData = UpdateJobTitleSchema.parse(body);
 
@@ -86,7 +69,7 @@ export async function PUT(
         );
       }
 
-      const jobTitle = await jobTitleController.update(jobTitleId, validatedData);
+      const jobTitle = await jobTitleController.updateByPublicId(public_id, validatedData);
       return NextResponse.json(jobTitle);
     } catch (error) {
       console.error('Error updating job title:', error);
@@ -100,25 +83,17 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ public_id: string }> }
 ) {
   return requiresRoles(request, ['ADMIN', 'SUPER_ADMIN'], async (authRequest) => {
     try {
-      const { id } = await params;
-      const jobTitleId = parseInt(id);
-
-      if (isNaN(jobTitleId)) {
-        return NextResponse.json(
-          { error: 'Invalid job title ID' },
-          { status: 400 }
-        );
-      }
+      const { public_id } = await params;
 
       // Get user info from auth request
       const user = authRequest.user!;
 
       // First check if the job title exists and belongs to user's organization
-      const jobTitle = await jobTitleController.getById(jobTitleId);
+      const jobTitle = await jobTitleController.getByPublicId(public_id);
 
       if (!jobTitle) {
         return NextResponse.json(
@@ -137,7 +112,7 @@ export async function DELETE(
         );
       }
 
-      await jobTitleController.delete(jobTitleId);
+      await jobTitleController.deleteByPublicId(public_id);
       return NextResponse.json({ message: 'Job title deleted successfully' });
     } catch (error) {
       console.error('Error deleting job title:', error);

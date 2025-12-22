@@ -5,24 +5,17 @@ import { requiresPermissions } from '@/lib/auth/middleware';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ public_id: string }> }
 ) {
   return requiresPermissions(request, ['employees.read'], async (authRequest) => {
     try {
-      const { id } = await params;
-      const employeeId = parseInt(id);
-      if (isNaN(employeeId)) {
-        return NextResponse.json(
-          { error: 'Invalid employee ID' },
-          { status: 400 }
-        );
-      }
+      const { public_id } = await params;
 
       const user = authRequest.user!;
       const isAdmin = user.roles.includes('ADMIN') || user.roles.includes('SUPER_ADMIN');
       const isHRManager = user.roles.includes('HR_MANAGER');
 
-      const employee = await employeeController.getById(employeeId);
+      const employee = await employeeController.getByPublicId(public_id);
 
       if (!employee) {
         return NextResponse.json(
@@ -52,19 +45,11 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ public_id: string }> }
 ) {
   return requiresPermissions(request, ['employees.update'], async (authRequest) => {
     try {
-      const { id } = await params;
-      const employeeId = parseInt(id);
-      if (isNaN(employeeId)) {
-        return NextResponse.json(
-          { error: 'Invalid employee ID' },
-          { status: 400 }
-        );
-      }
-
+      const { public_id } = await params;
       const body = await request.json();
       const validatedData = UpdateEmployeeSchema.parse(body);
 
@@ -73,7 +58,7 @@ export async function PUT(
       const isHRManager = user.roles.includes('HR_MANAGER');
 
       // Check if employee exists and user has access
-      const existingEmployee = await employeeController.getById(employeeId);
+      const existingEmployee = await employeeController.getByPublicId(public_id);
       if (!existingEmployee) {
         return NextResponse.json(
           { error: 'Employee not found' },
@@ -89,7 +74,7 @@ export async function PUT(
         );
       }
 
-      const employee = await employeeController.update(employeeId, validatedData);
+      const employee = await employeeController.updateByPublicId(public_id, validatedData);
       return NextResponse.json(employee);
     } catch (error) {
       console.error('Error updating employee:', error);
@@ -103,25 +88,18 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ public_id: string }> }
 ) {
   return requiresPermissions(request, ['employees.delete'], async (authRequest) => {
     try {
-      const { id } = await params;
-      const employeeId = parseInt(id);
-      if (isNaN(employeeId)) {
-        return NextResponse.json(
-          { error: 'Invalid employee ID' },
-          { status: 400 }
-        );
-      }
+      const { public_id } = await params;
 
       const user = authRequest.user!;
       const isAdmin = user.roles.includes('ADMIN') || user.roles.includes('SUPER_ADMIN');
       const isHRManager = user.roles.includes('HR_MANAGER');
 
       // Check if employee exists and user has access
-      const existingEmployee = await employeeController.getById(employeeId);
+      const existingEmployee = await employeeController.getByPublicId(public_id);
       if (!existingEmployee) {
         return NextResponse.json(
           { error: 'Employee not found' },
@@ -137,7 +115,7 @@ export async function DELETE(
         );
       }
 
-      await employeeController.delete(employeeId);
+      await employeeController.deleteByPublicId(public_id);
       return NextResponse.json({ message: 'Employee deleted successfully' });
     } catch (error) {
       console.error('Error deleting employee:', error);
