@@ -10,6 +10,15 @@ export const EmployeeSchema = z.object({
   first_name: z.string().min(1, 'First name is required'),
   last_name: z.string().min(1, 'Last name is required'),
   email: z.string().email('Valid email is required'),
+  // Work details
+  work_email: z.string().email('Valid work email is required').optional(),
+  work_contact: z.string().optional(),
+  // Personal details
+  personal_address: z.string().min(1, 'Personal address is required'),
+  personal_contact_number: z.string().min(1, 'Personal contact number is required'),
+  personal_email: z.string().email('Valid personal email is required').optional(),
+  date_of_birth: z.date(),
+  gender: z.string().min(1, 'Gender is required'),
   employment_status: z.enum(['ACTIVE', 'INACTIVE', 'TERMINATED', 'ON_LEAVE']).default('ACTIVE'),
   hire_date: z.date(),
   exit_date: z.date().optional(),

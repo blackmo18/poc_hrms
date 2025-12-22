@@ -89,7 +89,7 @@ const OrganizationPage = () => {
         description="View detailed information about this organization"
       />
       <PageBreadcrumb pageTitle="Details" />
-      <RoleComponentWrapper roles={['ADMIN']}>
+      <RoleComponentWrapper roles={['ADMIN', 'SUPER_ADMIN']}>
         <ComponentCard title={organization.name}>
           <OrganizationNameCard
             name={organization.name}

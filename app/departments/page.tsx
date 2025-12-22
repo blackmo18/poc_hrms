@@ -1,119 +1,294 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
-import { Button } from '../components/ui/button';
-import { Building2, Plus, Edit, Trash2 } from 'lucide-react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
+import Link from 'next/link';
+import { PlusIcon, Building2Icon } from '@/app/icons';
+import ComponentCard from '@/app/components/common/ComponentCard';
+import PageMeta from '@/app/components/common/PageMeta';
+import PageBreadcrumb from '@/app/components/common/PageBreadCrumb';
+import Pagination from '@/app/components/ui/pagination';
+import ConfirmationModal from '@/app/components/ui/modal/ConfirmationModal';
+import ErrorModal from '@/app/components/ui/modal/ErrorModal';
+import DepartmentTable from '@/app/components/departments/DepartmentTable';
+import DepartmentCardList from '@/app/components/departments/DepartmentCardList';
 
 interface Department {
-  id: string;
+  id: number;
   name: string;
   description?: string;
   organization: {
+    id: number;
     name: string;
   };
   employees: Array<{
-    id: string;
+    id: number;
     first_name: string;
     last_name: string;
   }>;
 }
 
+interface ApiResponse {
+  data: Department[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+    hasNext: boolean;
+    hasPrev: boolean;
+  };
+}
+
 export default function DepartmentsPage() {
   const [departments, setDepartments] = useState<Department[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [pagination, setPagination] = useState<ApiResponse['pagination'] | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+  const [departmentToDelete, setDepartmentToDelete] = useState<{ id: number; name: string } | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteSuccess, setDeleteSuccess] = useState(false);
 
-  useEffect(() => {
-    fetchDepartments();
-  }, []);
-
-  const fetchDepartments = async () => {
+  const fetchDepartments = async (page: number = 1) => {
     try {
-      const response = await fetch('/api/departments');
-      if (response.ok) {
-        const data = await response.json();
-        setDepartments(data);
+      setLoading(true);
+      setError(null);
+
+      const params = new URLSearchParams();
+      params.set('page', page.toString());
+      params.set('limit', '15');
+
+      const url = `/api/departments?${params.toString()}`;
+      const response = await fetch(url, {
+        credentials: 'include',
+      });
+
+      if (response.status === 401) {
+        setError('Unauthorized access. Please log in.');
+        return;
       }
+
+      if (response.status === 403) {
+        setError('Access denied. Insufficient permissions.');
+        return;
+      }
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch departments');
+      }
+
+      const result = await response.json();
+      setDepartments(result.data || []);
+      setPagination(result.pagination);
     } catch (error) {
-      console.error('Failed to fetch departments:', error);
+      console.error('Error fetching departments:', error);
+      setError('Failed to load departments. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
+  useEffect(() => {
+    fetchDepartments(currentPage);
+  }, [currentPage]);
+
+  const handleDeleteClick = useCallback((departmentId: number, departmentName: string) => {
+    setDepartmentToDelete({ id: departmentId, name: departmentName });
+    setDeleteSuccess(false);
+    setShowDeleteModal(true);
+  }, []);
+
+  // Memoize the empty state component to prevent unnecessary re-renders
+  const emptyStateComponent = useMemo(() => (
+    departments.length === 0 && (
+      <div className="text-center py-12">
+        <Building2Icon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+        <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No departments found</h3>
+        <p className="text-gray-600 dark:text-gray-400 mb-4">
+          Get started by adding your first department.
+        </p>
+        <Link
+          href="/departments/add"
+          className="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 transition-colors"
+        >
+          <PlusIcon className="w-4 h-4 mr-2" />
+          Add Department
+        </Link>
+      </div>
+    )
+  ), [departments.length]);
+
+  const handleConfirmDelete = async () => {
+    if (!departmentToDelete) return;
+
+    setIsDeleting(true);
+    try {
+      const response = await fetch(`/api/departments/${departmentToDelete.id}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      });
+
+      if (response.ok) {
+        setDeleteSuccess(true);
+        // Refresh the list after a short delay to show success state
+        setTimeout(() => {
+          setShowDeleteModal(false);
+          setDepartmentToDelete(null);
+          setDeleteSuccess(false);
+          fetchDepartments(currentPage);
+        }, 1500);
+      } else {
+        const errorData = await response.json();
+        setShowDeleteModal(false);
+        setErrorMessage(errorData.error || 'Failed to delete department');
+        setShowErrorModal(true);
+      }
+    } catch (error) {
+      console.error('Error deleting department:', error);
+      setShowDeleteModal(false);
+      setErrorMessage('An error occurred while deleting the department');
+      setShowErrorModal(true);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-lg text-gray-600">Loading departments...</div>
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+              Departments
+            </h1>
+            <p className="mt-2 text-gray-600 dark:text-gray-300">
+              Manage departments in your organization
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center justify-center h-64">
+          <div className="text-lg text-gray-600 dark:text-gray-300">Loading departments...</div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+              Departments
+            </h1>
+            <p className="mt-2 text-gray-600 dark:text-gray-300">
+              Manage departments in your organization
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <div className="text-red-600 dark:text-red-400 text-lg mb-2">Error</div>
+            <div className="text-gray-600 dark:text-gray-300">{error}</div>
+          </div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div>
-      <div className="flex justify-between items-center mb-8">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Departments</h1>
-          <p className="text-gray-600 mt-2">Manage your organization departments</p>
-        </div>
-        <Button className="flex items-center space-x-2">
-          <Plus className="h-4 w-4" />
-          <span>Add Department</span>
-        </Button>
-      </div>
+    <div className="space-y-6">
+      {/* Header */}
+      <PageMeta title='Departments - HR Management System' description='Manage departments' />
+      <PageBreadcrumb
+        pageTitle='Departments'
+        breadcrumbs={[
+          { label: 'Departments' }
+        ]}
+      />
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {departments.map((department) => (
-          <Card key={department.id}>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-2">
-                  <Building2 className="h-5 w-5 text-blue-600" />
-                  <CardTitle className="text-lg">{department.name}</CardTitle>
-                </div>
-                <div className="flex space-x-2">
-                  <Button variant="ghost" size="sm">
-                    <Edit className="h-4 w-4" />
-                  </Button>
-                  <Button variant="ghost" size="sm">
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
+      {/* Content Container */}
+      <div className="w-full overflow-x-auto">
+        <ComponentCard title="Department Management" size="full">
+          {/* Add Department Button */}
+          <div className="flex justify-end mb-6">
+            <Link
+              href="/departments/add"
+              className="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <PlusIcon className="w-4 h-4 mr-2" />
+              Add Department
+            </Link>
+          </div>
+
+          {/* Loading Overlay */}
+          {loading && (
+            <div className="relative">
+              <div className="absolute inset-0 bg-white/50 dark:bg-gray-900/50 flex items-center justify-center z-10 rounded-xl">
+                <div className="flex items-center space-x-2 text-gray-600 dark:text-gray-300">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                  <span>Loading departments...</span>
                 </div>
               </div>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                <div>
-                  <p className="text-sm text-gray-600">Organization</p>
-                  <p className="font-medium">{department.organization.name}</p>
-                </div>
-                {department.description && (
-                  <div>
-                    <p className="text-sm text-gray-600">Description</p>
-                    <p className="text-sm">{department.description}</p>
-                  </div>
-                )}
-                <div>
-                  <p className="text-sm text-gray-600">Employees</p>
-                  <p className="font-medium">{department.employees.length} employees</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+            </div>
+          )}
+
+          {/* Desktop Table View */}
+          <div className={loading ? 'opacity-50 pointer-events-none' : ''}>
+            <DepartmentTable departments={departments} onDelete={handleDeleteClick} />
+          </div>
+
+          {/* Mobile Card View */}
+          <div className={loading ? 'opacity-50 pointer-events-none' : ''}>
+            <DepartmentCardList departments={departments} onDelete={handleDeleteClick} />
+          </div>
+
+          {/* Empty State */}
+          {!loading && emptyStateComponent}
+        </ComponentCard>
       </div>
 
-      {departments.length === 0 && (
-        <div className="text-center py-12">
-          <Building2 className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 mb-2">No departments</h3>
-          <p className="text-gray-600 mb-4">Get started by adding your first department.</p>
-          <Button>
-            <Plus className="h-4 w-4 mr-2" />
-            Add Department
-          </Button>
-        </div>
-      )}
+      {/* Pagination */}
+      <div className={loading ? 'opacity-50 pointer-events-none' : ''}>
+        <Pagination
+          pagination={pagination}
+          currentPage={currentPage}
+          onPageChange={setCurrentPage}
+          itemName="departments"
+        />
+      </div>
+
+      {/* Delete Confirmation Modal */}
+      <ConfirmationModal
+        size='wider'
+        isOpen={showDeleteModal}
+        onClose={() => {
+          if (!deleteSuccess) {
+            setShowDeleteModal(false);
+            setDepartmentToDelete(null);
+          }
+        }}
+        onConfirm={handleConfirmDelete}
+        title={deleteSuccess ? "Deleted Successfully" : "Delete Department"}
+        message={deleteSuccess 
+          ? `The department "${departmentToDelete?.name}" has been deleted successfully.`
+          : `Are you sure you want to delete the department "${departmentToDelete?.name}"? This action cannot be undone.`
+        }
+        variant={deleteSuccess ? "success" : "warning"}
+        confirmText={deleteSuccess ? "Done" : "Delete"}
+        cancelText="Cancel"
+        isLoading={isDeleting}
+      />
+
+      {/* Error Modal */}
+      <ErrorModal
+        isOpen={showErrorModal}
+        onClose={() => setShowErrorModal(false)}
+        errorMessage={errorMessage}
+      />
     </div>
   );
 }

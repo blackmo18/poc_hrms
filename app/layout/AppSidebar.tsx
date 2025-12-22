@@ -16,7 +16,9 @@ import {
   PlugInIcon,
   TableIcon,
   UserCircleIcon,
-  OrganizationIcon
+  OrganizationIcon,
+  UserGroupIcon,
+  BriefcaseIcon,
 } from "../icons";
 import { useSidebar } from "../context/SidebarContext";
 import SidebarWidget from "./SidebarWidget";
@@ -39,7 +41,6 @@ const navItems: NavItem[] = [
     name: "Employees",
     subItems: [
       { name: "Employee List", path: "/employees", pro: false },
-      { name: "Add Employee", path: "/employees/new", pro: false },
     ],
   },
   {
@@ -51,9 +52,9 @@ const navItems: NavItem[] = [
     ],
   },
   {
-    name: "Departments",
-    icon: <ListIcon />,
-    subItems: [{ name: "Department List", path: "/departments", pro: false }],
+    name: "Job Titles",
+    icon: <BriefcaseIcon />,
+    subItems: [{ name: "Job Title List", path: "/job-titles", pro: false }],
   },
   {
     name: "Payroll",
