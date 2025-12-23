@@ -2,56 +2,19 @@
 
 import { useState, useEffect, useMemo, useCallback, useReducer } from 'react';
 import Link from 'next/link';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHeader,
-  TableRow,
-} from '@/app/components/ui/table';
-import Badge, { BadgeColor } from '@/app/components/ui/badge/Badge';
-import { PencilIcon, PlusIcon, OrganizationIcon, UserIcon } from '@/app/icons';
-import RoleComponentWrapper from '@/app/components/common/RoleComponentWrapper';
+import { PlusIcon, UserIcon } from '@/app/icons';
 import ComponentCard from '@/app/components/common/ComponentCard';
-import { useAuth } from '@/app/components/providers/auth-provider';
 import PageMeta from '@/app/components/common/PageMeta';
 import PageBreadcrumb from '@/app/components/common/PageBreadCrumb';
 import EmployeeCard from '@/app/components/employees/EmployeeCard';
-import EmployeeTable from '@/app/components/employees/EmployeeTable';
+import EmployeeTable, { Employee } from '@/app/components/employees/EmployeeTable';
 import Pagination from '@/app/components/ui/pagination';
-
-interface Employee {
-  id: number;
-  first_name: string;
-  last_name: string;
-  email: string;
-  employment_status: 'ACTIVE' | 'INACTIVE' | 'TERMINATED' | 'ON_LEAVE';
-  hire_date: string;
-  organization: {
-    id: number;
-    name: string;
-  };
-  department: {
-    id: number;
-    name: string;
-  };
-  jobTitle: {
-    id: number;
-    name: string;
-  };
-  manager?: {
-    id: number;
-    first_name: string;
-    last_name: string;
-  };
-  user?: {
-    id: number;
-    email: string;
-  };
-}
+import RoleComponentWrapper from '@/app/components/common/RoleComponentWrapper';
+import { useAuth } from '@/app/components/providers/auth-provider';
+import { BadgeColor } from '../components/ui/badge/Badge';
 
 interface Organization {
-  id: number;
+  id: string;
   name: string;
 }
 
@@ -79,9 +42,9 @@ interface EmployeesState {
   isOrganizationFilterLoading: boolean;
 
   // UI states
-  selectedOrganization: number | null;
+  selectedOrganization: string | null;
   currentPage: number;
-  expandedCards: Set<number>;
+  expandedCards: Set<string>;
 
   // Error states
   error: string | null;
@@ -99,9 +62,9 @@ type EmployeesAction =
   | { type: 'SET_ORGANIZATION_FILTER_LOADING'; payload: boolean }
 
   // UI actions
-  | { type: 'SET_SELECTED_ORGANIZATION'; payload: number | null }
+  | { type: 'SET_SELECTED_ORGANIZATION'; payload: string | null }
   | { type: 'SET_CURRENT_PAGE'; payload: number }
-  | { type: 'TOGGLE_CARD_EXPANSION'; payload: number }
+  | { type: 'TOGGLE_CARD_EXPANSION'; payload: string }
 
   // Error actions
   | { type: 'SET_ERROR'; payload: string | null }
@@ -109,7 +72,7 @@ type EmployeesAction =
   // Combined actions
   | { type: 'START_LOADING' }
   | { type: 'FINISH_LOADING' }
-  | { type: 'START_ORGANIZATION_FILTER'; payload: number | null };
+  | { type: 'START_ORGANIZATION_FILTER'; payload: string | null };
 
 function employeesReducer(state: EmployeesState, action: EmployeesAction): EmployeesState {
   switch (action.type) {
@@ -187,7 +150,7 @@ export default function EmployeesPage() {
 
   const isSuperAdmin = user?.roles?.includes('SUPER_ADMIN') || user?.role === 'SUPER_ADMIN';
 
-  const fetchEmployees = async (orgId?: number, page: number = 1) => {
+  const fetchEmployees = async (orgId?: string, page: number = 1) => {
     try {
       dispatch({ type: 'START_LOADING' });
 
@@ -234,7 +197,7 @@ export default function EmployeesPage() {
 
       if (response.ok) {
         const result = await response.json();
-        dispatch({ type: 'SET_ORGANIZATIONS', payload: result.data || [] });
+        dispatch({ type: 'SET_ORGANIZATIONS', payload: (result.data || []).map(org => ({ ...org, id: String(org.id) })) });
       }
     } catch (error) {
       console.error('Error fetching organizations:', error);
@@ -272,7 +235,7 @@ export default function EmployeesPage() {
   );
 
   // Memoize event handlers to prevent unnecessary re-renders
-  const handleOrganizationChange = useCallback((orgId: number | null) => {
+  const handleOrganizationChange = useCallback((orgId: string | null) => {
     dispatch({ type: 'START_ORGANIZATION_FILTER', payload: orgId });
   }, []);
 
@@ -291,13 +254,13 @@ export default function EmployeesPage() {
     }
   };
 
-  const toggleCardExpansion = (empId: number) => {
+  const toggleCardExpansion = (empId: string) => {
     dispatch({ type: 'TOGGLE_CARD_EXPANSION', payload: empId });
   };
 
   // Group employees by organization for admin view
   const employeesByOrganization = useMemo(() => {
-    const grouped: { [key: number]: { org: Organization; employees: Employee[] } } = {};
+    const grouped: { [key: string]: { org: Organization; employees: Employee[] } } = {};
 
     state.employees.forEach(employee => {
       const orgId = employee.organization.id;
@@ -371,7 +334,7 @@ export default function EmployeesPage() {
       <div className="w-full overflow-x-auto">
         <ComponentCard title="Employee Management" size="full">
           {/* Organization Filter - Only for Super Admin */}
-          <RoleComponentWrapper roles={['SUPER_ADMIN']}>
+          <RoleComponentWrapper roles={['SUPER_ADMIN']} showFallback={false}>
             <div className="mb-6">
               <label htmlFor="organization-select" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Filter by Organization
@@ -379,7 +342,7 @@ export default function EmployeesPage() {
               <select
                 id="organization-select"
                 value={state.selectedOrganization || ''}
-                onChange={(e) => handleOrganizationChange(e.target.value ? Number(e.target.value) : null)}
+                onChange={(e) => handleOrganizationChange(e.target.value ? e.target.value : null)}
                 disabled={state.loading}
                 className="block w-full max-w-xs px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white disabled:opacity-50 disabled:cursor-not-allowed"
               >
@@ -417,7 +380,7 @@ export default function EmployeesPage() {
           )}
 
           {/* Desktop Table View */}
-          <EmployeeTable employees={state.employees} getStatusColor={getStatusColor} loading={state.isOrganizationFilterLoading} />
+          <EmployeeTable employees={state.employees} getStatusColor={getStatusColor} loading={state.isOrganizationFilterLoading} currentPage={state.pagination?.page} limit={state.pagination?.limit} />
 
           {/* Mobile Card View */}
           <div className="lg:hidden space-y-4">

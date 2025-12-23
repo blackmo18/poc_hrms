@@ -10,17 +10,17 @@ export async function GET(request: NextRequest) {
 
       if (permissionId) {
         // Get specific permission
-        const permission = await permissionController.getById(Number(permissionId));
+        const permission = await permissionController.getById(permissionId);
         if (!permission) {
           return NextResponse.json({ error: 'Permission not found' }, { status: 404 });
         }
         return NextResponse.json(permission);
       } else {
         // Get all permissions (system + organization)
-        const organizationId = authRequest.user!.organizationId;
+        const organization_id = authRequest.user!.organizationId;
         const [systemPermissions, orgPermissions] = await Promise.all([
           permissionController.getSystemPermissions(),
-          permissionController.getOrganizationPermissions(organizationId)
+          permissionController.getOrganizationPermissions(organization_id)
         ]);
 
         return NextResponse.json({
@@ -91,7 +91,7 @@ export async function PUT(request: NextRequest) {
       }
 
       // Check if permission exists and belongs to the organization
-      const permission = await permissionController.getById(Number(id));
+      const permission = await permissionController.getById(id);
       if (!permission || permission.organization_id !== authRequest.user!.organizationId) {
         return NextResponse.json({ error: 'Permission not found' }, { status: 404 });
       }
@@ -104,7 +104,7 @@ export async function PUT(request: NextRequest) {
         ]);
 
         const allPermissions = [...systemPermissions, ...orgPermissions];
-        const nameExists = allPermissions.some(p => p.id !== Number(id) && p.name.toLowerCase() === name.toLowerCase());
+        const nameExists = allPermissions.some(p => p.id !== id && p.name.toLowerCase() === name.toLowerCase());
 
         if (nameExists) {
           return NextResponse.json(
@@ -115,7 +115,7 @@ export async function PUT(request: NextRequest) {
       }
 
       // Update permission
-      const updatedPermission = await permissionController.update(Number(id), {
+      const updatedPermission = await permissionController.update(id, {
         name,
         description
       });
@@ -143,7 +143,7 @@ export async function DELETE(request: NextRequest) {
       }
 
       // Check if permission exists and belongs to the organization
-      const permission = await permissionController.getById(Number(permissionId));
+      const permission = await permissionController.getById(permissionId);
       if (!permission || permission.organization_id !== authRequest.user!.organizationId) {
         return NextResponse.json({ error: 'Permission not found' }, { status: 404 });
       }
@@ -155,7 +155,7 @@ export async function DELETE(request: NextRequest) {
         }, { status: 403 });
       }
 
-      await permissionController.delete(Number(permissionId));
+      await permissionController.delete(permissionId);
 
       return NextResponse.json({ message: 'Permission deleted successfully' });
 

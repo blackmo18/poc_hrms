@@ -1,12 +1,12 @@
 import { z } from 'zod';
 
 export const EmployeeSchema = z.object({
-  id: z.number().optional(),
-  organization_id: z.number().min(1, 'Organization ID is required'),
-  user_id: z.number().optional(),
-  department_id: z.number().min(1, 'Department ID is required'),
-  job_title_id: z.number().min(1, 'Job title ID is required'),
-  manager_id: z.number().optional(),
+  id: z.string().optional(),
+  organization_id: z.string().min(1, 'Organization ID is required'),
+  user_id: z.string().optional(),
+  department_id: z.string().min(1, 'Department ID is required'),
+  job_title_id: z.string().min(1, 'Job title ID is required'),
+  manager_id: z.string().optional(),
   first_name: z.string().min(1, 'First name is required'),
   last_name: z.string().min(1, 'Last name is required'),
   email: z.string().email('Valid email is required'),

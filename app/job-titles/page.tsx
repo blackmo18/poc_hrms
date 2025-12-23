@@ -402,7 +402,7 @@ export default function JobTitlesPage() {
       <div className="w-full overflow-x-auto">
         <ComponentCard title="Job Title Management" size="full">
           {/* Organization Filter - Only for Super Admin */}
-          <RoleComponentWrapper roles={['SUPER_ADMIN']}>
+          <RoleComponentWrapper roles={['SUPER_ADMIN']} showFallback={false}>
             <div className="mb-6">
               <label htmlFor="organization-select" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Filter by Organization
@@ -436,7 +436,7 @@ export default function JobTitlesPage() {
           </div>
 
           {/* Desktop Table View */}
-          <JobTitleTable jobTitles={state.jobTitles} onDelete={handleDeleteClick} loading={state.isOrganizationFilterLoading} />
+          <JobTitleTable jobTitles={state.jobTitles} onDelete={handleDeleteClick} loading={state.isOrganizationFilterLoading} currentPage={state.pagination?.page} limit={state.pagination?.limit} />
 
           {/* Mobile Card View */}
           <JobTitleCardList jobTitles={state.jobTitles} onDelete={handleDeleteClick} />

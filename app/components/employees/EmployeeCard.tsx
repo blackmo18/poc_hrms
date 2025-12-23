@@ -3,41 +3,12 @@ import Link from 'next/link';
 import { ChevronDownIcon, ChevronUpIcon, UserIcon, OrganizationIcon } from '../../icons';
 import Badge, { BadgeColor } from '../../components/ui/badge/Badge';
 import { Card, CardContent, CardHeader } from '../../components/ui/card';
-
-interface Employee {
-  id: number;
-  first_name: string;
-  last_name: string;
-  email: string;
-  employment_status: string;
-  hire_date: string;
-  organization: {
-    id: number;
-    name: string;
-  };
-  department: {
-    id: number;
-    name: string;
-  };
-  jobTitle: {
-    id: number;
-    name: string;
-  };
-  manager?: {
-    id: number;
-    first_name: string;
-    last_name: string;
-  };
-  user?: {
-    id: number;
-    email: string;
-  };
-}
+import { Employee } from './EmployeeTable';
 
 interface EmployeeCardProps {
   employee: Employee;
   isExpanded: boolean;
-  onToggle: (empId: number) => void;
+  onToggle: (empId: string) => void;
   getStatusColor: (status: string) => BadgeColor;
 }
 

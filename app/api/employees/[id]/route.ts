@@ -10,13 +10,7 @@ export async function GET(
   return requiresPermissions(request, ['employees.read'], async (authRequest) => {
     try {
       const { id } = await params;
-      const employeeId = parseInt(id);
-      if (isNaN(employeeId)) {
-        return NextResponse.json(
-          { error: 'Invalid employee ID' },
-          { status: 400 }
-        );
-      }
+      const employeeId = id;
 
       const user = authRequest.user!;
       const isAdmin = user.roles.includes('ADMIN') || user.roles.includes('SUPER_ADMIN');
@@ -57,13 +51,7 @@ export async function PUT(
   return requiresPermissions(request, ['employees.update'], async (authRequest) => {
     try {
       const { id } = await params;
-      const employeeId = parseInt(id);
-      if (isNaN(employeeId)) {
-        return NextResponse.json(
-          { error: 'Invalid employee ID' },
-          { status: 400 }
-        );
-      }
+      const employeeId = id;
 
       const body = await request.json();
       const validatedData = UpdateEmployeeSchema.parse(body);
@@ -108,13 +96,7 @@ export async function DELETE(
   return requiresPermissions(request, ['employees.delete'], async (authRequest) => {
     try {
       const { id } = await params;
-      const employeeId = parseInt(id);
-      if (isNaN(employeeId)) {
-        return NextResponse.json(
-          { error: 'Invalid employee ID' },
-          { status: 400 }
-        );
-      }
+      const employeeId = id;
 
       const user = authRequest.user!;
       const isAdmin = user.roles.includes('ADMIN') || user.roles.includes('SUPER_ADMIN');

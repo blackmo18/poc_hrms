@@ -1,8 +1,9 @@
 import { prisma } from '../db';
 import { CreateLeaveRequest, UpdateLeaveRequest } from '../models/leave-request';
+import { generateULID } from '../utils/ulid.service';
 
 export class LeaveRequestController {
-  async getAll(employeeId?: number, status?: string) {
+  async getAll(employeeId?: string, status?: string) {
     return await prisma.leaveRequest.findMany({
       where: {
         ...(employeeId && { employee_id: employeeId }),
@@ -22,7 +23,7 @@ export class LeaveRequestController {
     });
   }
 
-  async getById(id: number) {
+  async getById(id: string) {
     return await prisma.leaveRequest.findUnique({
       where: { id },
       include: {
@@ -39,7 +40,7 @@ export class LeaveRequestController {
 
   async create(data: CreateLeaveRequest) {
     return await prisma.leaveRequest.create({
-      data,
+      data: { id: generateULID(), ...data },
       include: {
         employee: {
           include: {
@@ -51,7 +52,7 @@ export class LeaveRequestController {
     });
   }
 
-  async update(id: number, data: UpdateLeaveRequest) {
+  async update(id: string, data: UpdateLeaveRequest) {
     return await prisma.leaveRequest.update({
       where: { id },
       data,
@@ -66,17 +67,17 @@ export class LeaveRequestController {
     });
   }
 
-  async delete(id: number) {
+  async delete(id: string) {
     return await prisma.leaveRequest.delete({
       where: { id },
     });
   }
 
-  async approve(id: number) {
+  async approve(id: string) {
     return await this.update(id, { status: 'APPROVED' });
   }
 
-  async reject(id: number, remarks?: string) {
+  async reject(id: string, remarks?: string) {
     return await this.update(id, { status: 'REJECTED', remarks });
   }
 }

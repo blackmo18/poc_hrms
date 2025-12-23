@@ -1,15 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { JWTUtils } from './jwt';
-import { prisma } from '../db';
 import { permissionController } from '../controllers';
-import { findUserById, getPermissionsByRoleIds } from './auth-db';
+import { findUserById, getPermissionsByRoleIds, getUserRoles } from './auth-db';
+import { getUserService } from '../service';
 
 export interface AuthenticatedRequest extends NextRequest {
   user?: {
-    id: number;
+    id: string;
     email: string;
-    organizationId: number;
+    organization_id: string;
     roles: string[];
   };
 }
@@ -56,16 +56,8 @@ export async function authMiddleware(request: NextRequest): Promise<any | NextRe
     const payload = JWTUtils.verifyAccessToken(token);
 
     // Fetch user from database to ensure they still exist and are active
-    const user = await prisma.user.findUnique({
-      where: { id: payload.userId },
-      include: {
-        userRoles: {
-          include: {
-            role: true
-          }
-        }
-      }
-    });
+    const userService = getUserService();
+    const user = await userService.getById(payload.userId.toString());
 
     if (!user || user.status !== 'ACTIVE') {
       return NextResponse.json(
@@ -74,12 +66,16 @@ export async function authMiddleware(request: NextRequest): Promise<any | NextRe
       );
     }
 
+    // Get user roles
+    const userRoles = await getUserRoles(payload.userId.toString());
+    const roles = userRoles.map(role => role.name);
+
     // Return user object
     return {
-      id: user.id,
-      email: user.email,
-      organizationId: user.organization_id,
-      roles: user.userRoles.map(ur => ur.role?.name).filter(Boolean) as string[]
+      id: payload.userId,
+      email: payload.email,
+      organization_id: user.organization_id,
+      roles: roles
     };
   } catch (error) {
     console.error('Auth middleware error:', error);
@@ -95,11 +91,11 @@ export async function authMiddleware(request: NextRequest): Promise<any | NextRe
  */
 export async function organizationMiddleware(request: NextRequest): Promise<NextResponse | null> {
   const authRequest = request as AuthenticatedRequest;
-  const userOrganization = authRequest.user?.organizationId;
+  const userOrganization = authRequest.user?.organization_id;
   const requestedOrganization = request.nextUrl.searchParams.get('organization_id') || 
                                request.headers.get('x-organization-id');
 
-  if (requestedOrganization && userOrganization !== parseInt(requestedOrganization)) {
+  if (requestedOrganization && userOrganization !== requestedOrganization) {
     return NextResponse.json(
       { error: 'Access to this organization is not allowed' },
       { status: 403 }
@@ -137,15 +133,22 @@ export function rbacMiddleware(allowedRoles: string[]) {
 /* ===================================================== */
 
 /**
+ * Helper function to extract role IDs from token
+ */
+export async function extractRoleIds(token: string): Promise<string[]> {
+  const decoded = JWTUtils.decodeToken(token);
+  if (!decoded) {
+    throw new Error('Invalid authentication token');
+  }
+  return decoded.roleIds;
+}
+
+/**
  * Helper function to check if user has required permissions
  */
-async function getUserPermissions(roleIds: number[]): Promise<string[]> {
-  const userPermissions: string[] = [];
-  for (const roleId of roleIds) {
-    const rolePermissions = await permissionController.getPermissionsByRoleId(roleId);
-    userPermissions.push(...rolePermissions);
-  }
-  return [...new Set(userPermissions)]; // Remove duplicates
+export async function getUserPermissions(token: string): Promise<string[]> {
+  const roleIds = await extractRoleIds(token);
+  return await getPermissionsByRoleIds(roleIds);
 }
 
 /* ===================================================== */

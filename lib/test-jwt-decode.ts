@@ -7,10 +7,10 @@ async function testJWTDecode() {
   try {
     // Create a test token
     const testPayload = {
-      userId: 1,
+      userId: '1',
       email: 'admin@techcorp.com',
-      organizationId: 1,
-      roleIds: [1],
+      organization_id: '1',
+      roleIds: ['1'],
       username: 'admin@techcorp.com',
       type: 'access' as const
     };
@@ -25,7 +25,7 @@ async function testJWTDecode() {
       console.log('✅ Token decoded successfully');
       console.log('👤 User ID:', decoded.userId);
       console.log('📧 Email:', decoded.email);
-      console.log('🏢 Organization ID:', decoded.organizationId);
+      console.log('🏢 Organization ID:', decoded.organization_id);
       console.log('🔑 Role IDs:', decoded.roleIds);
       console.log('👤 Username:', decoded.username);
       console.log('🔖 Token Type:', decoded.type);

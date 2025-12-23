@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
         email: user.email,
         name: user.name,
         role: roles[0]?.name || 'EMPLOYEE',
-        organizationId: user.organizationId.toString()
+        organizationId: user.organization_id
       }
     });
 

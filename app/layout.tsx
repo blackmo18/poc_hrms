@@ -1,13 +1,10 @@
 import './globals.css';
 import type { Metadata } from 'next';
-import { Inter } from 'next/font/google';
 import { cookies } from 'next/headers';
 import { AuthProvider } from './components/providers/auth-provider';
 import { ThemeProvider } from './context/ThemeContext';
 import IdleStatus from './components/common/IdleStatus';
 import { JWTUtils } from '@/lib/auth/jwt';
-
-const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
   title: 'HR Management System',
@@ -39,7 +36,7 @@ export default async function RootLayout({
 
   return (
     <html lang="en" suppressHydrationWarning className={initialTheme === 'dark' ? 'dark' : ''}>
-      <body className={inter.className}>
+      <body>
         <ThemeProvider initialTheme={initialTheme}>
           <AuthProvider initialUser={initialUser}>
             {children}

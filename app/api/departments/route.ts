@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
       // Create session object for controller
       const session = { user: { id: authRequest.user.id.toString() } };
 
-      const result = await departmentController.getAll(session, organizationId ? Number(organizationId) : undefined, page, limit);
+      const result = await departmentController.getAll(session, organizationId ? organizationId : undefined, page, limit);
 
       return NextResponse.json(result);
     } catch (error: any) {

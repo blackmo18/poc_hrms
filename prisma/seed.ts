@@ -1,6 +1,7 @@
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import { config } from 'dotenv';
+import { generateULID } from '@/lib/utils/ulid.service';
 
 // Load .env.local (which could be from .env or Vercel depending on the command used)
 config({ path: '.env.local' });
@@ -116,6 +117,7 @@ async function seedDatabase() {
   if (!systemOrg) {
     systemOrg = await prisma.organization.create({
       data: {
+        id: generateULID(),
         name: 'System',
         email: 'system@hrsystem.com',
         contact_number: '+1-555-0000',
@@ -138,6 +140,7 @@ async function seedDatabase() {
   if (!organization) {
     organization = await prisma.organization.create({
       data: {
+        id: generateULID(),
         name: 'Tech Corp Inc.',
         email: 'contact@techcorp.com',
         contact_number: '+1-555-0101',
@@ -188,6 +191,7 @@ async function seedDatabase() {
     if (!existingOrg) {
       await prisma.organization.create({
         data: {
+          id: generateULID(),
           ...orgData,
           status: 'ACTIVE',
         },
@@ -204,6 +208,7 @@ async function seedDatabase() {
     where: { name: 'ADMIN' },
     update: {},
     create: {
+      id: generateULID(),
       name: 'ADMIN',
       description: 'System administrator with full access',
       organization_id: organization.id,
@@ -214,6 +219,7 @@ async function seedDatabase() {
     where: { name: 'HR_MANAGER' },
     update: {},
     create: {
+      id: generateULID(),
       name: 'HR_MANAGER',
       description: 'Human Resources manager with employee management access',
       organization_id: organization.id,
@@ -224,6 +230,7 @@ async function seedDatabase() {
     where: { name: 'EMPLOYEE' },
     update: {},
     create: {
+      id: generateULID(),
       name: 'EMPLOYEE',
       description: 'Regular employee with self-service access',
       organization_id: organization.id,
@@ -234,6 +241,7 @@ async function seedDatabase() {
     where: { name: 'SUPER_ADMIN' },
     update: {},
     create: {
+      id: generateULID(),
       name: 'SUPER_ADMIN',
       description: 'System super administrator with full system access',
       organization_id: systemOrg!.id,
@@ -262,7 +270,10 @@ async function seedDatabase() {
       prisma.permission.upsert({
         where: { name: perm.name },
         update: {},
-        create: perm,
+        create: {
+          id: generateULID(),
+          ...perm,
+        },
       })
     )
   );
@@ -277,7 +288,11 @@ async function seedDatabase() {
       prisma.rolePermission.upsert({
         where: { role_id_permission_id: { role_id: adminRole.id, permission_id: permission.id } },
         update: {},
-        create: { role_id: adminRole.id, permission_id: permission.id }
+        create: {
+          id: generateULID(),
+          role_id: adminRole.id,
+          permission_id: permission.id
+        }
       })
     ),
     // HR gets employee and leave permissions
@@ -286,7 +301,11 @@ async function seedDatabase() {
         prisma.rolePermission.upsert({
           where: { role_id_permission_id: { role_id: hrRole.id, permission_id: permission.id } },
           update: {},
-          create: { role_id: hrRole.id, permission_id: permission.id }
+          create: {
+            id: generateULID(),
+            role_id: hrRole.id,
+            permission_id: permission.id
+          }
         })
       ),
     // Employee gets read permissions only
@@ -295,7 +314,11 @@ async function seedDatabase() {
         prisma.rolePermission.upsert({
           where: { role_id_permission_id: { role_id: employeeRole.id, permission_id: permission.id } },
           update: {},
-          create: { role_id: employeeRole.id, permission_id: permission.id }
+          create: {
+            id: generateULID(),
+            role_id: employeeRole.id,
+            permission_id: permission.id
+          }
         })
       ),
     // Super Admin gets all permissions
@@ -303,7 +326,11 @@ async function seedDatabase() {
       prisma.rolePermission.upsert({
         where: { role_id_permission_id: { role_id: superAdminRole.id, permission_id: permission.id } },
         update: {},
-        create: { role_id: superAdminRole.id, permission_id: permission.id }
+        create: {
+          id: generateULID(),
+          role_id: superAdminRole.id,
+          permission_id: permission.id
+        }
       })
     ),
   ]);
@@ -313,6 +340,7 @@ async function seedDatabase() {
   // Create departments
   const engineeringDept = await prisma.department.create({
     data: {
+      id: generateULID(),
       organization_id: organization.id,
       name: 'Engineering',
       description: 'Software development and engineering team',
@@ -321,6 +349,7 @@ async function seedDatabase() {
 
   const hrDept = await prisma.department.create({
     data: {
+      id: generateULID(),
       organization_id: organization.id,
       name: 'Human Resources',
       description: 'HR and people operations',
@@ -329,6 +358,7 @@ async function seedDatabase() {
 
   const salesDept = await prisma.department.create({
     data: {
+      id: generateULID(),
       organization_id: organization.id,
       name: 'Sales',
       description: 'Sales and business development',
@@ -340,6 +370,7 @@ async function seedDatabase() {
   // Create job titles
   const seniorEngineer = await prisma.jobTitle.create({
     data: {
+      id: generateULID(),
       organization_id: organization.id,
       name: 'Senior Software Engineer',
       description: 'Experienced software engineer',
@@ -348,6 +379,7 @@ async function seedDatabase() {
 
   const hrManager = await prisma.jobTitle.create({
     data: {
+      id: generateULID(),
       organization_id: organization.id,
       name: 'HR Manager',
       description: 'Human resources manager',
@@ -356,6 +388,7 @@ async function seedDatabase() {
 
   const salesRep = await prisma.jobTitle.create({
     data: {
+      id: generateULID(),
       organization_id: organization.id,
       name: 'Sales Representative',
       description: 'Sales team member',
@@ -378,6 +411,7 @@ async function seedDatabase() {
   if (financeOrg) {
     await prisma.jobTitle.create({
       data: {
+        id: generateULID(),
         organization_id: financeOrg.id,
         name: 'Financial Analyst',
         description: 'Financial analysis and reporting specialist',
@@ -385,6 +419,7 @@ async function seedDatabase() {
     });
     await prisma.jobTitle.create({
       data: {
+        id: generateULID(),
         organization_id: financeOrg.id,
         name: 'Investment Advisor',
         description: 'Investment planning and advisory services',
@@ -395,6 +430,7 @@ async function seedDatabase() {
   if (designOrg) {
     await prisma.jobTitle.create({
       data: {
+        id: generateULID(),
         organization_id: designOrg.id,
         name: 'Senior Designer',
         description: 'Lead designer with creative direction',
@@ -402,6 +438,7 @@ async function seedDatabase() {
     });
     await prisma.jobTitle.create({
       data: {
+        id: generateULID(),
         organization_id: designOrg.id,
         name: 'UX Researcher',
         description: 'User experience research and analysis',
@@ -412,6 +449,7 @@ async function seedDatabase() {
   if (healthcareOrg) {
     await prisma.jobTitle.create({
       data: {
+        id: generateULID(),
         organization_id: healthcareOrg.id,
         name: 'Clinical Coordinator',
         description: 'Healthcare coordination and patient management',
@@ -419,6 +457,7 @@ async function seedDatabase() {
     });
     await prisma.jobTitle.create({
       data: {
+        id: generateULID(),
         organization_id: healthcareOrg.id,
         name: 'Medical Technologist',
         description: 'Medical technology and diagnostics specialist',
@@ -434,6 +473,7 @@ async function seedDatabase() {
     where: { email: 'admin@techcorp.com' },
     update: {},
     create: {
+      id: generateULID(),
       organization_id: organization.id,
       email: 'admin@techcorp.com',
       password_hash: hashedPassword,
@@ -451,6 +491,7 @@ async function seedDatabase() {
     },
     update: {},
     create: {
+      id: generateULID(),
       user_id: adminUser.id,
       role_id: adminRole.id,
     },
@@ -461,6 +502,7 @@ async function seedDatabase() {
     where: { user_id: adminUser.id },
     update: {},
     create: {
+      id: generateULID(),
       organization_id: organization.id,
       user_id: adminUser.id,
       department_id: hrDept.id,
@@ -490,6 +532,7 @@ async function seedDatabase() {
     where: { email: 'superadmin@hrsystem.com' },
     update: {},
     create: {
+      id: generateULID(),
       organization_id: systemOrg!.id,
       email: 'superadmin@hrsystem.com',
       password_hash: superAdminHashedPassword,
@@ -507,6 +550,7 @@ async function seedDatabase() {
     },
     update: {},
     create: {
+      id: generateULID(),
       user_id: superAdminUser.id,
       role_id: superAdminRole.id,
     },
@@ -515,6 +559,7 @@ async function seedDatabase() {
   // Create system department and job title for super admin
   const systemDept = await prisma.department.create({
     data: {
+      id: generateULID(),
       organization_id: systemOrg!.id,
       name: 'System Administration',
       description: 'System administration department',
@@ -523,6 +568,7 @@ async function seedDatabase() {
 
   const systemJobTitle = await prisma.jobTitle.create({
     data: {
+      id: generateULID(),
       organization_id: systemOrg!.id,
       name: 'System Administrator',
       description: 'System administrator role',
@@ -534,6 +580,7 @@ async function seedDatabase() {
     where: { user_id: superAdminUser.id },
     update: {},
     create: {
+      id: generateULID(),
       organization_id: systemOrg!.id,
       user_id: superAdminUser.id,
       department_id: systemDept.id,
@@ -565,6 +612,7 @@ async function seedDatabase() {
         where: { email: 'john.doe@techcorp.com' },
         update: {},
         create: {
+          id: generateULID(),
           organization_id: organization.id,
           email: 'john.doe@techcorp.com',
           password_hash: await bcrypt.hash('password123', 10),
@@ -575,6 +623,7 @@ async function seedDatabase() {
         where: { user_id: user.id },
         update: {},
         create: {
+          id: generateULID(),
           organization_id: organization.id,
           user_id: user.id,
           department_id: engineeringDept.id,
@@ -603,6 +652,7 @@ async function seedDatabase() {
         where: { email: 'jane.smith@techcorp.com' },
         update: {},
         create: {
+          id: generateULID(),
           organization_id: organization.id,
           email: 'jane.smith@techcorp.com',
           password_hash: await bcrypt.hash('password123', 10),
@@ -613,6 +663,7 @@ async function seedDatabase() {
         where: { user_id: user.id },
         update: {},
         create: {
+          id: generateULID(),
           organization_id: organization.id,
           user_id: user.id,
           department_id: hrDept.id,
@@ -641,6 +692,7 @@ async function seedDatabase() {
         where: { email: 'mike.johnson@techcorp.com' },
         update: {},
         create: {
+          id: generateULID(),
           organization_id: organization.id,
           email: 'mike.johnson@techcorp.com',
           password_hash: await bcrypt.hash('password123', 10),
@@ -651,6 +703,7 @@ async function seedDatabase() {
         where: { user_id: user.id },
         update: {},
         create: {
+          id: generateULID(),
           organization_id: organization.id,
           user_id: user.id,
           department_id: salesDept.id,
@@ -689,6 +742,7 @@ async function seedDatabase() {
         },
         update: {},
         create: {
+          id: generateULID(),
           user_id: employee.user_id!,
           role_id: employeeRole.id,
         },
@@ -699,6 +753,7 @@ async function seedDatabase() {
   // Create sample leave requests
   await prisma.leaveRequest.create({
     data: {
+      id: generateULID(),
       employee_id: employees[0].id,
       leave_type: 'VACATION',
       start_date: new Date('2024-12-20'),
@@ -710,6 +765,7 @@ async function seedDatabase() {
 
   await prisma.leaveRequest.create({
     data: {
+      id: generateULID(),
       employee_id: employees[1].id,
       leave_type: 'SICK',
       start_date: new Date('2024-11-15'),
@@ -726,6 +782,7 @@ async function seedDatabase() {
     employees.map(employee =>
       prisma.compensation.create({
         data: {
+          id: generateULID(),
           employee_id: employee.id,
           base_salary: employee.job_title_id === seniorEngineer.id ? 120000 : 75000,
           pay_frequency: 'MONTHLY',

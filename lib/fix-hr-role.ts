@@ -1,4 +1,5 @@
 import { prisma } from './db';
+import { generateULID } from './utils/ulid.service';
 import dotenv from 'dotenv';
 
 // Load environment variables
@@ -46,6 +47,7 @@ async function fixHRRole() {
     // Assign HR Manager role
     await prisma.userRole.create({
       data: {
+        id: generateULID(),
         user_id: janeUser.id,
         role_id: hrRole.id
       }

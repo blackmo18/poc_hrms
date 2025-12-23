@@ -1,8 +1,8 @@
 import { z } from 'zod';
 
 export const PayrollSchema = z.object({
-  id: z.number().optional(),
-  employee_id: z.number().min(1, 'Employee ID is required'),
+  id: z.string().optional(),
+  employee_id: z.string().min(1, 'Employee ID is required'),
   period_start: z.date(),
   period_end: z.date(),
   gross_salary: z.number().min(0, 'Gross salary must be positive'),

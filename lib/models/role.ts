@@ -1,8 +1,8 @@
 import { z } from 'zod';
 
 export const RoleSchema = z.object({
-  id: z.number().optional(),
-  organization_id: z.number().min(1, 'Organization ID is required'),
+  id: z.string().optional(),
+  organization_id: z.string().min(1, 'Organization ID is required'),
   name: z.string().min(1, 'Role name is required'),
   description: z.string().optional(),
   created_at: z.date().optional(),

@@ -13,7 +13,7 @@ interface User {
   role?: string;
   roles?: string[];
   permissions?: string[];
-  organization_id?: number;
+  organization_id?: string;
 }
 
 interface AuthContextType {

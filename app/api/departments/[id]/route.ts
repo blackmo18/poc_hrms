@@ -13,7 +13,7 @@ export async function GET(
       // Create session object for controller
       const session = { user: { id: authRequest.user.id.toString() } };
 
-      const department = await departmentController.getById(session, Number(id));
+      const department = await departmentController.getById(session, id);
 
       if (!department) {
         return NextResponse.json(
@@ -67,7 +67,7 @@ export async function PUT(
       // Create session object for controller
       const session = { user: { id: authRequest.user.id.toString() } };
 
-      const department = await departmentController.update(session, Number(id), body);
+      const department = await departmentController.update(session, id, body);
 
       return NextResponse.json(department);
     } catch (error: any) {
@@ -113,7 +113,7 @@ export async function DELETE(
       // Create session object for controller
       const session = { user: { id: authRequest.user.id.toString() } };
 
-      await departmentController.delete(session, Number(id));
+      await departmentController.delete(session, id);
       return NextResponse.json({ message: 'Department deleted successfully' });
     } catch (error: any) {
       console.error('Error deleting department:', error);

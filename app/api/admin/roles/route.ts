@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
 
       if (roleId) {
         // Get specific role
-        const role = await roleController.getById(Number(roleId));
+        const role = await roleController.getById(roleId);
         if (!role) {
           return NextResponse.json({ error: 'Role not found' }, { status: 404 });
         }
@@ -59,7 +59,7 @@ export async function POST(request: NextRequest) {
       // Assign permissions if provided
       if (permissionIds && Array.isArray(permissionIds)) {
         for (const permissionId of permissionIds) {
-          await roleController.assignPermission(role.id, Number(permissionId));
+          await roleController.assignPermission(role.id, permissionId);
         }
 
         // Get updated role with permissions
@@ -93,13 +93,13 @@ export async function PUT(request: NextRequest) {
       }
 
       // Check if role exists and belongs to the organization
-      const existingRole = await roleController.getById(Number(id));
+      const existingRole = await roleController.getById(id);
       if (!existingRole || existingRole.organization_id !== authRequest.user!.organizationId) {
         return NextResponse.json({ error: 'Role not found' }, { status: 404 });
       }
 
       // Update role
-      const updatedRole = await roleController.update(Number(id), {
+      const updatedRole = await roleController.update(id, {
         name,
         description
       });
@@ -107,21 +107,21 @@ export async function PUT(request: NextRequest) {
       // Update permissions if provided
       if (permissionIds !== undefined) {
         // Remove all existing permissions
-        const currentPermissions = await roleController.getRolePermissions(Number(id));
+        const currentPermissions = await roleController.getRolePermissions(id);
         for (const permission of currentPermissions) {
-          await roleController.removePermission(Number(id), permission.id);
+          await roleController.removePermission(id, permission.id);
         }
 
         // Add new permissions
         if (Array.isArray(permissionIds)) {
           for (const permissionId of permissionIds) {
-            await roleController.assignPermission(Number(id), Number(permissionId));
+            await roleController.assignPermission(id, permissionId);
           }
         }
       }
 
       // Get final role with updated permissions
-      const finalRole = await roleController.getById(Number(id));
+      const finalRole = await roleController.getById(id);
 
       return NextResponse.json({
         message: 'Role updated successfully',
@@ -146,7 +146,7 @@ export async function DELETE(request: NextRequest) {
       }
 
       // Check if role exists and belongs to the organization
-      const role = await roleController.getById(Number(roleId));
+      const role = await roleController.getById(roleId);
       if (!role || role.organization_id !== authRequest.user!.organizationId) {
         return NextResponse.json({ error: 'Role not found' }, { status: 404 });
       }
@@ -159,7 +159,7 @@ export async function DELETE(request: NextRequest) {
         }, { status: 403 });
       }
 
-      await roleController.delete(Number(roleId));
+      await roleController.delete(roleId);
 
       return NextResponse.json({ message: 'Role deleted successfully' });
 

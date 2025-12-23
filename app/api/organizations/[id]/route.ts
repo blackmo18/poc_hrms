@@ -8,7 +8,7 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const organization = await organizationController.getById(Number(id));
+    const organization = await organizationController.getById(id);
     
     if (!organization) {
       return NextResponse.json(
@@ -37,7 +37,7 @@ export async function PUT(
     
     // Validate update data
     const validatedData = UpdateOrganizationSchema.parse(body);
-    const organization = await organizationController.update(Number(id), validatedData);
+    const organization = await organizationController.update(id, validatedData);
     
     if (!organization) {
       return NextResponse.json(
@@ -68,7 +68,7 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
-    await organizationController.delete(Number(id));
+    await organizationController.delete(id);
     return NextResponse.json({ message: 'Organization deleted successfully' });
   } catch (error) {
     console.error('Error deleting organization:', error);

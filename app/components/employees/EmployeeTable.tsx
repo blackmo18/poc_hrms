@@ -12,38 +12,52 @@ import {
 import Badge, { BadgeColor } from '@/app/components/ui/badge/Badge';
 import { PencilIcon } from '@/app/icons';
 
-interface Employee {
-  id: number;
+export interface Employee {
+  id: string;
   first_name: string;
   last_name: string;
   email: string;
   employment_status: 'ACTIVE' | 'INACTIVE' | 'TERMINATED' | 'ON_LEAVE';
+  hire_date: string;
   organization: {
-    id: number;
+    id: string;
     name: string;
   };
   department: {
-    id: number;
+    id: string;
     name: string;
   };
   jobTitle: {
-    id: number;
+    id: string;
     name: string;
+  };
+  manager?: {
+    id: string;
+    first_name: string;
+    last_name: string;
+  };
+  user?: {
+    id: string;
+    email: string;
   };
 }
 
 interface EmployeeTableBodyProps {
   employees: Employee[];
   getStatusColor: (status: string) => BadgeColor;
+  currentPage?: number;
+  limit?: number;
 }
 
-const EmployeeTableBody = memo(function EmployeeTableBody({ employees, getStatusColor }: EmployeeTableBodyProps) {
+const EmployeeTableBody = memo(function EmployeeTableBody({ employees, getStatusColor, currentPage = 1, limit = 15 }: EmployeeTableBodyProps) {
   return (
     <>
-      {employees.map((employee) => (
+      {employees.map((employee, index) => {
+        const rowNumber = (currentPage - 1) * limit + index + 1;
+        return (
         <TableRow key={employee.id}>
           <TableCell className="px-5 py-4 text-gray-500 text-start text-theme-sm dark:text-gray-400">
-            {employee.id}
+            {rowNumber}
           </TableCell>
           <TableCell className="px-4 py-3 text-start">
             <span className="font-medium text-gray-800 text-theme-sm dark:text-white/90">
@@ -79,7 +93,8 @@ const EmployeeTableBody = memo(function EmployeeTableBody({ employees, getStatus
             </Link>
           </TableCell>
         </TableRow>
-      ))}
+        );
+      })}
     </>
   );
 });
@@ -89,9 +104,11 @@ interface EmployeeTableProps {
   getStatusColor: (status: string) => BadgeColor;
   loading?: boolean;
   fallback?: React.ReactNode;
+  currentPage?: number;
+  limit?: number;
 }
 
-export default function EmployeeTable({ employees, getStatusColor, loading = false, fallback }: EmployeeTableProps) {
+export default function EmployeeTable({ employees, getStatusColor, loading = false, fallback, currentPage = 1, limit = 15 }: EmployeeTableProps) {
   // Loading skeleton rows
   const LoadingSkeleton = () => (
     <>
@@ -137,7 +154,7 @@ export default function EmployeeTable({ employees, getStatusColor, loading = fal
                 isHeader
                 className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
               >
-                ID
+                No.
               </TableCell>
               <TableCell
                 isHeader
@@ -189,7 +206,7 @@ export default function EmployeeTable({ employees, getStatusColor, loading = fal
             {loading ? (
               fallback || <LoadingSkeleton />
             ) : (
-              <EmployeeTableBody employees={employees} getStatusColor={getStatusColor} />
+              <EmployeeTableBody employees={employees} getStatusColor={getStatusColor} currentPage={currentPage} limit={limit} />
             )}
           </TableBody>
         </Table>

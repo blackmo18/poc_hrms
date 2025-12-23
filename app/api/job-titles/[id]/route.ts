@@ -10,14 +10,7 @@ export async function GET(
   return requiresRoles(request, ['ADMIN', 'SUPER_ADMIN'], async (authRequest) => {
     try {
       const { id } = await params;
-      const jobTitleId = parseInt(id);
-
-      if (isNaN(jobTitleId)) {
-        return NextResponse.json(
-          { error: 'Invalid job title ID' },
-          { status: 400 }
-        );
-      }
+      const jobTitleId = id;
 
       const jobTitle = await jobTitleController.getById(jobTitleId);
 
@@ -60,14 +53,7 @@ export async function PUT(
   return requiresRoles(request, ['ADMIN', 'SUPER_ADMIN'], async (authRequest) => {
     try {
       const { id } = await params;
-      const jobTitleId = parseInt(id);
-
-      if (isNaN(jobTitleId)) {
-        return NextResponse.json(
-          { error: 'Invalid job title ID' },
-          { status: 400 }
-        );
-      }
+      const jobTitleId = id;
 
       const body = await request.json();
       const validatedData = UpdateJobTitleSchema.parse(body);
@@ -105,14 +91,7 @@ export async function DELETE(
   return requiresRoles(request, ['ADMIN', 'SUPER_ADMIN'], async (authRequest) => {
     try {
       const { id } = await params;
-      const jobTitleId = parseInt(id);
-
-      if (isNaN(jobTitleId)) {
-        return NextResponse.json(
-          { error: 'Invalid job title ID' },
-          { status: 400 }
-        );
-      }
+      const jobTitleId = id;
 
       // Get user info from auth request
       const user = authRequest.user!;

@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
     if (isSuperAdmin) {
       // Super Admin can see all job titles across all organizations
       result = await jobTitleController.getAll(
-        organizationId ? Number(organizationId) : undefined,
+        organizationId ?? undefined,
         { page, limit }
       );
     } else if (isAdmin) {

@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
     const periodEnd = searchParams.get('periodEnd') ? new Date(searchParams.get('periodEnd')!) : undefined;
     
     const payrolls = await payrollController.getAll(
-      Number(employeeId || '0'),
+      employeeId ?? undefined,
       periodStart,
       periodEnd
     );
