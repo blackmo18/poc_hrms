@@ -17,49 +17,7 @@ interface RoleAccessContextType {
 const RoleAccessContext = createContext<RoleAccessContextType | undefined>(undefined);
 
 export function RoleAccessProvider({ children }: { children: ReactNode }) {
-  const { user, isLoading: authLoading } = useAuth();
-  const [roles, setRoles] = useState<string[]>([]);
-  const [permissions, setPermissions] = useState<string[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-
-  useEffect(() => {
-    const fetchRoles = async () => {
-      if (!user) {
-        setRoles([]);
-        setPermissions([]);
-        return;
-      }
-
-      setIsLoading(true);
-      try {
-        const response = await fetch('/api/auth/session', {
-          credentials: 'include',
-          headers: {
-            'Cache-Control': 'no-cache',
-            'Pragma': 'no-cache'
-          }
-        });
-        if (response.ok) {
-          const data = await response.json();
-          setRoles(data.user?.roles || []);
-          setPermissions(data.user?.permissions || []);
-        } else {
-          setRoles([]);
-          setPermissions([]);
-        }
-      } catch (error) {
-        console.error('Failed to fetch roles:', error);
-        setRoles([]);
-        setPermissions([]);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    if (!authLoading) {
-      fetchRoles();
-    }
-  }, [user, authLoading]);
+  const { user, roles, permissions, isLoading: authLoading } = useAuth();
 
   const hasRole = (role: string) => roles.includes(role);
 
@@ -75,7 +33,7 @@ export function RoleAccessProvider({ children }: { children: ReactNode }) {
     <RoleAccessContext.Provider value={{
       roles,
       permissions,
-      isLoading,
+      isLoading: authLoading,
       hasRole,
       hasAnyRole,
       hasAllRoles,

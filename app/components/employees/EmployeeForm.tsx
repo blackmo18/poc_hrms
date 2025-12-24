@@ -1,7 +1,7 @@
 import Input from '@/app/components/form/input/InputField';
 import Label from '@/app/components/form/Label';
 import Select from '@/app/components/form/Select';
-import DatePicker from '@/app/components/form/DatePicker';
+import DatePicker from '@/app/components/form/date-picker';
 
 interface EmployeeFormData {
   organization_id: string;
@@ -179,11 +179,17 @@ export default function EmployeeForm({
 
         <div>
           <Label>Hire Date {isEdit ? '' : '*'}</Label>
-          <Input
-            type='date'
-            value={formData.hire_date}
-            onChange={(e) => handleInputChange('hire_date', e.target.value)}
-            required={!isEdit}
+          <DatePicker
+            id="hire_date"
+            mode="single"
+            defaultDate={formData.hire_date}
+            onChange={(dates) => {
+              if (dates && dates.length > 0) {
+                const dateStr = dates[0].toISOString().split('T')[0];
+                handleInputChange('hire_date', dateStr);
+              }
+            }}
+            placeholder="Select hire date"
           />
         </div>
 
@@ -264,11 +270,16 @@ export default function EmployeeForm({
           <div>
             <Label>Date of Birth {isEdit ? '' : '*'}</Label>
             <DatePicker
-              value={formData.date_of_birth}
-              onChange={(value) => handleInputChange('date_of_birth', value)}
-              placeholder='Select date of birth'
-              required={!isEdit}
-              defaultYearOffset={-18}
+              id="date_of_birth"
+              mode="single"
+              defaultDate={formData.date_of_birth}
+              onChange={(dates) => {
+                if (dates && dates.length > 0) {
+                  const dateStr = dates[0].toISOString().split('T')[0];
+                  handleInputChange('date_of_birth', dateStr);
+                }
+              }}
+              placeholder="Select date of birth"
             />
           </div>
 

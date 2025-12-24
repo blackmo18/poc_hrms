@@ -24,6 +24,8 @@ const sanitizeUser = (user: any): User => ({
 
 export function useUserCache(
   setUser: (user: User | null) => void,
+  setRoles: (roles: string[]) => void,
+  setPermissions: (permissions: string[]) => void,
   setIsLoading: (loading: boolean) => void,
   setHasCheckedAuth: (checked: boolean) => void,
   options: UseUserCacheOptions = {}
@@ -68,6 +70,8 @@ export function useUserCache(
           const sanitized = sanitizeUser(data.user);
           setUser(sanitized);
           setInternalUser(sanitized);
+          setRoles(data.user.roles || []);
+          setPermissions(data.user.permissions || []);
         } else {
           setUser(null);
           setInternalUser(null);

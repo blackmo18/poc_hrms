@@ -9,8 +9,10 @@ import Button from '@/app/components/ui/button/Button';
 import Input from '@/app/components/form/input/InputField';
 import Label from '@/app/components/form/Label';
 import Select from '@/app/components/form/Select';
+import { validateEmployeeForm } from '@/lib/utils/employeeValidation';
 import { getEmployeeGroupedDetails } from '@/lib/utils/employeeDetails';
 import DetailsConfirmationModal from '@/app/components/ui/modal/DetailsConfirmationModal';
+import ConfirmationModal from '@/app/components/ui/modal/ConfirmationModal';
 import EmployeeForm from '@/app/components/employees/EmployeeForm';
 import { useAuth } from '@/app/components/providers/auth-provider';
 import { useRoleAccess } from '@/app/components/providers/role-access-provider';
@@ -79,6 +81,7 @@ export default function EditEmployeePage({ params }: { params: Promise<{ id: str
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -253,11 +256,12 @@ export default function EditEmployeePage({ params }: { params: Promise<{ id: str
   };
 
   const handleSaveClick = () => {
-    // Basic validation
-    if (!formData.first_name.trim() || !formData.last_name.trim() || !formData.work_email.trim()) {
-      setError('Please fill in all required fields');
+    const validationError = validateEmployeeForm(formData);
+    if (validationError) {
+      setError(validationError);
       return;
     }
+
     setError(null);
     setShowConfirmModal(true);
   };
@@ -276,11 +280,12 @@ export default function EditEmployeePage({ params }: { params: Promise<{ id: str
 
       const payload = {
         ...formData,
-        organization_id: Number(formData.organization_id),
-        department_id: Number(formData.department_id),
-        job_title_id: Number(formData.job_title_id),
+        organization_id: formData.organization_id,
+        department_id: formData.department_id,
+        job_title_id: formData.job_title_id,
         manager_id: formData.manager_id ? Number(formData.manager_id) : undefined,
         email: formData.work_email, // Map work_email to required email field
+        personal_email: formData.personal_email.trim() === '' ? null : formData.personal_email.trim(),
         date_of_birth: new Date(formData.date_of_birth),
         hire_date: new Date(formData.hire_date),
       };
@@ -299,8 +304,9 @@ export default function EditEmployeePage({ params }: { params: Promise<{ id: str
         throw new Error(errorData.error || 'Failed to update employee');
       }
 
-      // Redirect back to employees page
-      router.push('/employees');
+      const data = await response.json();
+      // Show success modal instead of redirecting
+      setShowSuccessModal(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save changes');
     } finally {
@@ -340,8 +346,8 @@ export default function EditEmployeePage({ params }: { params: Promise<{ id: str
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-lg text-gray-600 dark:text-gray-300">Loading...</div>
+      <div className='flex items-center justify-center h-64'>
+        <div className='text-lg text-gray-600 dark:text-gray-300'>Loading...</div>
       </div>
     );
   }
@@ -431,13 +437,26 @@ export default function EditEmployeePage({ params }: { params: Promise<{ id: str
         displayStyle='plain'
         onClose={() => setShowConfirmModal(false)}
         onConfirm={handleConfirmSave}
-        title="Confirm Employee Update"
-        description="Please review the employee details before updating. Are you sure you want to proceed?"
+        title='Confirm Employee Update'
+        description='Please review the employee details before updating. Are you sure you want to proceed?'
         groupedDetails={grouped}
-        confirmText="Confirm Update"
-        cancelText="Cancel"
+        confirmText='Confirm Update'
+        cancelText='Cancel'
         isLoading={saving}
-        size="wide"
+        size='wide'
+      />
+
+      {/* Success Modal */}
+      <ConfirmationModal
+        isOpen={showSuccessModal}
+        size='wide'
+        onClose={() => { setShowSuccessModal(false); }}
+        onConfirm={() => { setShowSuccessModal(false); router.push('/employees'); }}
+        title='Employee Updated Successfully!'
+        message='The employee details have been updated successfully.'
+        variant='success'
+        confirmText='Go to Employee List'
+        cancelText='Close'
       />
     </>
   );

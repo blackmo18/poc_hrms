@@ -48,7 +48,7 @@ const variantStyles: Record<ConfirmationVariant, {
   success: {
     iconBg: 'bg-green-100 dark:bg-green-900/20',
     iconColor: 'text-green-600 dark:text-green-400',
-    confirmBg: 'bg-green-600 hover:bg-green-700',
+    confirmBg: 'bg-brand-500 hover:bg-brand-600',
   },
 };
 
@@ -145,7 +145,7 @@ export default function ConfirmationModal({
       <div className={`no-scrollbar relative w-full ${modalSizeClass} overflow-y-auto rounded-3xl bg-white p-4 dark:bg-gray-900 lg:p-8`}>
         <div className="px-2 pr-14">
           <div className="flex items-center gap-3 mb-4">
-            <div className={`flex h-12 w-12 items-center justify-center rounded-full ${styles.iconBg}`}>
+            <div className={`flex h-12 w-12 aspect-square items-center justify-center rounded-full ${styles.iconBg}`}>
               <span className={styles.iconColor}>
                 <VariantIcon variant={variant} />
               </span>

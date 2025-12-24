@@ -220,7 +220,7 @@ export default function EmployeesPage() {
     }
 
     // Only fetch organizations for super admin
-    if (isSuperAdminMemo) {
+    if (isSuperAdminMemo && state.organizations.length === 0) {
       fetchOrganizations();
     }
   }, [state.selectedOrganization, state.currentPage, authLoading, isSuperAdminMemo, user?.organization_id]);

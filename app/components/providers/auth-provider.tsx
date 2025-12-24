@@ -16,6 +16,8 @@ interface User {
 
 interface AuthContextType {
   user: User | null;
+  roles: string[];
+  permissions: string[];
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   isLoading: boolean;
@@ -40,12 +42,14 @@ export function AuthProvider({
   initialUser?: User | null;
 }) {
   const [user, setUser] = useState<User | null>(initialUser);
+  const [roles, setRoles] = useState<string[]>([]);
+  const [permissions, setPermissions] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true); // Always start loading, let checkAuth handle it
   const [hasCheckedAuth, setHasCheckedAuth] = useState(false);
 
   const router = useRouter();
 
-  const { checkAuth } = useUserCache(setUser, setIsLoading, setHasCheckedAuth);
+  const { checkAuth } = useUserCache(setUser, setRoles, setPermissions, setIsLoading, setHasCheckedAuth);
 
   // Cross-tab session synchronization
   useEffect(() => {
@@ -60,6 +64,8 @@ export function AuthProvider({
           // Another tab logged in - update this tab's state
           console.log('Session established by another tab, updating state...');
           setUser(sanitizeUser(sessionData.user));
+          setRoles((sessionData.user as any).roles || []);
+          setPermissions((sessionData.user as any).permissions || []);
         }
       }
     });
@@ -104,6 +110,8 @@ export function AuthProvider({
           username: session.user.username,
           organization_id: session.user.organization_id
         });
+        setRoles(session.user.roles || []);
+        setPermissions(session.user.permissions || []);
         // Store complete session with tokens in session manager
         sessionManager.setAuthenticatedUser(session.user, session.accessToken, session.refreshToken);
         // Fetch full user data including roles
@@ -134,6 +142,8 @@ export function AuthProvider({
       console.error('Logout failed:', error);
       // Still clear local state even if server logout fails
       setUser(null);
+      setRoles([]);
+      setPermissions([]);
       sessionManager.clearSession();
     }
   };
@@ -159,6 +169,8 @@ export function AuthProvider({
         // Update access token in session manager
         sessionManager.updateAccessToken(data.accessToken);
         setUser(sanitizeUser(data.user));
+        setRoles(data.user.roles || []);
+        setPermissions(data.user.permissions || []);
         return true;
       } else if (response.status === 401) {
         // 401 means refresh token is invalid/expired - user must login again
@@ -214,7 +226,7 @@ export function AuthProvider({
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, isLoading, getAccessToken, checkAuth }}>
+    <AuthContext.Provider value={{ user, roles, permissions, login, logout, isLoading, getAccessToken, checkAuth }}>
       {children}
     </AuthContext.Provider>
   );

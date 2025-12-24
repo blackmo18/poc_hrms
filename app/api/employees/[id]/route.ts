@@ -54,6 +54,20 @@ export async function PUT(
       const employeeId = id;
 
       const body = await request.json();
+
+      // Handle personal_email: empty string or null should be treated as undefined
+      if (body.personal_email === '' || body.personal_email === null) {
+        delete body.personal_email;
+      }
+
+      // Parse date strings to Date objects
+      if (body.date_of_birth) {
+        body.date_of_birth = new Date(body.date_of_birth);
+      }
+      if (body.hire_date) {
+        body.hire_date = new Date(body.hire_date);
+      }
+
       const validatedData = UpdateEmployeeSchema.parse(body);
 
       const user = authRequest.user!;

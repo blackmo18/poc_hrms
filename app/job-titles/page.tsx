@@ -60,7 +60,7 @@ interface JobTitlesState {
   isDeleting: boolean;
 
   // UI states
-  selectedOrganization: number | null;
+  selectedOrganization: string | null;
   currentPage: number;
   showDeleteModal: boolean;
   showErrorModal: boolean;
@@ -85,7 +85,7 @@ type JobTitlesAction =
   | { type: 'SET_DELETING'; payload: boolean }
 
   // UI actions
-  | { type: 'SET_SELECTED_ORGANIZATION'; payload: number | null }
+  | { type: 'SET_SELECTED_ORGANIZATION'; payload: string | null }
   | { type: 'SET_CURRENT_PAGE'; payload: number }
   | { type: 'SET_SHOW_DELETE_MODAL'; payload: boolean }
   | { type: 'SET_SHOW_ERROR_MODAL'; payload: boolean }
@@ -99,7 +99,7 @@ type JobTitlesAction =
   // Combined actions
   | { type: 'START_LOADING' }
   | { type: 'FINISH_LOADING' }
-  | { type: 'START_ORGANIZATION_FILTER'; payload: number | null }
+  | { type: 'START_ORGANIZATION_FILTER', payload: string | null }
   | { type: 'START_DELETE'; payload: { id: number; name: string } }
   | { type: 'CANCEL_DELETE' }
   | { type: 'FINISH_DELETE' };
@@ -210,7 +210,7 @@ export default function JobTitlesPage() {
   );
 
   // Memoize event handlers to prevent unnecessary re-renders
-  const handleOrganizationChange = useCallback((orgId: number | null) => {
+  const handleOrganizationChange = useCallback((orgId: string | null) => {
     dispatch({ type: 'START_ORGANIZATION_FILTER', payload: orgId });
   }, []);
 
@@ -238,7 +238,7 @@ export default function JobTitlesPage() {
     )
   ), [state.jobTitles.length]);
 
-  const fetchJobTitles = async (orgId?: number | null, page: number = 1) => {
+  const fetchJobTitles = async (orgId?: string | null, page: number = 1) => {
     try {
       dispatch({ type: 'START_LOADING' });
 
@@ -300,7 +300,7 @@ export default function JobTitlesPage() {
 
     // For non-super admin, always filter by their organization
     if (!isSuperAdminMemo && user?.organization_id) {
-      fetchJobTitles(Number(user.organization_id), state.currentPage);
+      fetchJobTitles(user.organization_id, state.currentPage);
     } else {
       fetchJobTitles(state.selectedOrganization, state.currentPage);
     }
@@ -327,7 +327,7 @@ export default function JobTitlesPage() {
         setTimeout(() => {
           dispatch({ type: 'FINISH_DELETE' });
           if (!isSuperAdminMemo && user?.organization_id) {
-            fetchJobTitles(Number(user.organization_id), state.currentPage);
+            fetchJobTitles(user.organization_id, state.currentPage);
           } else {
             fetchJobTitles(state.selectedOrganization, state.currentPage);
           }
@@ -412,7 +412,7 @@ export default function JobTitlesPage() {
               <select
                 id="organization-select"
                 value={state.selectedOrganization || ''}
-                onChange={(e) => handleOrganizationChange(e.target.value ? Number(e.target.value) : null)}
+                onChange={(e) => handleOrganizationChange(e.target.value || null)}
                 disabled={state.loading}
                 className="block w-full max-w-xs px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white disabled:opacity-50 disabled:cursor-not-allowed"
               >

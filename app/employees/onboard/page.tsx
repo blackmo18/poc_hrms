@@ -6,10 +6,7 @@ import Link from 'next/link';
 import PageBreadcrumb from '@/app/components/common/PageBreadCrumb';
 import PageMeta from '@/app/components/common/PageMeta';
 import Button from '@/app/components/ui/button/Button';
-import Input from '@/app/components/form/input/InputField';
-import Label from '@/app/components/form/Label';
-import DatePicker from '@/app/components/form/DatePicker';
-import Select from '@/app/components/form/Select';
+import { validateEmployeeForm } from '@/lib/utils/employeeValidation';
 import { getEmployeeGroupedDetails } from '@/lib/utils/employeeDetails';
 import DetailsConfirmationModal from '@/app/components/ui/modal/DetailsConfirmationModal';
 import ConfirmationModal from '@/app/components/ui/modal/ConfirmationModal';
@@ -95,9 +92,9 @@ export default function EmployeeOnboardingPage() {
 
   useEffect(() => {
     if (formData.organization_id) {
-      fetchDepartments(Number(formData.organization_id));
-      fetchJobTitles(Number(formData.organization_id));
-      fetchManagers(Number(formData.organization_id));
+      fetchDepartments(formData.organization_id);
+      fetchJobTitles(formData.organization_id);
+      fetchManagers(formData.organization_id);
     }
   }, [formData.organization_id]);
 
@@ -132,7 +129,7 @@ export default function EmployeeOnboardingPage() {
     }
   };
 
-  const fetchDepartments = async (organizationId: number) => {
+  const fetchDepartments = async (organizationId: string) => {
     try {
       const response = await fetch(`/api/departments?organization_id=${organizationId}`, {
         credentials: 'include',
@@ -146,7 +143,7 @@ export default function EmployeeOnboardingPage() {
     }
   };
 
-  const fetchJobTitles = async (organizationId: number) => {
+  const fetchJobTitles = async (organizationId: string) => {
     try {
       const response = await fetch(`/api/job-titles?organization_id=${organizationId}`, {
         credentials: 'include',
@@ -160,7 +157,7 @@ export default function EmployeeOnboardingPage() {
     }
   };
 
-  const fetchManagers = async (organizationId: number) => {
+  const fetchManagers = async (organizationId: string) => {
     try {
       const response = await fetch(`/api/employees?organizationId=${organizationId}`, {
         credentials: 'include',
@@ -182,50 +179,9 @@ export default function EmployeeOnboardingPage() {
   };
 
   const handleSaveClick = () => {
-    // Validate required fields
-    if (!formData.organization_id) {
-      setError('Organization is required');
-      return;
-    }
-    if (!formData.department_id) {
-      setError('Department is required');
-      return;
-    }
-    if (!formData.job_title_id) {
-      setError('Job title is required');
-      return;
-    }
-    if (!formData.first_name.trim()) {
-      setError('First name is required');
-      return;
-    }
-    if (!formData.last_name.trim()) {
-      setError('Last name is required');
-      return;
-    }
-    if (!formData.work_email.trim()) {
-      setError('Work email is required');
-      return;
-    }
-    if (!formData.personal_address.trim()) {
-      setError('Personal address is required');
-      return;
-    }
-    if (!formData.personal_contact_number.trim()) {
-      setError('Personal contact number is required');
-      return;
-    }
-    // Personal email is now optional
-    if (!formData.date_of_birth) {
-      setError('Date of birth is required');
-      return;
-    }
-    if (!formData.gender.trim()) {
-      setError('Gender is required');
-      return;
-    }
-    if (!formData.hire_date) {
-      setError('Hire date is required');
+    const validationError = validateEmployeeForm(formData);
+    if (validationError) {
+      setError(validationError);
       return;
     }
 
@@ -245,10 +201,10 @@ export default function EmployeeOnboardingPage() {
 
       const payload = {
         ...formData,
-        organization_id: Number(formData.organization_id),
-        department_id: Number(formData.department_id),
-        job_title_id: Number(formData.job_title_id),
-        manager_id: formData.manager_id ? Number(formData.manager_id) : undefined,
+        organization_id: formData.organization_id,
+        department_id: formData.department_id,
+        job_title_id: formData.job_title_id,
+        manager_id: formData.manager_id || undefined,
         email: formData.work_email, // Map work_email to required email field
         personal_email: formData.personal_email.trim() === '' ? null : formData.personal_email.trim(),
         date_of_birth: new Date(formData.date_of_birth),
@@ -373,6 +329,7 @@ export default function EmployeeOnboardingPage() {
       {/* Confirmation Modal */}
       <DetailsConfirmationModal
         isOpen={showConfirmModal}
+        displayStyle='plain'
         onClose={() => setShowConfirmModal(false)}
         onConfirm={handleConfirmSave}
         title="Confirm Employee Onboarding"
