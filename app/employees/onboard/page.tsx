@@ -15,6 +15,7 @@ import DetailsConfirmationModal from '@/app/components/ui/modal/DetailsConfirmat
 import ConfirmationModal from '@/app/components/ui/modal/ConfirmationModal';
 import EmployeeForm from '@/app/components/employees/EmployeeForm';
 import { useAuth } from '@/app/components/providers/auth-provider';
+import { useRoleAccess } from '@/app/components/providers/role-access-provider';
 
 interface Organization {
   id: number;
@@ -42,6 +43,7 @@ interface Employee {
 
 export default function EmployeeOnboardingPage() {
   const { user, isLoading } = useAuth();
+  const { roles } = useRoleAccess();
   const router = useRouter();
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -110,7 +112,7 @@ export default function EmployeeOnboardingPage() {
         setOrganizations(allOrgs);
 
         // Filter organizations based on user role
-        const isSuperAdmin = user?.roles?.includes('SUPER_ADMIN') || user?.role === 'SUPER_ADMIN';
+        const isSuperAdmin = roles.includes('SUPER_ADMIN');
         if (isSuperAdmin) {
           setAvailableOrganizations(allOrgs);
         } else if (user?.organization_id) {

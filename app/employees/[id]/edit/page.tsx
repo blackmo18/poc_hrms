@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState, useEffect, use } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import PageBreadcrumb from '@/app/components/common/PageBreadCrumb';
@@ -13,6 +13,7 @@ import { getEmployeeGroupedDetails } from '@/lib/utils/employeeDetails';
 import DetailsConfirmationModal from '@/app/components/ui/modal/DetailsConfirmationModal';
 import EmployeeForm from '@/app/components/employees/EmployeeForm';
 import { useAuth } from '@/app/components/providers/auth-provider';
+import { useRoleAccess } from '@/app/components/providers/role-access-provider';
 
 interface Organization {
   id: number;
@@ -63,8 +64,10 @@ interface EditEmployeePageProps {
   params: Promise<{ id: string }>;
 }
 
-export default function EditEmployeePage({ params }: EditEmployeePageProps) {
+export default function EditEmployeePage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params);
   const { user, isLoading: authLoading } = useAuth();
+  const { roles } = useRoleAccess();
   const router = useRouter();
   const [employee, setEmployee] = useState<Employee | null>(null);
   const [organizations, setOrganizations] = useState<Organization[]>([]);
@@ -75,7 +78,6 @@ export default function EditEmployeePage({ params }: EditEmployeePageProps) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [id, setId] = useState<string>('');
   const [showConfirmModal, setShowConfirmModal] = useState(false);
 
   // Form state
@@ -101,13 +103,6 @@ export default function EditEmployeePage({ params }: EditEmployeePageProps) {
 
   // Grouped details for confirmation
   const grouped = getEmployeeGroupedDetails(formData, organizations, departments, jobTitles, managers);
-
-  // Initialize id from params
-  useEffect(() => {
-    params.then((resolvedParams) => {
-      setId(resolvedParams.id);
-    });
-  }, [params]);
 
   // Fetch employee data and related data
   useEffect(() => {
@@ -144,7 +139,7 @@ export default function EditEmployeePage({ params }: EditEmployeePageProps) {
           setOrganizations(allOrgs);
 
           // Filter organizations based on user role
-          const isSuperAdmin = user?.roles?.includes('SUPER_ADMIN') || user?.role === 'SUPER_ADMIN';
+          const isSuperAdmin = roles.includes('SUPER_ADMIN');
           if (isSuperAdmin) {
             setAvailableOrganizations(allOrgs);
           } else if (user?.organization_id) {

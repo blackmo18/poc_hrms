@@ -11,6 +11,7 @@ import EmployeeTable, { Employee } from '@/app/components/employees/EmployeeTabl
 import Pagination from '@/app/components/ui/pagination';
 import RoleComponentWrapper from '@/app/components/common/RoleComponentWrapper';
 import { useAuth } from '@/app/components/providers/auth-provider';
+import { useRoleAccess } from '@/app/components/providers/role-access-provider';
 import { BadgeColor } from '../components/ui/badge/Badge';
 
 interface Organization {
@@ -146,9 +147,13 @@ const initialEmployeesState: EmployeesState = {
 
 export default function EmployeesPage() {
   const { user, isLoading: authLoading } = useAuth();
+  const { roles } = useRoleAccess();
   const [state, dispatch] = useReducer(employeesReducer, initialEmployeesState);
 
-  const isSuperAdmin = user?.roles?.includes('SUPER_ADMIN') || user?.role === 'SUPER_ADMIN';
+  const isSuperAdminMemo = useMemo(() =>
+    roles.includes('SUPER_ADMIN'),
+    [roles]
+  );
 
   const fetchEmployees = async (orgId?: string, page: number = 1) => {
     try {
@@ -208,23 +213,19 @@ export default function EmployeesPage() {
     if (authLoading) return;
 
     // For non-super admin, always filter by their organization
-    if (!isSuperAdmin && user?.organization_id) {
+    if (!isSuperAdminMemo && user?.organization_id) {
       fetchEmployees(user.organization_id, state.currentPage);
     } else {
       fetchEmployees(state.selectedOrganization || undefined, state.currentPage);
     }
 
     // Only fetch organizations for super admin
-    if (isSuperAdmin) {
+    if (isSuperAdminMemo) {
       fetchOrganizations();
     }
-  }, [state.selectedOrganization, state.currentPage, authLoading, isSuperAdmin, user?.organization_id]);
+  }, [state.selectedOrganization, state.currentPage, authLoading, isSuperAdminMemo, user?.organization_id]);
 
   // Memoize expensive calculations to prevent unnecessary re-renders
-  const isSuperAdminMemo = useMemo(() =>
-    user?.roles?.includes('SUPER_ADMIN') || user?.role === 'SUPER_ADMIN',
-    [user?.roles, user?.role]
-  );
 
   const organizationOptions = useMemo(() =>
     state.organizations.map((org) => ({

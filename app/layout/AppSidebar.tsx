@@ -22,6 +22,7 @@ import {
 } from "../icons";
 import { useSidebar } from "../context/SidebarContext";
 import { useAuth } from "../components/providers/auth-provider";
+import { useRoleAccess } from "../components/providers/role-access-provider";
 import SidebarWidget from "./SidebarWidget";
 
 type SubItem ={
@@ -113,6 +114,7 @@ const othersItems: NavItem[] = [
 const AppSidebar: React.FC = () => {
   const { isExpanded, isMobileOpen, isHovered, setIsHovered } = useSidebar();
   const { user } = useAuth();
+  const { roles } = useRoleAccess();
   const pathname = usePathname();
 
   const [openSubmenu, setOpenSubmenu] = useState<{
@@ -124,7 +126,7 @@ const AppSidebar: React.FC = () => {
   );
   const subMenuRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
-  const isSuperAdmin = user?.roles?.includes('SUPER_ADMIN') || user?.role === 'SUPER_ADMIN';
+  const isSuperAdmin = roles.includes('SUPER_ADMIN');
 
   const filterNavItems = (items: NavItem[]) => {
     return items.map(item => ({

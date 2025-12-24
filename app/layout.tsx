@@ -2,6 +2,7 @@ import './globals.css';
 import type { Metadata } from 'next';
 import { cookies } from 'next/headers';
 import { AuthProvider } from './components/providers/auth-provider';
+import { RoleAccessProvider } from './components/providers/role-access-provider';
 import { ThemeProvider } from './context/ThemeContext';
 import IdleStatus from './components/common/IdleStatus';
 import { JWTUtils } from '@/lib/auth/jwt';
@@ -39,8 +40,10 @@ export default async function RootLayout({
       <body>
         <ThemeProvider initialTheme={initialTheme}>
           <AuthProvider initialUser={initialUser}>
-            {children}
-            <IdleStatus />
+            <RoleAccessProvider>
+              {children}
+              <IdleStatus />
+            </RoleAccessProvider>
           </AuthProvider>
         </ThemeProvider>
       </body>

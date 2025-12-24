@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '../providers/auth-provider';
+import { useRoleAccess } from '../providers/role-access-provider';
 
 interface RoleComponentWrapperProps {
   children: React.ReactNode;
@@ -20,15 +21,13 @@ export default function RoleComponentWrapper({
   showFallback = true,
   fallback
 }: RoleComponentWrapperProps) {
-  const { user, isLoading } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
+  const { hasAnyRole, hasAllRoles, isLoading: rolesLoading } = useRoleAccess();
   const [hasCheckedRole, setHasCheckedRole] = useState(false);
   const [hasAccess, setHasAccess] = useState(false);
 
   useEffect(() => {
-    if (!isLoading && user) {
-      // Check if user has required roles
-      const userRoles = user.roles || [];
-
+    if (!rolesLoading && !authLoading) {
       // If no roles are required, deny access
       if (!requiredRoles || requiredRoles.length === 0) {
         setHasAccess(false);
@@ -36,31 +35,18 @@ export default function RoleComponentWrapper({
         return;
       }
 
-      // Check if user has at least one of the required roles
-      const hasAtLeastOneRequiredRole = requiredRoles.some(role =>
-        userRoles.includes(role)
-      );
+      // Check access based on requireAll flag
+      const accessGranted = requireAll
+        ? hasAllRoles(requiredRoles)
+        : hasAnyRole(requiredRoles);
 
-      let hasRequiredRole = false;
-      if (requireAll) {
-        // User must have ALL required roles
-        hasRequiredRole = requiredRoles.every(role => userRoles.includes(role));
-      } else {
-        // User must have AT LEAST ONE of the required roles
-        hasRequiredRole = hasAtLeastOneRequiredRole;
-      }
-
-      setHasAccess(hasRequiredRole);
-      setHasCheckedRole(true);
-    } else if (!isLoading && !user) {
-      // No user logged in
-      setHasAccess(false);
+      setHasAccess(accessGranted);
       setHasCheckedRole(true);
     }
-  }, [user, isLoading, requiredRoles, requireAll]);
+  }, [requiredRoles, requireAll, hasAnyRole, hasAllRoles, rolesLoading, authLoading]);
 
   // Show loading state while checking authentication/role
-  if (isLoading || !hasCheckedRole) {
+  if (authLoading || rolesLoading || !hasCheckedRole) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-lg text-gray-600 dark:text-gray-300">

@@ -13,6 +13,7 @@ import JobTitleTable from '@/app/components/job-titles/JobTitleTable';
 import JobTitleCardList from '@/app/components/job-titles/JobTitleCardList';
 import RoleComponentWrapper from '@/app/components/common/RoleComponentWrapper';
 import { useAuth } from '@/app/components/providers/auth-provider';
+import { useRoleAccess } from '@/app/components/providers/role-access-provider';
 
 interface Organization {
   id: number;
@@ -189,14 +190,15 @@ const initialState: JobTitlesState = {
 
 export default function JobTitlesPage() {
   const { user, isLoading: authLoading } = useAuth();
+  const { roles } = useRoleAccess();
   const [state, dispatch] = useReducer(jobTitlesReducer, initialState);
 
-  const isSuperAdmin = user?.roles?.includes('SUPER_ADMIN') || user?.role === 'SUPER_ADMIN';
+  const isSuperAdmin = roles.includes('SUPER_ADMIN');
 
   // Memoize expensive calculations to prevent unnecessary re-renders
   const isSuperAdminMemo = useMemo(() => 
-    user?.roles?.includes('SUPER_ADMIN') || user?.role === 'SUPER_ADMIN', 
-    [user?.roles, user?.role]
+    roles.includes('SUPER_ADMIN'), 
+    [roles]
   );
 
   const organizationOptions = useMemo(() => 

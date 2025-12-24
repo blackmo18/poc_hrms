@@ -11,6 +11,7 @@ import TextArea from '@/app/components/form/input/TextArea';
 import Label from '@/app/components/form/Label';
 import Select from '@/app/components/form/Select';
 import { useAuth } from '@/app/components/providers/auth-provider';
+import { useRoleAccess } from '@/app/components/providers/role-access-provider';
 import DetailsConfirmationModal from '@/app/components/ui/modal/DetailsConfirmationModal';
 import ErrorModal from '@/app/components/ui/modal/ErrorModal';
 import RoleComponentWrapper from '@/app/components/common/RoleComponentWrapper';
@@ -23,6 +24,7 @@ interface Organization {
 
 export default function AddJobTitlePage() {
   const { user, isLoading } = useAuth();
+  const { roles } = useRoleAccess();
   const router = useRouter();
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [availableOrganizations, setAvailableOrganizations] = useState<Organization[]>([]);
@@ -65,7 +67,7 @@ export default function AddJobTitlePage() {
   // Filter organizations based on user role
   useEffect(() => {
     if (organizations.length > 0 && user) {
-      const isSuperAdmin = user.roles?.includes('SUPER_ADMIN') || user.role === 'SUPER_ADMIN';
+      const isSuperAdmin = roles.includes('SUPER_ADMIN');
       if (isSuperAdmin) {
         setAvailableOrganizations(organizations);
       } else {

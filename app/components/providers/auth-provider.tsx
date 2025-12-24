@@ -11,8 +11,6 @@ interface User {
   email: string;
   username: string;
   role?: string;
-  roles?: string[];
-  permissions?: string[];
   organization_id?: string;
 }
 
@@ -26,6 +24,13 @@ interface AuthContextType {
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+const sanitizeUser = (user: any): User => ({
+  id: user.id,
+  email: user.email,
+  username: user.username,
+  organization_id: user.organization_id
+});
 
 export function AuthProvider({
   children,
@@ -54,7 +59,7 @@ export function AuthProvider({
         } else if (sessionData.user && !user) {
           // Another tab logged in - update this tab's state
           console.log('Session established by another tab, updating state...');
-          setUser(sessionData.user);
+          setUser(sanitizeUser(sessionData.user));
         }
       }
     });
@@ -93,7 +98,12 @@ export function AuthProvider({
 
       if (response.ok) {
         const session = await response.json();
-        setUser(session.user);
+        setUser({
+          id: session.user.id,
+          email: session.user.email,
+          username: session.user.username,
+          organization_id: session.user.organization_id
+        });
         // Store complete session with tokens in session manager
         sessionManager.setAuthenticatedUser(session.user, session.accessToken, session.refreshToken);
         // Fetch full user data including roles
@@ -148,7 +158,7 @@ export function AuthProvider({
         const data = await response.json();
         // Update access token in session manager
         sessionManager.updateAccessToken(data.accessToken);
-        setUser(data.user);
+        setUser(sanitizeUser(data.user));
         return true;
       } else if (response.status === 401) {
         // 401 means refresh token is invalid/expired - user must login again
