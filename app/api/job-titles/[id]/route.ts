@@ -28,7 +28,7 @@ export async function GET(
       const isSuperAdmin = user.roles.includes('SUPER_ADMIN');
       const isAdmin = user.roles.includes('ADMIN');
 
-      if (!isSuperAdmin && (!isAdmin || jobTitle.organization_id !== user.organizationId)) {
+      if (!isSuperAdmin && (!isAdmin || jobTitle.organization_id !== user.organization_id)) {
         return NextResponse.json(
           { error: 'Access denied to this job title' },
           { status: 403 }
@@ -65,7 +65,7 @@ export async function PUT(
       const isSuperAdmin = user.roles.includes('SUPER_ADMIN');
       const isAdmin = user.roles.includes('ADMIN');
 
-      if (!isSuperAdmin && (!isAdmin || validatedData.organization_id !== user.organizationId)) {
+      if (!isSuperAdmin && (!isAdmin || validatedData.organization_id !== user.organization_id)) {
         return NextResponse.json(
           { error: 'Cannot update job titles for this organization' },
           { status: 403 }
@@ -109,7 +109,7 @@ export async function DELETE(
       const isSuperAdmin = user.roles.includes('SUPER_ADMIN');
       const isAdmin = user.roles.includes('ADMIN');
 
-      if (!isSuperAdmin && (!isAdmin || jobTitle.organization_id !== user.organizationId)) {
+      if (!isSuperAdmin && (!isAdmin || jobTitle.organization_id !== user.organization_id)) {
         return NextResponse.json(
           { error: 'Cannot delete job titles for this organization' },
           { status: 403 }

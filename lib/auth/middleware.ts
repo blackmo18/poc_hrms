@@ -267,7 +267,7 @@ export const requiresPermissions = async (
 /**
  * Wrapper function specifically for admin operations
  */
-export const requireAdmin = async (
+export const requiresAdmin = async (
   request: NextRequest,
   handler: (authRequest: AuthenticatedRequest) => Promise<NextResponse>
 ) => {
@@ -284,5 +284,5 @@ export default {
   organizationMiddleware,
   requiresRoles,
   requiresPermissions,
-  requireAdmin
+  requiresAdmin
 };

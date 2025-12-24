@@ -148,7 +148,7 @@ export default function EditEmployeePage({ params }: EditEmployeePageProps) {
           if (isSuperAdmin) {
             setAvailableOrganizations(allOrgs);
           } else if (user?.organization_id) {
-            const userOrg = allOrgs.filter((org: Organization) => org.id === user.organization_id);
+            const userOrg = allOrgs.filter((org: Organization) => org.id === Number(user.organization_id));
             setAvailableOrganizations(userOrg);
           }
         }

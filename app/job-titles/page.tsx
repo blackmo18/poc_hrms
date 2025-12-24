@@ -298,7 +298,7 @@ export default function JobTitlesPage() {
 
     // For non-super admin, always filter by their organization
     if (!isSuperAdminMemo && user?.organization_id) {
-      fetchJobTitles(user.organization_id, state.currentPage);
+      fetchJobTitles(Number(user.organization_id), state.currentPage);
     } else {
       fetchJobTitles(state.selectedOrganization, state.currentPage);
     }
@@ -325,7 +325,7 @@ export default function JobTitlesPage() {
         setTimeout(() => {
           dispatch({ type: 'FINISH_DELETE' });
           if (!isSuperAdminMemo && user?.organization_id) {
-            fetchJobTitles(user.organization_id, state.currentPage);
+            fetchJobTitles(Number(user.organization_id), state.currentPage);
           } else {
             fetchJobTitles(state.selectedOrganization, state.currentPage);
           }

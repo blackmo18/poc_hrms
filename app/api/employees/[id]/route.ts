@@ -26,7 +26,7 @@ export async function GET(
       }
 
       // Check organization access
-      if (!isAdmin && (!isHRManager || employee.organization_id !== user.organizationId)) {
+      if (!isAdmin && (!isHRManager || employee.organization_id !== user.organization_id)) {
         return NextResponse.json(
           { error: 'Access denied to this employee' },
           { status: 403 }
@@ -70,7 +70,7 @@ export async function PUT(
       }
 
       // Check organization access
-      if (!isAdmin && (!isHRManager || existingEmployee.organization_id !== user.organizationId)) {
+      if (!isAdmin && (!isHRManager || existingEmployee.organization_id !== user.organization_id)) {
         return NextResponse.json(
           { error: 'Cannot update employees from this organization' },
           { status: 403 }
@@ -112,7 +112,7 @@ export async function DELETE(
       }
 
       // Check organization access
-      if (!isAdmin && (!isHRManager || existingEmployee.organization_id !== user.organizationId)) {
+      if (!isAdmin && (!isHRManager || existingEmployee.organization_id !== user.organization_id)) {
         return NextResponse.json(
           { error: 'Cannot delete employees from this organization' },
           { status: 403 }

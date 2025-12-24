@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAdmin } from '@/lib/auth/middleware';
+import { requiresAdmin } from '@/lib/auth/middleware';
 import { createUser, assignRoleToUser, updateUser, listUsers, findUserById } from '@/lib/auth/auth-db';
 import { getUserService, getUserRoleService } from '@/lib/service';
 
 export async function GET(request: NextRequest) {
-  return requireAdmin(request, async (authRequest) => {
+  return requiresAdmin(request, async (authRequest) => {
     try {
       const { searchParams } = request.nextUrl;
       const userId = searchParams.get('id');
@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
         return NextResponse.json(user);
       } else {
         // Get all users for the organization
-        const organizationId = authRequest.user!.organizationId;
+        const organizationId = authRequest.user!.organization_id;
         const users = await listUsers(organizationId);
         return NextResponse.json(users);
       }
@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  return requireAdmin(request, async (authRequest) => {
+  return requiresAdmin(request, async (authRequest) => {
     try {
       const body = await request.json();
       const { email, password, name, roleId } = body;
@@ -55,7 +55,7 @@ export async function POST(request: NextRequest) {
       }
 
       // Create user
-      const organizationId = authRequest.user!.organizationId;
+      const organizationId = authRequest.user!.organization_id;
       const userId = await createUser(email, password, name, organizationId, authRequest.user!.email);
 
       // Assign role if provided
@@ -79,7 +79,7 @@ export async function POST(request: NextRequest) {
 }
 
 export async function PUT(request: NextRequest) {
-  return requireAdmin(request, async (authRequest) => {
+  return requiresAdmin(request, async (authRequest) => {
     try {
       const body = await request.json();
       const { id, email, name, status, roleId } = body;
@@ -92,7 +92,7 @@ export async function PUT(request: NextRequest) {
       const userService = getUserService();
       const user = await userService.getById(id);
 
-      if (!user || user.organization_id !== authRequest.user!.organizationId) {
+      if (!user || user.organization_id !== authRequest.user!.organization_id) {
         return NextResponse.json({ error: 'User not found' }, { status: 404 });
       }
 
@@ -144,7 +144,7 @@ export async function PUT(request: NextRequest) {
 }
 
 export async function DELETE(request: NextRequest) {
-  return requireAdmin(request, async (authRequest) => {
+  return requiresAdmin(request, async (authRequest) => {
     try {
       const { searchParams } = request.nextUrl;
       const userId = searchParams.get('id');
@@ -157,7 +157,7 @@ export async function DELETE(request: NextRequest) {
       const userService = getUserService();
       const user = await userService.getById(userId);
 
-      if (!user || user.organization_id !== authRequest.user!.organizationId) {
+      if (!user || user.organization_id !== authRequest.user!.organization_id) {
         return NextResponse.json({ error: 'User not found' }, { status: 404 });
       }
 

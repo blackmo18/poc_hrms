@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAdmin } from '@/lib/auth/middleware';
+import { requiresAdmin } from '@/lib/auth/middleware';
 import { roleController } from '@/lib/controllers/role.controller';
 
 export async function GET(request: NextRequest) {
-  return requireAdmin(request, async (authRequest) => {
+  return requiresAdmin(request, async (authRequest) => {
     try {
       const { searchParams } = request.nextUrl;
       const roleId = searchParams.get('id');
@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
         return NextResponse.json(role);
       } else {
         // Get all roles for the organization
-        const organizationId = authRequest.user!.organizationId;
+        const organizationId = authRequest.user!.organization_id;
         const roles = await roleController.getAll(organizationId);
         return NextResponse.json(roles);
       }
@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  return requireAdmin(request, async (authRequest) => {
+  return requiresAdmin(request, async (authRequest) => {
     try {
       const body = await request.json();
       const { name, description, permissionIds } = body;
@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
       }
 
       // Check if role already exists in the organization
-      const existingRole = await roleController.getAll(authRequest.user!.organizationId);
+      const existingRole = await roleController.getAll(authRequest.user!.organization_id);
       const roleExists = existingRole.some(role => role.name.toLowerCase() === name.toLowerCase());
 
       if (roleExists) {
@@ -53,7 +53,7 @@ export async function POST(request: NextRequest) {
       const role = await roleController.create({
         name,
         description,
-        organization_id: authRequest.user!.organizationId
+        organization_id: authRequest.user!.organization_id
       });
 
       // Assign permissions if provided
@@ -83,7 +83,7 @@ export async function POST(request: NextRequest) {
 }
 
 export async function PUT(request: NextRequest) {
-  return requireAdmin(request, async (authRequest) => {
+  return requiresAdmin(request, async (authRequest) => {
     try {
       const body = await request.json();
       const { id, name, description, permissionIds } = body;
@@ -94,7 +94,7 @@ export async function PUT(request: NextRequest) {
 
       // Check if role exists and belongs to the organization
       const existingRole = await roleController.getById(id);
-      if (!existingRole || existingRole.organization_id !== authRequest.user!.organizationId) {
+      if (!existingRole || existingRole.organization_id !== authRequest.user!.organization_id) {
         return NextResponse.json({ error: 'Role not found' }, { status: 404 });
       }
 
@@ -136,7 +136,7 @@ export async function PUT(request: NextRequest) {
 }
 
 export async function DELETE(request: NextRequest) {
-  return requireAdmin(request, async (authRequest) => {
+  return requiresAdmin(request, async (authRequest) => {
     try {
       const { searchParams } = request.nextUrl;
       const roleId = searchParams.get('id');
@@ -147,7 +147,7 @@ export async function DELETE(request: NextRequest) {
 
       // Check if role exists and belongs to the organization
       const role = await roleController.getById(roleId);
-      if (!role || role.organization_id !== authRequest.user!.organizationId) {
+      if (!role || role.organization_id !== authRequest.user!.organization_id) {
         return NextResponse.json({ error: 'Role not found' }, { status: 404 });
       }
 

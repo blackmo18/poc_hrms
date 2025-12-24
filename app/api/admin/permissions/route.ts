@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAdmin } from '@/lib/auth/middleware';
+import { requiresAdmin } from '@/lib/auth/middleware';
 import { permissionController } from '@/lib/controllers/permission.controller';
 
 export async function GET(request: NextRequest) {
-  return requireAdmin(request, async (authRequest) => {
+  return requiresAdmin(request, async (authRequest) => {
     try {
       const { searchParams } = request.nextUrl;
       const permissionId = searchParams.get('id');
@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
         return NextResponse.json(permission);
       } else {
         // Get all permissions (system + organization)
-        const organization_id = authRequest.user!.organizationId;
+        const organization_id = authRequest.user!.organization_id;
         const [systemPermissions, orgPermissions] = await Promise.all([
           permissionController.getSystemPermissions(),
           permissionController.getOrganizationPermissions(organization_id)
@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  return requireAdmin(request, async (authRequest) => {
+  return requiresAdmin(request, async (authRequest) => {
     try {
       const body = await request.json();
       const { name, description } = body;
@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
       // Check if permission already exists (system-wide or in organization)
       const [systemPermissions, orgPermissions] = await Promise.all([
         permissionController.getSystemPermissions(),
-        permissionController.getOrganizationPermissions(authRequest.user!.organizationId)
+        permissionController.getOrganizationPermissions(authRequest.user!.organization_id)
       ]);
 
       const allPermissions = [...systemPermissions, ...orgPermissions];
@@ -65,7 +65,7 @@ export async function POST(request: NextRequest) {
       const permission = await permissionController.create({
         name,
         description,
-        organization_id: authRequest.user!.organizationId
+        organization_id: authRequest.user!.organization_id
       });
 
       return NextResponse.json({
@@ -81,7 +81,7 @@ export async function POST(request: NextRequest) {
 }
 
 export async function PUT(request: NextRequest) {
-  return requireAdmin(request, async (authRequest) => {
+  return requiresAdmin(request, async (authRequest) => {
     try {
       const body = await request.json();
       const { id, name, description } = body;
@@ -92,7 +92,7 @@ export async function PUT(request: NextRequest) {
 
       // Check if permission exists and belongs to the organization
       const permission = await permissionController.getById(id);
-      if (!permission || permission.organization_id !== authRequest.user!.organizationId) {
+      if (!permission || permission.organization_id !== authRequest.user!.organization_id) {
         return NextResponse.json({ error: 'Permission not found' }, { status: 404 });
       }
 
@@ -100,7 +100,7 @@ export async function PUT(request: NextRequest) {
       if (name && name !== permission.name) {
         const [systemPermissions, orgPermissions] = await Promise.all([
           permissionController.getSystemPermissions(),
-          permissionController.getOrganizationPermissions(authRequest.user!.organizationId)
+          permissionController.getOrganizationPermissions(authRequest.user!.organization_id)
         ]);
 
         const allPermissions = [...systemPermissions, ...orgPermissions];
@@ -133,7 +133,7 @@ export async function PUT(request: NextRequest) {
 }
 
 export async function DELETE(request: NextRequest) {
-  return requireAdmin(request, async (authRequest) => {
+  return requiresAdmin(request, async (authRequest) => {
     try {
       const { searchParams } = request.nextUrl;
       const permissionId = searchParams.get('id');
@@ -144,7 +144,7 @@ export async function DELETE(request: NextRequest) {
 
       // Check if permission exists and belongs to the organization
       const permission = await permissionController.getById(permissionId);
-      if (!permission || permission.organization_id !== authRequest.user!.organizationId) {
+      if (!permission || permission.organization_id !== authRequest.user!.organization_id) {
         return NextResponse.json({ error: 'Permission not found' }, { status: 404 });
       }
 

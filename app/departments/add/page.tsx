@@ -65,7 +65,7 @@ export default function AddDepartmentPage() {
         setAvailableOrganizations(organizations);
       } else {
         // Non-super admin users only see their organization
-        const userOrg = organizations.filter(org => org.id === user.organization_id);
+        const userOrg = organizations.filter(org => org.id === Number(user.organization_id));
         setAvailableOrganizations(userOrg);
         // Pre-populate the organization_id for non-super admin users
         if (user.organization_id) {

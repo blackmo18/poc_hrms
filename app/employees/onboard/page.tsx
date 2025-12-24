@@ -114,7 +114,7 @@ export default function EmployeeOnboardingPage() {
         if (isSuperAdmin) {
           setAvailableOrganizations(allOrgs);
         } else if (user?.organization_id) {
-          const userOrg = allOrgs.filter((org: Organization) => org.id === user.organization_id);
+          const userOrg = allOrgs.filter((org: Organization) => org.id === Number(user.organization_id));
           setAvailableOrganizations(userOrg);
           // Pre-populate organization for non-super admin
           if (userOrg.length > 0) {
