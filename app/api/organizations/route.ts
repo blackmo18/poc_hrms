@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { organizationController } from '@/lib/controllers/organization.controller';
 import { CreateOrganizationSchema } from '@/lib/models/organization';
-import { requireAdmin } from '@/lib/auth/middleware';
+import { requiresAdmin } from '@/lib/auth/middleware';
 
 export async function GET(request: NextRequest) {
-  return requireAdmin(request, async (authRequest) => {
+  return requiresAdmin(request, async (authRequest) => {
     // Parse pagination parameters
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get('page') || '1');

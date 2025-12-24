@@ -1,0 +1,12 @@
+export { getOrganizationRepository } from './organization.repository';
+export { getUserRepository } from './user.repository';
+export { getEmployeeRepository } from './employee.repository';
+export { getRoleRepository } from './role.repository';
+export { getDepartmentRepository } from './department.repository';
+export { getUserRoleRepository } from './user-role.repository';
+export { getPermissionRepository } from './permission.repository';
+export { getLeaveRequestRepository } from './leave-request.repository';
+export { getPayrollRepository } from './payroll.repository';
+export { getCompensationRepository } from './compensation.repository';
+export { getRolePermissionRepository } from './role-permission.repository';
+export { getJobTitleRepository } from './job-title.repository';

@@ -7,6 +7,7 @@ import PageBreadcrumb from '@/app/components/common/PageBreadCrumb';
 import PageMeta from '@/app/components/common/PageMeta';
 import Button from '@/app/components/ui/button/Button';
 import { useAuth } from '@/app/components/providers/auth-provider';
+import { useRoleAccess } from '@/app/components/providers/role-access-provider';
 import DetailsConfirmationModal from '@/app/components/ui/modal/DetailsConfirmationModal';
 import ErrorModal from '@/app/components/ui/modal/ErrorModal';
 import DepartmentForm from '@/app/components/departments/DepartmentForm';
@@ -18,6 +19,7 @@ interface Organization {
 
 export default function AddDepartmentPage() {
   const { user, isLoading } = useAuth();
+  const { roles } = useRoleAccess();
   const router = useRouter();
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [availableOrganizations, setAvailableOrganizations] = useState<Organization[]>([]);
@@ -60,12 +62,12 @@ export default function AddDepartmentPage() {
   // Filter organizations based on user role
   useEffect(() => {
     if (organizations.length > 0 && user) {
-      const isSuperAdmin = user.roles?.includes('SUPER_ADMIN') || user.role === 'SUPER_ADMIN';
+      const isSuperAdmin = roles.includes('SUPER_ADMIN');
       if (isSuperAdmin) {
         setAvailableOrganizations(organizations);
       } else {
         // Non-super admin users only see their organization
-        const userOrg = organizations.filter(org => org.id === user.organization_id);
+        const userOrg = organizations.filter(org => org.id === Number(user.organization_id));
         setAvailableOrganizations(userOrg);
         // Pre-populate the organization_id for non-super admin users
         if (user.organization_id) {

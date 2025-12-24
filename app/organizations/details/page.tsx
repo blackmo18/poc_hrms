@@ -176,7 +176,7 @@ export default function OrganizationDetailsPage() {
           <RoleComponentWrapper roles={['ADMIN', 'SUPER_ADMIN']}>
 
             {/* Desktop Table View */}
-            <OrganizationTable organizations={organizations} getStatusColor={getStatusColor} />
+            <OrganizationTable organizations={organizations} getStatusColor={getStatusColor} currentPage={pagination?.page} limit={pagination?.limit} />
 
             {/* Mobile Card View */}
             <div className="lg:hidden space-y-4">

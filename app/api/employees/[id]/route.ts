@@ -10,13 +10,7 @@ export async function GET(
   return requiresPermissions(request, ['employees.read'], async (authRequest) => {
     try {
       const { id } = await params;
-      const employeeId = parseInt(id);
-      if (isNaN(employeeId)) {
-        return NextResponse.json(
-          { error: 'Invalid employee ID' },
-          { status: 400 }
-        );
-      }
+      const employeeId = id;
 
       const user = authRequest.user!;
       const isAdmin = user.roles.includes('ADMIN') || user.roles.includes('SUPER_ADMIN');
@@ -32,7 +26,7 @@ export async function GET(
       }
 
       // Check organization access
-      if (!isAdmin && (!isHRManager || employee.organization_id !== user.organizationId)) {
+      if (!isAdmin && (!isHRManager || employee.organization_id !== user.organization_id)) {
         return NextResponse.json(
           { error: 'Access denied to this employee' },
           { status: 403 }
@@ -57,15 +51,23 @@ export async function PUT(
   return requiresPermissions(request, ['employees.update'], async (authRequest) => {
     try {
       const { id } = await params;
-      const employeeId = parseInt(id);
-      if (isNaN(employeeId)) {
-        return NextResponse.json(
-          { error: 'Invalid employee ID' },
-          { status: 400 }
-        );
-      }
+      const employeeId = id;
 
       const body = await request.json();
+
+      // Handle personal_email: empty string or null should be treated as undefined
+      if (body.personal_email === '' || body.personal_email === null) {
+        delete body.personal_email;
+      }
+
+      // Parse date strings to Date objects
+      if (body.date_of_birth) {
+        body.date_of_birth = new Date(body.date_of_birth);
+      }
+      if (body.hire_date) {
+        body.hire_date = new Date(body.hire_date);
+      }
+
       const validatedData = UpdateEmployeeSchema.parse(body);
 
       const user = authRequest.user!;
@@ -82,7 +84,7 @@ export async function PUT(
       }
 
       // Check organization access
-      if (!isAdmin && (!isHRManager || existingEmployee.organization_id !== user.organizationId)) {
+      if (!isAdmin && (!isHRManager || existingEmployee.organization_id !== user.organization_id)) {
         return NextResponse.json(
           { error: 'Cannot update employees from this organization' },
           { status: 403 }
@@ -108,13 +110,7 @@ export async function DELETE(
   return requiresPermissions(request, ['employees.delete'], async (authRequest) => {
     try {
       const { id } = await params;
-      const employeeId = parseInt(id);
-      if (isNaN(employeeId)) {
-        return NextResponse.json(
-          { error: 'Invalid employee ID' },
-          { status: 400 }
-        );
-      }
+      const employeeId = id;
 
       const user = authRequest.user!;
       const isAdmin = user.roles.includes('ADMIN') || user.roles.includes('SUPER_ADMIN');
@@ -130,7 +126,7 @@ export async function DELETE(
       }
 
       // Check organization access
-      if (!isAdmin && (!isHRManager || existingEmployee.organization_id !== user.organizationId)) {
+      if (!isAdmin && (!isHRManager || existingEmployee.organization_id !== user.organization_id)) {
         return NextResponse.json(
           { error: 'Cannot delete employees from this organization' },
           { status: 403 }

@@ -1,10 +1,10 @@
 export interface User {
-  id: number;
+  id: string;  // Changed from number to string (CUID)
   email: string;
   name: string;
   passwordHash: string;
   enabled: boolean;
-  organizationId: number;
+  organization_id: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -14,16 +14,16 @@ export interface UserWithRole extends User {
 }
 
 export interface Role {
-  id: number;
+  id: string;  // Changed from number to string (CUID)
   name: string;
   description: string;
-  organizationId: number;
+  organization_id: string;
   createdAt: Date;
   updatedAt: Date;
 }
 
 export interface Permission {
-  id: number;
+  id: string;  // Changed from number to string (CUID)
   name: string;
   description: string;
   createdAt: Date;
@@ -35,25 +35,25 @@ export interface RoleWithPermissions extends Role {
 }
 
 export interface AuthenticatedUser {
-  id: number;
+  id: string;  // Changed from number to string (CUID)
   username: string;
-  roleIds: number[];
+  roleIds: string[];  // Changed from number[] to string[] (CUID)
   permissions: string[];
 }
 
 export interface JWTPayload {
-  userId: number;
+  userId: string;  // Updated to string to match CUID IDs
   email: string;
-  organizationId: number;
-  roleIds: number[];
+  organization_id: string;
+  roleIds: string[];  // Updated to string[] to match CUID IDs
   username: string;
   type: 'access' | 'refresh';
   user?: {
-    id: number;
+    id: string;  // Updated to string to match CUID IDs
     email: string;
     name: string;
     role: string;
-    organizationId?: number;
+    organization_id?: string;
   };
 }
 
@@ -61,15 +61,15 @@ export interface JWTPayload {
 export interface JWTSerializablePayload {
   userId: string;
   email: string;
-  organizationId: string | undefined;
+  organizationId?: string;
   roleIds: string[];
   username: string;
   type: 'access' | 'refresh';
   user?: {
-    id: number;
+    id: string;  // Changed from number to string (CUID)
     email: string;
     name: string;
     role: string;
-    organizationId?: number;
+    organization_id?: string;
   };
 }

@@ -21,20 +21,41 @@ import {
   BriefcaseIcon,
 } from "../icons";
 import { useSidebar } from "../context/SidebarContext";
+import { useAuth } from "../components/providers/auth-provider";
+import { useRoleAccess } from "../components/providers/role-access-provider";
 import SidebarWidget from "./SidebarWidget";
+
+type SubItem ={
+  name: string;
+  path: string;
+  pro?: boolean;
+  new?: boolean;
+  systemAdminOnly?: boolean
+}
+
+type User = {
+  id: string;
+  email: string;
+  username: string;
+  role?: string;
+  roles?: string[];
+  permissions?: string[];
+  organization_id?: string;
+}
 
 type NavItem = {
   name: string;
   icon: React.ReactNode;
   path?: string;
-  subItems?: { name: string; path: string; pro?: boolean; new?: boolean }[];
+  subItems?: SubItem[];
+  systemAdminOnly?: boolean
 };
 
 const navItems: NavItem[] = [
   {
     icon: <GridIcon />,
     name: "Dashboard",
-    path: "/dashboard",
+    path: "/dashboard"
   },
   {
     icon: <UserCircleIcon />,
@@ -42,6 +63,7 @@ const navItems: NavItem[] = [
     subItems: [
       { name: "Employee List", path: "/employees", pro: false },
     ],
+    systemAdminOnly: false,
   },
   {
     icon: <CalenderIcon />,
@@ -49,18 +71,16 @@ const navItems: NavItem[] = [
     subItems: [
       { name: "Leave Requests", path: "/leave", pro: false },
       { name: "Leave Calendar", path: "/leave/calendar", pro: false },
-    ],
+    ]
   },
   {
     name: "Job Titles",
     icon: <BriefcaseIcon />,
-    subItems: [{ name: "Job Title List", path: "/job-titles", pro: false }],
-  },
+    subItems: [{ name: "Job Title List", path: "/job-titles", pro: false }]  },
   {
     name: "Payroll",
     icon: <TableIcon />,
-    subItems: [{ name: "Payroll Records", path: "/payroll", pro: false }],
-  },
+    subItems: [{ name: "Payroll Records", path: "/payroll", pro: false }]  },
 ];
 
 const othersItems: NavItem[] = [
@@ -78,7 +98,7 @@ const othersItems: NavItem[] = [
     subItems: [
       { name: "General", path: "/settings", pro: false },
       { name: "User Management", path: "/settings/users", pro: false },
-    ],
+    ]
   },
   {
     icon: <OrganizationIcon />,
@@ -87,11 +107,14 @@ const othersItems: NavItem[] = [
       { name: "Onboarding", path: "/organizations/onboarding", pro: false },
       { name: "Details", path: "/organizations/details", pro: false },
     ],
+    systemAdminOnly: true,
   },
 ];
 
 const AppSidebar: React.FC = () => {
   const { isExpanded, isMobileOpen, isHovered, setIsHovered } = useSidebar();
+  const { user } = useAuth();
+  const { roles } = useRoleAccess();
   const pathname = usePathname();
 
   const [openSubmenu, setOpenSubmenu] = useState<{
@@ -103,6 +126,18 @@ const AppSidebar: React.FC = () => {
   );
   const subMenuRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
+  const isSuperAdmin = roles.includes('SUPER_ADMIN');
+
+  const filterNavItems = (items: NavItem[]) => {
+    return items.map(item => ({
+      ...item,
+      subItems: item.subItems ? item.subItems.filter(sub => !sub.systemAdminOnly || isSuperAdmin) : item.subItems
+    })).filter(item => !item.systemAdminOnly || isSuperAdmin);
+  };
+
+  const filteredNavItems = filterNavItems(navItems);
+  const filteredOthersItems = filterNavItems(othersItems);
+
   const isActive = useCallback(
     (path: string) => pathname === path,
     [pathname]
@@ -111,7 +146,7 @@ const AppSidebar: React.FC = () => {
   useEffect(() => {
     let submenuMatched = false;
     ["main", "others"].forEach((menuType) => {
-      const items = menuType === "main" ? navItems : othersItems;
+      const items = menuType === "main" ? filteredNavItems : filteredOthersItems;
       items.forEach((nav, index) => {
         if (nav.subItems) {
           nav.subItems.forEach((subItem) => {
@@ -130,7 +165,7 @@ const AppSidebar: React.FC = () => {
     if (!submenuMatched) {
       setOpenSubmenu(null);
     }
-  }, [pathname, isActive]);
+  }, [pathname, isActive, filteredNavItems, filteredOthersItems, user]);
 
   useEffect(() => {
     if (openSubmenu !== null) {
@@ -345,7 +380,7 @@ const AppSidebar: React.FC = () => {
                   <HorizontaLDots className="size-6" />
                 )}
               </h2>
-              {renderMenuItems(navItems, "main")}
+              {renderMenuItems(filteredNavItems, "main")}
             </div>
             <div className="">
               <h2
@@ -361,7 +396,7 @@ const AppSidebar: React.FC = () => {
                   <HorizontaLDots />
                 )}
               </h2>
-              {renderMenuItems(othersItems, "others")}
+              {renderMenuItems(filteredOthersItems, "others")}
             </div>
           </div>
         </nav>

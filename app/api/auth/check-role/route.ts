@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { prisma } from '@/lib/db';
+import { getUserService, getRoleService } from '@/lib/service';
 
 export async function GET(request: NextRequest) {
   try {
@@ -10,15 +10,20 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ isSuperAdmin: false }, { status: 401 });
     }
 
-    // Check if user has SUPER_ADMIN role
-    const userRoles = await prisma.userRole.findMany({
-      where: { user_id: parseInt(session.user.id) },
-      include: { role: true }
-    });
+    const userService = getUserService();
+    const roleService = getRoleService();
 
-    const isSuperAdmin = userRoles.some(userRole => userRole.role.name === 'SUPER_ADMIN');
+    const user = await userService.getById(session.user.id);
+    if (!user) {
+      return NextResponse.json({ isSuperAdmin: false }, { status: 401 });
+    }
 
-    return NextResponse.json({ isSuperAdmin });
+    const superAdminRole = await roleService.getByName('SUPER_ADMIN');
+    if (!superAdminRole) {
+      return NextResponse.json({ isSuperAdmin: false }, { status: 200 });
+    }
+
+    return NextResponse.json({ isSuperAdmin: true });
   } catch (error) {
     console.error('Error checking super admin role:', error);
     return NextResponse.json({ isSuperAdmin: false }, { status: 500 });

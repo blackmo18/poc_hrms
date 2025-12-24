@@ -24,15 +24,19 @@ interface Organization {
 interface OrganizationTableBodyProps {
   organizations: Organization[];
   getStatusColor: (status: string) => BadgeColor;
+  currentPage?: number;
+  limit?: number;
 }
 
-const OrganizationTableBody = memo(function OrganizationTableBody({ organizations, getStatusColor }: OrganizationTableBodyProps) {
+const OrganizationTableBody = memo(function OrganizationTableBody({ organizations, getStatusColor, currentPage = 1, limit = 15 }: OrganizationTableBodyProps) {
   return (
     <>
-      {organizations.map((org) => (
+      {organizations.map((org, index) => {
+        const rowNumber = (currentPage - 1) * limit + index + 1;
+        return (
         <TableRow key={org.id}>
           <TableCell className="px-5 py-4 text-gray-500 text-start text-theme-sm dark:text-gray-400">
-            {org.id}
+            {rowNumber}
           </TableCell>
           <TableCell className="px-4 py-3 text-start">
             <span className="font-medium text-gray-800 text-theme-sm dark:text-white/90">
@@ -65,7 +69,8 @@ const OrganizationTableBody = memo(function OrganizationTableBody({ organization
             </Link>
           </TableCell>
         </TableRow>
-      ))}
+        );
+      })}
     </>
   );
 });
@@ -75,9 +80,11 @@ interface OrganizationTableProps {
   getStatusColor: (status: string) => BadgeColor;
   loading?: boolean;
   fallback?: React.ReactNode;
+  currentPage?: number;
+  limit?: number;
 }
 
-export default function OrganizationTable({ organizations, getStatusColor, loading = false, fallback }: OrganizationTableProps) {
+export default function OrganizationTable({ organizations, getStatusColor, loading = false, fallback, currentPage = 1, limit = 15 }: OrganizationTableProps) {
   // Loading skeleton rows
   const LoadingSkeleton = () => (
     <>
@@ -120,7 +127,7 @@ export default function OrganizationTable({ organizations, getStatusColor, loadi
                 isHeader
                 className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
               >
-                ID
+                No.
               </TableCell>
               <TableCell
                 isHeader

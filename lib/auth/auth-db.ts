@@ -1,94 +1,78 @@
-import { prisma } from '../db';
+// migrate this as authentication service
+// use existing service calls if available
+// update all calls referecing this file
 import bcrypt from 'bcryptjs';
 import { User, UserWithRole, Role, Permission, RoleWithPermissions } from '@/models/auth';
+import { getUserRepository, getUserRoleRepository, getRoleRepository, getRolePermissionRepository, getPermissionRepository } from '@/lib/repository';
+import { getUserService } from '@/lib/service';
+import { getRoleService } from '@/lib/service';
+import { generateULID } from '@/lib/utils/ulid.service';
 
 /* ------------------------------------------------------------ */
 /* User Queries                                                  */
 /* ------------------------------------------------------------ */
 
 export const findUserByEmail = async (email: string): Promise<User | null> => {
-  const user = await prisma.user.findUnique({
-    where: { 
-      email: email,
-      status: 'ACTIVE'
-    },
-    select: {
-      id: true,
-      email: true,
-      name: true,
-      password_hash: true,
-      status: true,
-      organization_id: true,
-      created_at: true,
-      updated_at: true
-    }
-  });
-  
-  if (!user) return null;
-  
+  const userRepository = getUserRepository();
+  const user = await userRepository.findByEmail(email);
+
+  if (!user || user.status !== 'ACTIVE') return null;
+
   return {
-    id: Number(user.id),
+    id: user.id,  // Return CUID string ID
     email: user.email,
     name: user.name || '',
     passwordHash: user.password_hash || '',
     enabled: user.status === 'ACTIVE',
-    organizationId: Number(user.organization_id),
+    organization_id: user.organization_id,
     createdAt: user.created_at,
     updatedAt: user.updated_at
   };
 };
 
-export const findUserById = async (userId: number): Promise<User | null> => {
-  const user = await prisma.user.findUnique({
-    where: { 
-      id: userId,
-      status: 'ACTIVE'
-    },
-    select: {
-      id: true,
-      email: true,
-      name: true,
-      password_hash: true,
-      status: true,
-      organization_id: true,
-      created_at: true,
-      updated_at: true
-    }
-  });
-  
-  if (!user) return null;
-  
+export const findUserById = async (userId: string): Promise<User | null> => {
+  const userRepository = getUserRepository();
+  const user = await userRepository.findById(userId);
+
+  if (!user || user.status !== 'ACTIVE') return null;
+
   return {
-    id: Number(user.id),
+    id: user.id,  // Return CUID string ID
     email: user.email,
     name: user.name || '',
     passwordHash: user.password_hash || '',
     enabled: user.status === 'ACTIVE',
-    organizationId: Number(user.organization_id),
+    organization_id: user.organization_id,
     createdAt: user.created_at,
     updatedAt: user.updated_at
   };
 };
 
-export const getUserRoles = async (userId: number): Promise<Role[]> => {
-  const userRoles = await prisma.userRole.findMany({
-    where: { user_id: userId },
-    include: {
-      role: true
-    }
-  });
+export const getUserRoles = async (userId: string): Promise<Role[]> => {
+  const userRoleRepository = getUserRoleRepository();
+  const userRoles = await userRoleRepository.findByUserId(userId);
 
-  return userRoles.map(ur => ({
-    id: Number(ur.role.id),
-    name: ur.role.name,
-    description: ur.role.description || '',
-    organizationId: Number(ur.role.organization_id),
-    createdAt: ur.role.created_at,
-    updatedAt: ur.role.updated_at
-  }));
+  // Get role details for each user role
+  const roleRepository = getRoleRepository();
+  const roles = await Promise.all(
+    userRoles.map(async (userRole) => {
+      const role = await roleRepository.findById(userRole.role_id);
+      if (!role) return null;
+      return {
+        id: role.id,  // Return CUID string ID
+        name: role.name,
+        description: role.description || '',
+        organization_id: role.organization_id,
+        createdAt: role.created_at,
+        updatedAt: role.updated_at
+      };
+    })
+  );
+
+  return roles.filter((role): role is Role => role !== null);
 };
 
-export const getUserWithRoles = async (userId: number): Promise<UserWithRole | null> => {
+export const getUserWithRoles = async (userId: string): Promise<UserWithRole | null> => {
   const user = await findUserById(userId);
   if (!user) return null;
 
@@ -111,55 +95,50 @@ export const createUser = async (
   email: string,
   password: string,
   name: string,
-  organizationId: number,
+  organizationId: string,
   createdBy: string
-): Promise<number> => {
+): Promise<string> => {  // Changed return type from number to string
   const hash = await bcrypt.hash(password, 12);
 
-  const user = await prisma.user.create({
-    data: {
-      email,
-      name,
-      password_hash: hash,
-      organization_id: organizationId,
-      status: 'ACTIVE'
-    }
+  const userRepository = getUserRepository();
+  const user = await userRepository.create({
+    id: generateULID(),
+    organization_id: organizationId,
+    email,
+    password_hash: hash,
+    status: 'ACTIVE',
+    name,
+    emailVerified: null,
+    image: null
   });
 
-  return Number(user.id);
+  return user.id;  // Return CUID string ID instead of internal_id
 };
 
-export const assignRoleToUser = async (userId: number, roleId: number): Promise<void> => {
-  await prisma.userRole.create({
-    data: {
-      user_id: userId,
-      role_id: roleId
-    }
+export const assignRoleToUser = async (userId: string, roleId: string): Promise<void> => {
+  const userRoleRepository = getUserRoleRepository();
+  await userRoleRepository.create({
+    user_id: userId,
+    role_id: roleId
   });
 };
 
-export const removeRoleFromUser = async (userId: number, roleId: number): Promise<void> => {
-  await prisma.userRole.deleteMany({
-    where: {
-      user_id: userId,
-      role_id: roleId
-    }
-  });
+export const removeRoleFromUser = async (userId: string, roleId: string): Promise<void> => {
+  const userRoleRepository = getUserRoleRepository();
+  await userRoleRepository.deleteByUserAndRole(userId, roleId);
 };
 
 export const updateUserPassword = async (
-  userId: number,
+  userId: string,
   newPassword: string
 ): Promise<void> => {
   const hash = await bcrypt.hash(newPassword, 12);
-  await prisma.user.update({
-    where: { id: userId },
-    data: { password_hash: hash }
-  });
+  const userRepository = getUserRepository();
+  await userRepository.update(userId, { password_hash: hash });
 };
 
 export const updateUser = async (
-  userId: number,
+  userId: string,
   updates: { status?: string }
 ): Promise<void> => {
   const data: any = {};
@@ -169,125 +148,114 @@ export const updateUser = async (
 
   if (Object.keys(data).length === 0) return;
 
-  await prisma.user.update({
-    where: { id: userId },
-    data
-  });
+  const userRepository = getUserRepository();
+  await userRepository.update(userId, data);
 };
 
 /* ------------------------------------------------------------ */
 /* User Listing                                                  */
 /* ------------------------------------------------------------ */
 
-export const listUsers = async (organizationId: number): Promise<UserWithRole[]> => {
-  const users = await prisma.user.findMany({
-    where: { organization_id: organizationId },
-    include: {
-      userRoles: {
-        include: {
-          role: true
-        }
-      }
-    },
-    orderBy: { created_at: 'desc' }
-  });
+export const listUsers = async (organizationId: string): Promise<UserWithRole[]> => {
+  const userRepository = getUserRepository();
+  const users = await userRepository.findByOrganizationId(organizationId);
 
-  return users.map(user => ({
-    id: Number(user.id),
-    email: user.email,
-    name: user.name || '',
-    passwordHash: user.password_hash || '',
-    enabled: user.status === 'ACTIVE',
-    organizationId: Number(user.organization_id),
-    createdAt: user.created_at,
-    updatedAt: user.updated_at,
-    roles: user.userRoles.map(ur => ({
-      id: Number(ur.role.id),
-      name: ur.role.name,
-      description: ur.role.description || '',
-      organizationId: Number(ur.role.organization_id),
-      createdAt: ur.role.created_at,
-      updatedAt: ur.role.updated_at
-    }))
-  }));
+  // For each user, get their roles
+  const usersWithRoles = await Promise.all(
+    users.map(async (user) => {
+      const roles = await getUserRoles(user.id);
+      return {
+        id: user.id,  // Return CUID string ID
+        email: user.email,
+        name: user.name || '',
+        passwordHash: user.password_hash || '',
+        enabled: user.status === 'ACTIVE',
+        organization_id: user.organization_id,
+        createdAt: user.created_at,
+        updatedAt: user.updated_at,
+        roles: roles
+      };
+    })
+  );
+
+  return usersWithRoles;
 };
 
 /* ------------------------------------------------------------ */
 /* Roles                                                         */
 /* ------------------------------------------------------------ */
 
-export const getRoleById = async (roleId: number): Promise<Role | null> => {
-  const role = await prisma.role.findUnique({
-    where: { id: roleId }
-  });
-  
+export const getRoleById = async (roleId: string): Promise<Role | null> => {
+  const roleRepository = getRoleRepository();
+  const role = await roleRepository.findById(roleId);
+
   if (!role) return null;
-  
+
   return {
-    id: Number(role.id),
+    id: role.id,  // Return CUID string ID
     name: role.name,
     description: role.description || '',
-    organizationId: Number(role.organization_id),
+    organization_id: role.organization_id,
     createdAt: role.created_at,
     updatedAt: role.updated_at
   };
 };
 
-export const getRoleByName = async (name: string, organizationId: number): Promise<Role | null> => {
-  const role = await prisma.role.findUnique({
-    where: { 
-      name: name,
-      organization_id: organizationId
-    }
-  });
-  
-  if (!role) return null;
-  
+export const getRoleByName = async (name: string, organizationId: string): Promise<Role | null> => {
+  const roleRepository = getRoleRepository();
+  const role = await roleRepository.findByName(name);
+
+  if (!role || role.organization_id !== organizationId) return null;
+
   return {
-    id: Number(role.id),
+    id: role.id,  // Return CUID string ID
     name: role.name,
     description: role.description || '',
-    organizationId: Number(role.organization_id),
+    organization_id: role.organization_id,
     createdAt: role.created_at,
     updatedAt: role.updated_at
   };
 };
 
-export const getAllRoles = async (organizationId: number): Promise<Role[]> => {
-  const roles = await prisma.role.findMany({
-    where: { organization_id: organizationId },
-    orderBy: { name: 'asc' }
-  });
+export const getAllRoles = async (organizationId: string): Promise<Role[]> => {
+  const roleRepository = getRoleRepository();
+  const roles = await roleRepository.findByOrganizationId(organizationId);
 
   return roles.map(role => ({
-    id: Number(role.id),
+    id: role.id,  // Return CUID string ID
     name: role.name,
     description: role.description || '',
-    organizationId: Number(role.organization_id),
+    organization_id: role.organization_id,
     createdAt: role.created_at,
     updatedAt: role.updated_at
   }));
 };
 
-export const getRolePermissions = async (roleId: number): Promise<Permission[]> => {
-  const rolePermissions = await prisma.rolePermission.findMany({
-    where: { role_id: roleId },
-    include: {
-      permission: true
-    }
-  });
+export const getRolePermissions = async (roleId: string): Promise<Permission[]> => {
+  const rolePermissionRepository = getRolePermissionRepository();
+  const rolePermissions = await rolePermissionRepository.findByRoleId(roleId);
 
-  return rolePermissions.map(rp => ({
-    id: Number(rp.permission.id),
-    name: rp.permission.name,
-    description: rp.permission.description || '',
-    createdAt: rp.permission.created_at,
-    updatedAt: rp.permission.updated_at
-  }));
+  // Get permission details for each role permission
+  const permissionRepository = getPermissionRepository();
+  const permissions = await Promise.all(
+    rolePermissions.map(async (rolePermission) => {
+      const permission = await permissionRepository.findById(rolePermission.permission_id);
+      if (!permission) return null;
+      return {
+        id: permission.id,  // Return CUID string ID
+        name: permission.name,
+        description: permission.description || '',
+        createdAt: permission.created_at,
+        updatedAt: permission.updated_at
+      };
+    })
+  );
+
+  return permissions.filter((permission): permission is Permission => permission !== null);
 };
 
 export const getRoleWithPermissions = async (
-  roleId: number
+  roleId: string
 ): Promise<RoleWithPermissions | null> => {
   const role = await getRoleById(roleId);
   if (!role) return null;
@@ -304,49 +272,22 @@ export const getRoleWithPermissions = async (
 /* Permissions                                                   */
 /* ------------------------------------------------------------ */
 
-export const getUserPermissions = async (userId: number): Promise<string[]> => {
-  const permissions = await prisma.rolePermission.findMany({
-    where: {
-      role: {
-        userRoles: {
-          some: {
-            user_id: userId
-          }
-        }
-      }
-    },
-    include: {
-      permission: true
-    },
-    distinct: ['permission_id']
-  });
-
-  return permissions.map(rp => rp.permission.name);
+export const getUserPermissions = async (userId: string): Promise<string[]> => {
+  const userService = getUserService();
+  return await userService.getUserPermissions(userId);
 };
 
-export const getPermissionsByRoleIds = async (roleIds: number[]): Promise<string[]> => {
-  const permissions = await prisma.rolePermission.findMany({
-    where: {
-      role_id: {
-        in: roleIds
-      }
-    },
-    include: {
-      permission: true
-    },
-    distinct: ['permission_id']
-  });
-
-  return permissions.map(rp => rp.permission.name);
+export const getPermissionsByRoleIds = async (roleIds: string[]): Promise<string[]> => {
+  const roleService = getRoleService();
+  return await roleService.getPermissionsByRoleIds(roleIds);
 };
 
 export const getAllPermissions = async (): Promise<Permission[]> => {
-  const permissions = await prisma.permission.findMany({
-    orderBy: { name: 'asc' }
-  });
+  const permissionRepository = getPermissionRepository();
+  const permissions = await permissionRepository.findAll();
 
   return permissions.map(permission => ({
-    id: Number(permission.id),
+    id: permission.id,  // Return CUID string ID
     name: permission.name,
     description: permission.description || '',
     createdAt: permission.created_at,
@@ -354,20 +295,15 @@ export const getAllPermissions = async (): Promise<Permission[]> => {
   }));
 };
 
-export const assignPermissionToRole = async (roleId: number, permId: number): Promise<void> => {
-  await prisma.rolePermission.create({
-    data: {
-      role_id: roleId,
-      permission_id: permId
-    }
+export const assignPermissionToRole = async (roleId: string, permId: string): Promise<void> => {
+  const rolePermissionRepository = getRolePermissionRepository();
+  await rolePermissionRepository.create({
+    role_id: roleId,
+    permission_id: permId
   });
 };
 
-export const removePermissionFromRole = async (roleId: number, permId: number): Promise<void> => {
-  await prisma.rolePermission.deleteMany({
-    where: {
-      role_id: roleId,
-      permission_id: permId
-    }
-  });
+export const removePermissionFromRole = async (roleId: string, permId: string): Promise<void> => {
+  const rolePermissionRepository = getRolePermissionRepository();
+  await rolePermissionRepository.deleteByRoleAndPermission(roleId, permId);
 };

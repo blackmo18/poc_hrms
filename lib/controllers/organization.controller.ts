@@ -1,5 +1,6 @@
 import { prisma } from '../db';
 import { CreateOrganization, UpdateOrganization } from '../models/organization';
+import { generateULID } from '../utils/ulid.service';
 
 export class OrganizationController {
   async getAll(options?: { page?: number; limit?: number }) {
@@ -36,7 +37,7 @@ export class OrganizationController {
     };
   }
 
-  async getById(id: number) {
+  async getById(id: string) {
     return await prisma.organization.findUnique({
       where: { id },
       include: {
@@ -55,7 +56,7 @@ export class OrganizationController {
 
   async create(data: CreateOrganization) {
     return await prisma.organization.create({
-      data,
+      data: {id: generateULID(), ...data},
       include: {
         departments: true,
         employees: true,
@@ -64,7 +65,7 @@ export class OrganizationController {
     });
   }
 
-  async update(id: number, data: UpdateOrganization) {
+  async update(id: string, data: UpdateOrganization) {
     return await prisma.organization.update({
       where: { id },
       data,
@@ -76,7 +77,7 @@ export class OrganizationController {
     });
   }
 
-  async delete(id: number) {
+  async delete(id: string) {
     return await prisma.organization.delete({
       where: { id },
     });

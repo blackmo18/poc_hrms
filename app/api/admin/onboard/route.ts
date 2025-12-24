@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { prisma } from '@/lib/db';
-import bcrypt from 'bcryptjs';
+import { getUserService, getRoleService, getOrganizationService, getDepartmentService, getJobTitleService, getEmployeeService, getUserRoleService } from '@/lib/service';
 
 export async function POST(request: NextRequest) {
   try {
@@ -11,15 +10,21 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     }
 
-    // Check if user has SUPER_ADMIN role
-    const userRoles = await prisma.userRole.findMany({
-      where: { user_id: parseInt(session.user.id) },
-      include: { role: true }
-    });
+    const userService = getUserService();
+    const roleService = getRoleService();
+    const organizationService = getOrganizationService();
+    const departmentService = getDepartmentService();
+    const jobTitleService = getJobTitleService();
+    const employeeService = getEmployeeService();
+    const userRoleService = getUserRoleService();
 
-    const isSuperAdmin = userRoles.some(userRole => userRole.role.name === 'SUPER_ADMIN');
+    const user = await userService.getById(session.user.id);
+    if (!user) {
+      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+    }
 
-    if (!isSuperAdmin) {
+    const superAdminRole = await roleService.getByName('SUPER_ADMIN');
+    if (!superAdminRole) {
       return NextResponse.json({ message: 'Access denied. Super admin required.' }, { status: 403 });
     }
 
@@ -29,115 +34,86 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ message: 'All fields are required' }, { status: 400 });
     }
 
-    // Check if organization exists and is not system
-    const organization = await prisma.organization.findUnique({
-      where: { id: parseInt(organization_id) }
-    });
+    const organization = await organizationService.getById(organization_id);
 
     if (!organization || organization.name === 'System') {
       return NextResponse.json({ message: 'Invalid organization' }, { status: 400 });
     }
 
-    // Check if user with this email already exists
-    const existingUser = await prisma.user.findUnique({
-      where: { email: work_email }
-    });
+    const existingUser = await userService.getByEmail(work_email);
 
     if (existingUser) {
       return NextResponse.json({ message: 'User with this email already exists' }, { status: 400 });
     }
 
-    // Get ADMIN role for the organization
-    const adminRole = await prisma.role.findFirst({
-      where: {
-        name: 'ADMIN',
-        organization_id: organization.id
-      }
-    });
+    const adminRole = (await roleService.getByOrganizationId(organization.id)).find(r => r.name === 'ADMIN');
 
     if (!adminRole) {
       return NextResponse.json({ message: 'Admin role not found for organization' }, { status: 500 });
     }
 
-    // Create departments if not exist (HR, Engineering, Sales)
-    let hrDept = await prisma.department.findFirst({
-      where: {
-        organization_id: organization.id,
-        name: 'Human Resources'
-      }
-    });
+    const departments = await departmentService.getByOrganizationId(organization.id);
+    let hrDept = departments.find(d => d.name === 'Human Resources');
 
     if (!hrDept) {
-      hrDept = await prisma.department.create({
-        data: {
-          organization_id: organization.id,
-          name: 'Human Resources',
-          description: 'HR and people operations',
-        }
+      hrDept = await departmentService.create({
+        organization_id: organization.id,
+        name: 'Human Resources',
+        description: 'HR and people operations',
       });
     }
 
-    let hrJobTitle = await prisma.jobTitle.findFirst({
-      where: {
-        organization_id: organization.id,
-        name: 'HR Manager'
-      }
-    });
+    const jobTitles = await jobTitleService.getByOrganizationId(organization.id);
+    let hrJobTitle = jobTitles.find(jt => jt.name === 'HR Manager');
 
     if (!hrJobTitle) {
-      hrJobTitle = await prisma.jobTitle.create({
-        data: {
-          organization_id: organization.id,
-          name: 'HR Manager',
-          description: 'Human resources manager',
-        }
+      hrJobTitle = await jobTitleService.create({
+        organization_id: organization.id,
+        name: 'HR Manager',
+        description: 'Human resources manager',
       });
     }
 
-    // Create user
-    const hashedPassword = await bcrypt.hash('admin123', 10); // Default password
-    const user = await prisma.user.create({
-      data: {
-        organization_id: organization.id,
-        email: work_email,
-        password_hash: hashedPassword,
-        status: 'ACTIVE',
-      }
+    const hashedPassword = await userService.hashPassword('admin123');
+    const newUser = await userService.create({
+      organization_id: organization.id,
+      email: work_email,
+      password_hash: hashedPassword,
+      status: 'ACTIVE',
+      name: `${first_name} ${last_name}`,
+      emailVerified: null,
+      image: null,
     });
 
-    // Assign admin role
-    await prisma.userRole.create({
-      data: {
-        user_id: user.id,
-        role_id: adminRole.id,
-      }
+    await userRoleService.create({
+      user_id: newUser.id,
+      role_id: adminRole.id,
     });
 
-    // Create employee record
-    const employee = await prisma.employee.create({
-      data: {
-        organization_id: organization.id,
-        user_id: user.id,
-        department_id: hrDept.id,
-        job_title_id: hrJobTitle.id,
-        first_name,
-        last_name,
-        email: work_email,
-        work_email,
-        work_contact,
-        personal_address: 'To be updated',
-        personal_contact_number: work_contact,
-        personal_email: work_email,
-        date_of_birth: new Date('1985-01-01'), // Default
-        gender: 'Other',
-        employment_status: 'ACTIVE',
-        hire_date: new Date(),
-      }
+    const employee = await employeeService.create({
+      organization_id: organization.id,
+      user_id: newUser.id,
+      department_id: hrDept.id,
+      job_title_id: hrJobTitle.id,
+      manager_id: null,
+      first_name,
+      last_name,
+      email: work_email,
+      work_email,
+      work_contact,
+      personal_address: 'To be updated',
+      personal_contact_number: work_contact,
+      personal_email: work_email,
+      date_of_birth: new Date('1985-01-01'),
+      gender: 'Other',
+      employment_status: 'ACTIVE',
+      hire_date: new Date(),
+      exit_date: null,
     });
 
     return NextResponse.json({
       message: 'Admin onboarded successfully',
-      user: { id: user.id, email: user.email },
+      user: { id: newUser.id, email: newUser.email },
       employee: { id: employee.id, name: `${first_name} ${last_name}` }
     });
 

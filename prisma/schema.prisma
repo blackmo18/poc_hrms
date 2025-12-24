@@ -14,7 +14,7 @@ datasource db {
 }
 
 model Organization {
-  id              Int   @id @default(autoincrement())
+  id              String  @id 
   name            String
   email           String?
   contact_number  String?
@@ -23,8 +23,10 @@ model Organization {
   website         String?
   description     String?
   status          String   @default("ACTIVE")
-  created_at      DateTime @default(now())
-  updated_at      DateTime @updatedAt
+  created_at      DateTime @default(now()) @db.Timestamp(3)
+  updated_at      DateTime @updatedAt @db.Timestamp(3)
+  created_by      String?
+  updated_by      String?
 
   users                   User[]
   employees               Employee[]
@@ -45,8 +47,8 @@ model Organization {
 }
 
 model Department {
-  id              Int   @id @default(autoincrement())
-  organization_id Int
+  id              String  @id 
+  organization_id String
   name            String
   description     String?
 
@@ -57,8 +59,8 @@ model Department {
 }
 
 model JobTitle {
-  id              Int   @id @default(autoincrement())
-  organization_id Int
+  id              String  @id 
+  organization_id String
   name            String
   description     String?
 
@@ -69,16 +71,18 @@ model JobTitle {
 }
 
 model User {
-  id              Int   @id @default(autoincrement())
+  id              String  @id 
   name            String?
   email           String    @unique
   emailVerified   DateTime?
   image           String?
   password_hash   String?   @db.Text
   status          String    @default("ACTIVE")
-  created_at      DateTime  @default(now())
-  updated_at      DateTime  @updatedAt
-  organization_id Int
+  created_at      DateTime  @default(now()) @db.Timestamp(3)
+  updated_at      DateTime  @updatedAt @db.Timestamp(3)
+  created_by      String?
+  updated_by      String?
+  organization_id String
 
   // Relations
   organization Organization @relation(fields: [organization_id], references: [id], onDelete: Cascade)
@@ -94,12 +98,12 @@ model User {
 }
 
 model Employee {
-  id                Int   @id @default(autoincrement())
-  organization_id   Int
-  user_id           Int?  @unique
-  department_id     Int
-  job_title_id      Int
-  manager_id        Int?
+  id                String  @id 
+  organization_id   String
+  user_id           String?  @unique
+  department_id     String
+  job_title_id      String
+  manager_id        String?
   first_name        String
   last_name         String
   email             String
@@ -115,8 +119,10 @@ model Employee {
   employment_status String    @default("ACTIVE")
   hire_date         DateTime
   exit_date         DateTime?
-  created_at        DateTime  @default(now())
-  updated_at        DateTime  @updatedAt
+  created_at        DateTime  @default(now()) @db.Timestamp(3)
+  updated_at        DateTime  @updatedAt @db.Timestamp(3)
+  created_by      String?
+  updated_by      String?
 
   organization               Organization                @relation(fields: [organization_id], references: [id], onDelete: Cascade)
   user                       User?                       @relation(fields: [user_id], references: [id], onDelete: Cascade)
@@ -139,12 +145,15 @@ model Employee {
 }
 
 model Compensation {
-  id             Int   @id @default(autoincrement())
-  employee_id    Int
+  id             String  @unique 
+  employee_id    String
   base_salary    Float
   pay_frequency  String
   effective_date DateTime
-  created_at     DateTime @default(now())
+  created_at      DateTime @default(now()) @db.Timestamp(3)
+  updated_at      DateTime @updatedAt @db.Timestamp(3)
+  created_by      String?
+  updated_by      String?
 
   employee Employee @relation(fields: [employee_id], references: [id], onDelete: Cascade)
 
@@ -152,8 +161,8 @@ model Compensation {
 }
 
 model Benefit {
-  id              Int   @id @default(autoincrement())
-  organization_id Int
+  id              String  @id 
+  organization_id String
   name            String
   description     String?
   type            String
@@ -161,13 +170,18 @@ model Benefit {
   organization     Organization      @relation(fields: [organization_id], references: [id], onDelete: Cascade)
   employeeBenefits EmployeeBenefit[]
 
+  created_at      DateTime @default(now()) @db.Timestamp(3)
+  updated_at      DateTime @updatedAt @db.Timestamp(3)
+  created_by      String?
+  updated_by      String?
+
   @@map("benefits")
 }
 
 model EmployeeBenefit {
-  id                    Int   @id @default(autoincrement())
-  employee_id           Int
-  benefit_id            Int
+  id                    String  @id 
+  employee_id           String
+  benefit_id            String
   employee_contribution Float
   enrollment_date       DateTime @default(now())
 
@@ -178,8 +192,8 @@ model EmployeeBenefit {
 }
 
 model Document {
-  id                 Int   @id @default(autoincrement())
-  organization_id    Int
+  id                 String  @id 
+  organization_id    String
   name               String
   file_type          String
   storage_path       String
@@ -187,14 +201,18 @@ model Document {
 
   organization      Organization       @relation(fields: [organization_id], references: [id], onDelete: Cascade)
   employeeDocuments EmployeeDocument[]
+  created_at      DateTime @default(now()) @db.Timestamp(3)
+  updated_at      DateTime @updatedAt @db.Timestamp(3)
+  created_by      String?
+  updated_by      String?
 
   @@map("documents")
 }
 
 model EmployeeDocument {
-  id          Int   @id @default(autoincrement())
-  employee_id Int
-  document_id Int
+  id          String  @id 
+  employee_id String
+  document_id String
   version     String
   uploaded_at DateTime  @default(now())
   signed_at   DateTime?
@@ -206,12 +224,12 @@ model EmployeeDocument {
 }
 
 model AuditLog {
-  id              Int   @id @default(autoincrement())
-  organization_id Int
-  user_id         Int
+  id              Int     @id @default(autoincrement())
+  organization_id String
+  user_id         String
   action_type     String
   entity_type     String
-  entity_id       Int?
+  entity_id       String?
   old_data        Json?
   new_data        Json?
   timestamp       DateTime @default(now())
@@ -224,12 +242,14 @@ model AuditLog {
 }
 
 model Role {
-  id              Int   @id @default(autoincrement())
-  organization_id Int
+  id              String  @id 
+  organization_id String
   name            String   @unique
   description     String?
-  created_at      DateTime @default(now())
-  updated_at      DateTime @updatedAt
+  created_at      DateTime @default(now()) @db.Timestamp(3)
+  updated_at      DateTime @updatedAt @db.Timestamp(3)
+  created_by      String?
+  updated_by      String?
 
   organization    Organization     @relation(fields: [organization_id], references: [id], onDelete: Cascade)
   userRoles       UserRole[]
@@ -239,24 +259,26 @@ model Role {
 }
 
 model Permission {
-  id              Int   @id @default(autoincrement())
+  id              String  @id 
   name            String   @unique
   description     String?
-  created_at      DateTime @default(now())
-  updated_at      DateTime @updatedAt
+  created_at      DateTime @default(now()) @db.Timestamp(3)
+  updated_at      DateTime @updatedAt @db.Timestamp(3)
+  created_by      String?
+  updated_by      String?
 
   rolePermissions RolePermission[]
-  Organization    Organization?    @relation(fields: [organization_id], references: [id])
-  organization_id Int?
+  organization    Organization?    @relation(fields: [organization_id], references: [id])
+  organization_id String?
 
   @@map("permissions")
 }
 
 model UserRole {
-  id         Int   @id @default(autoincrement())
-  user_id    Int
-  role_id    Int
-  created_at DateTime @default(now())
+  id          String  @id 
+  user_id     String
+  role_id     String
+  created_at  DateTime @default(now())
 
   user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
   role Role @relation(fields: [role_id], references: [id], onDelete: Cascade)
@@ -266,9 +288,9 @@ model UserRole {
 }
 
 model RolePermission {
-  id            Int   @id @default(autoincrement())
-  role_id       Int
-  permission_id Int
+  id            String  @unique 
+  role_id       String
+  permission_id String
   created_at    DateTime @default(now())
 
   role       Role       @relation(fields: [role_id], references: [id], onDelete: Cascade)
@@ -279,13 +301,15 @@ model RolePermission {
 }
 
 model Admin {
-  id              Int   @id @default(autoincrement())
-  organization_id Int
+  id              String  @id 
+  organization_id String
   name            String
   email           String
   role            String
-  created_at      DateTime @default(now())
-  updated_at      DateTime @updatedAt
+  created_at      DateTime @default(now()) @db.Timestamp(3)
+  updated_at      DateTime @updatedAt @db.Timestamp(3)
+  created_by      String?
+  updated_by      String?
 
   organization Organization @relation(fields: [organization_id], references: [id], onDelete: Cascade)
 
@@ -293,13 +317,15 @@ model Admin {
 }
 
 model EmployeeOnboarding {
-  id             Int   @id @default(autoincrement())
-  employee_id    Int   @unique
+  id             String  @unique 
+  employee_id    String   @unique
   date_started   DateTime  @default(now())
   date_completed DateTime?
   status         String    @default("PENDING")
-  created_at     DateTime  @default(now())
-  updated_at     DateTime  @updatedAt
+  created_at     DateTime  @default(now()) @db.Timestamp(3)
+  updated_at     DateTime  @updatedAt @db.Timestamp(3)
+  created_by      String?
+  updated_by      String?
 
   employee Employee @relation(fields: [employee_id], references: [id], onDelete: Cascade)
 
@@ -307,14 +333,16 @@ model EmployeeOnboarding {
 }
 
 model EmployeeOffboarding {
-  id             Int   @id @default(autoincrement())
-  employee_id    Int   @unique
+  id             String  @unique 
+  employee_id    String   @unique
   date_started   DateTime  @default(now())
   date_completed DateTime?
   reason         String?
   status         String    @default("PENDING")
-  created_at     DateTime  @default(now())
-  updated_at     DateTime  @updatedAt
+  created_at     DateTime  @default(now()) @db.Timestamp(3)
+  updated_at     DateTime  @updatedAt @db.Timestamp(3)
+  created_by      String?
+  updated_by      String?
 
   employee Employee @relation(fields: [employee_id], references: [id], onDelete: Cascade)
 
@@ -322,13 +350,15 @@ model EmployeeOffboarding {
 }
 
 model OrganizationOnboarding {
-  id              Int   @id @default(autoincrement())
-  organization_id Int   @unique
+  id              String  @id 
+  organization_id String   @unique
   started_at      DateTime  @default(now())
   completed_at    DateTime?
   status          String    @default("PENDING")
-  created_at      DateTime  @default(now())
-  updated_at      DateTime  @updatedAt
+  created_at      DateTime  @default(now()) @db.Timestamp(3)
+  updated_at      DateTime  @updatedAt @db.Timestamp(3)
+  created_by      String?
+  updated_by      String?
 
   organization Organization @relation(fields: [organization_id], references: [id], onDelete: Cascade)
 
@@ -336,14 +366,16 @@ model OrganizationOnboarding {
 }
 
 model OrganizationOffboarding {
-  id              Int   @id @default(autoincrement())
-  organization_id Int   @unique
+  id              String  @id 
+  organization_id String   @unique
   started_at      DateTime  @default(now())
   completed_at    DateTime?
   reason          String?
   status          String    @default("PENDING")
-  created_at      DateTime  @default(now())
-  updated_at      DateTime  @updatedAt
+  created_at      DateTime  @default(now()) @db.Timestamp(3)
+  updated_at      DateTime  @updatedAt @db.Timestamp(3)
+  created_by      String?
+  updated_by      String?
 
   organization Organization @relation(fields: [organization_id], references: [id], onDelete: Cascade)
 
@@ -351,15 +383,17 @@ model OrganizationOffboarding {
 }
 
 model Timesheet {
-  id          Int   @id @default(autoincrement())
-  employee_id Int
+  id          String  @id 
+  employee_id String
   work_date   DateTime
   time_in     DateTime
   time_out    DateTime?
   total_hours Float
   source      String
-  created_at  DateTime  @default(now())
-  updated_at  DateTime  @updatedAt
+  created_at  DateTime  @default(now()) @db.Timestamp(3)
+  updated_at  DateTime  @updatedAt @db.Timestamp(3)
+  created_by      String?
+  updated_by      String?
 
   employee Employee @relation(fields: [employee_id], references: [id], onDelete: Cascade)
 
@@ -367,15 +401,17 @@ model Timesheet {
 }
 
 model LeaveRequest {
-  id          Int   @id @default(autoincrement())
-  employee_id Int
+  id          String  @id 
+  employee_id String
   leave_type  String
   start_date  DateTime
   end_date    DateTime
   status      String   @default("PENDING")
   remarks     String?
-  created_at  DateTime @default(now())
-  updated_at  DateTime @updatedAt
+  created_at  DateTime @default(now()) @db.Timestamp(3)
+  updated_at  DateTime @updatedAt @db.Timestamp(3)
+  created_by      String?
+  updated_by      String?
 
   employee Employee @relation(fields: [employee_id], references: [id], onDelete: Cascade)
 
@@ -383,15 +419,17 @@ model LeaveRequest {
 }
 
 model Payroll {
-  id           Int   @id @default(autoincrement())
-  employee_id  Int
+  id           String  @unique 
+  employee_id  String
   period_start DateTime
   period_end   DateTime
   gross_salary Float
   net_salary   Float
   processed_at DateTime @default(now())
-  created_at   DateTime @default(now())
-  updated_at   DateTime @updatedAt
+  created_at   DateTime @default(now()) @db.Timestamp(3)
+  updated_at   DateTime @updatedAt @db.Timestamp(3)
+  created_by      String?
+  updated_by      String?
 
   employee   Employee    @relation(fields: [employee_id], references: [id], onDelete: Cascade)
   deductions Deduction[]
@@ -400,12 +438,14 @@ model Payroll {
 }
 
 model Deduction {
-  id         Int   @id @default(autoincrement())
-  payroll_id Int
-  type       String
-  amount     Float
-  created_at DateTime @default(now())
-  updated_at DateTime @updatedAt
+  id          String  @id 
+  payroll_id  String
+  type        String
+  amount      Float
+  created_at  DateTime @default(now()) @db.Timestamp(3)
+  updated_at  DateTime @updatedAt @db.Timestamp(3)
+  created_by      String?
+  updated_by      String?
 
   payroll Payroll @relation(fields: [payroll_id], references: [id], onDelete: Cascade)
 
@@ -413,8 +453,8 @@ model Deduction {
 }
 
 model HolidayTemplate {
-  id              Int   @id @default(autoincrement())
-  organization_id Int
+  id              String  @id 
+  organization_id String
   name            String
   description     String?
   created_at      DateTime @default(now())
@@ -427,9 +467,9 @@ model HolidayTemplate {
 }
 
 model Holiday {
-  id                  Int   @id @default(autoincrement())
-  organization_id     Int
-  holiday_template_id Int
+  id                  String  @id 
+  organization_id     String
+  holiday_template_id String
   date                DateTime
   is_recurring        Boolean  @default(false)
   type                String
@@ -444,9 +484,9 @@ model Holiday {
 }
 
 model EmployeeHolidayAssignment {
-  id          Int   @id @default(autoincrement())
-  employee_id Int
-  holiday_id  Int
+  id          String  @id 
+  employee_id String
+  holiday_id  String
   created_at  DateTime @default(now())
   updated_at  DateTime @updatedAt
 
@@ -458,8 +498,8 @@ model EmployeeHolidayAssignment {
 }
 
 model Calendar {
-  id              Int   @id @default(autoincrement())
-  organization_id Int
+  id              String  @id 
+  organization_id String
   name            String
   description     String?
   created_at      DateTime @default(now())
@@ -472,9 +512,9 @@ model Calendar {
 }
 
 model CalendarHoliday {
-  id          Int   @id @default(autoincrement())
-  calendar_id Int
-  holiday_id  Int
+  id          String  @id 
+  calendar_id String
+  holiday_id  String
   created_at  DateTime @default(now())
   updated_at  DateTime @updatedAt
 
@@ -487,8 +527,8 @@ model CalendarHoliday {
 
 // Better Auth required tables
 model Account {
-  id                Int   @id @default(autoincrement())
-  userId            Int
+  id                String  @unique 
+  userId            String
   type              String
   provider          String
   providerAccountId String
@@ -507,9 +547,9 @@ model Account {
 }
 
 model Session {
-  id           Int   @id @default(autoincrement())
+  id           String  @unique 
   sessionToken String   @unique
-  userId       Int
+  userId       String
   expires      DateTime
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -517,10 +557,10 @@ model Session {
 }
 
 model VerificationToken {
-  identifier String
-  token      String   @unique
-  expires    DateTime
-  id         Int   @id @default(autoincrement())
+  id          String  @id 
+  identifier  String
+  token       String   @unique
+  expires     DateTime
 
   @@unique([identifier, token])
   @@map("verification_tokens")

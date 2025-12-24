@@ -7,7 +7,7 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const leaveRequest = await leaveRequestController.getById(Number(id));
+    const leaveRequest = await leaveRequestController.getById(id);
     
     if (!leaveRequest) {
       return NextResponse.json(
@@ -33,7 +33,7 @@ export async function PUT(
   try {
     const { id } = await params;
     const body = await request.json();
-    const leaveRequest = await leaveRequestController.update(Number(id), body);
+    const leaveRequest = await leaveRequestController.update(id, body);
     
     return NextResponse.json(leaveRequest);
   } catch (error) {
@@ -51,7 +51,7 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
-    await leaveRequestController.delete(Number(id));
+    await leaveRequestController.delete(id);
     return NextResponse.json({ message: 'Leave request deleted successfully' });
   } catch (error) {
     console.error('Error deleting leave request:', error);
@@ -73,9 +73,9 @@ export async function POST(
 
     let leaveRequest;
     if (action === 'approve') {
-      leaveRequest = await leaveRequestController.approve(Number(id));
+      leaveRequest = await leaveRequestController.approve(id);
     } else if (action === 'reject') {
-      leaveRequest = await leaveRequestController.reject(Number(id), remarks);
+      leaveRequest = await leaveRequestController.reject(id, remarks);
     } else {
       return NextResponse.json(
         { error: 'Invalid action' },

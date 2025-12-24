@@ -11,13 +11,13 @@ interface User {
   email: string;
   username: string;
   role?: string;
-  roles?: string[];
-  permissions?: string[];
-  organization_id?: number;
+  organization_id?: string;
 }
 
 interface AuthContextType {
   user: User | null;
+  roles: string[];
+  permissions: string[];
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   isLoading: boolean;
@@ -27,6 +27,13 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+const sanitizeUser = (user: any): User => ({
+  id: user.id,
+  email: user.email,
+  username: user.username,
+  organization_id: user.organization_id
+});
+
 export function AuthProvider({
   children,
   initialUser = null
@@ -35,12 +42,14 @@ export function AuthProvider({
   initialUser?: User | null;
 }) {
   const [user, setUser] = useState<User | null>(initialUser);
+  const [roles, setRoles] = useState<string[]>([]);
+  const [permissions, setPermissions] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true); // Always start loading, let checkAuth handle it
   const [hasCheckedAuth, setHasCheckedAuth] = useState(false);
 
   const router = useRouter();
 
-  const { checkAuth } = useUserCache(setUser, setIsLoading, setHasCheckedAuth);
+  const { checkAuth } = useUserCache(setUser, setRoles, setPermissions, setIsLoading, setHasCheckedAuth);
 
   // Cross-tab session synchronization
   useEffect(() => {
@@ -54,7 +63,9 @@ export function AuthProvider({
         } else if (sessionData.user && !user) {
           // Another tab logged in - update this tab's state
           console.log('Session established by another tab, updating state...');
-          setUser(sessionData.user);
+          setUser(sanitizeUser(sessionData.user));
+          setRoles((sessionData.user as any).roles || []);
+          setPermissions((sessionData.user as any).permissions || []);
         }
       }
     });
@@ -93,7 +104,14 @@ export function AuthProvider({
 
       if (response.ok) {
         const session = await response.json();
-        setUser(session.user);
+        setUser({
+          id: session.user.id,
+          email: session.user.email,
+          username: session.user.username,
+          organization_id: session.user.organization_id
+        });
+        setRoles(session.user.roles || []);
+        setPermissions(session.user.permissions || []);
         // Store complete session with tokens in session manager
         sessionManager.setAuthenticatedUser(session.user, session.accessToken, session.refreshToken);
         // Fetch full user data including roles
@@ -124,6 +142,8 @@ export function AuthProvider({
       console.error('Logout failed:', error);
       // Still clear local state even if server logout fails
       setUser(null);
+      setRoles([]);
+      setPermissions([]);
       sessionManager.clearSession();
     }
   };
@@ -148,7 +168,9 @@ export function AuthProvider({
         const data = await response.json();
         // Update access token in session manager
         sessionManager.updateAccessToken(data.accessToken);
-        setUser(data.user);
+        setUser(sanitizeUser(data.user));
+        setRoles(data.user.roles || []);
+        setPermissions(data.user.permissions || []);
         return true;
       } else if (response.status === 401) {
         // 401 means refresh token is invalid/expired - user must login again
@@ -204,7 +226,7 @@ export function AuthProvider({
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, isLoading, getAccessToken, checkAuth }}>
+    <AuthContext.Provider value={{ user, roles, permissions, login, logout, isLoading, getAccessToken, checkAuth }}>
       {children}
     </AuthContext.Provider>
   );

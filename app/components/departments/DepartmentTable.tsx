@@ -27,15 +27,19 @@ interface Department {
 interface DepartmentTableBodyProps {
   departments: Department[];
   onDelete: (departmentId: number, departmentName: string) => void;
+  currentPage?: number;
+  limit?: number;
 }
 
-const DepartmentTableBody = memo(function DepartmentTableBody({ departments, onDelete }: DepartmentTableBodyProps) {
+const DepartmentTableBody = memo(function DepartmentTableBody({ departments, onDelete, currentPage = 1, limit = 15 }: DepartmentTableBodyProps) {
   return (
     <TableBody className="divide-y divide-gray-100 dark:divide-white/[0.05]">
-      {departments.map((department) => (
+      {departments.map((department, index) => {
+        const rowNumber = (currentPage - 1) * limit + index + 1;
+        return (
         <TableRow key={department.id}>
           <TableCell className="px-5 py-4 text-gray-500 text-start text-theme-sm dark:text-gray-400">
-            {department.id}
+            {rowNumber}
           </TableCell>
           <TableCell className="px-4 py-3 text-start">
             <span className="font-medium text-gray-800 text-theme-sm dark:text-white/90">
@@ -68,7 +72,8 @@ const DepartmentTableBody = memo(function DepartmentTableBody({ departments, onD
             </div>
           </TableCell>
         </TableRow>
-      ))}
+        );
+      })}
     </TableBody>
   );
 });
@@ -76,9 +81,11 @@ const DepartmentTableBody = memo(function DepartmentTableBody({ departments, onD
 interface DepartmentTableProps {
   departments: Department[];
   onDelete: (departmentId: number, departmentName: string) => void;
+  currentPage?: number;
+  limit?: number;
 }
 
-export default function DepartmentTable({ departments, onDelete }: DepartmentTableProps) {
+export default function DepartmentTable({ departments, onDelete, currentPage = 1, limit = 15 }: DepartmentTableProps) {
   return (
     <div className="hidden lg:block overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03]">
       <div className="w-full overflow-x-auto">
@@ -90,7 +97,7 @@ export default function DepartmentTable({ departments, onDelete }: DepartmentTab
                 isHeader
                 className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
               >
-                ID
+                No.
               </TableCell>
               <TableCell
                 isHeader

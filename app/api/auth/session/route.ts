@@ -2,7 +2,7 @@ import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
 import { JWTUtils } from '@/lib/auth/jwt';
 import { getUserRoles, getUserPermissions } from '@/lib/auth/auth-db';
-import { prisma } from '@/lib/db';
+import { getUserService } from '@/lib/service';
 
 export async function GET() {
   try {
@@ -15,18 +15,16 @@ export async function GET() {
 
     // Verify the JWT token
     const payload = JWTUtils.verifyAccessToken(accessToken);
-    
+
     // Get user roles and permissions
     const roles = await getUserRoles(payload.userId);
     const permissions = await getUserPermissions(payload.userId);
 
     // Get user's organization_id from the database
-    const user = await prisma.user.findUnique({
-      where: { id: payload.userId },
-      select: { organization_id: true }
-    });
+    const userService = getUserService();
+    const user = await userService.getById(payload.userId.toString());
 
-    return NextResponse.json({ 
+    return NextResponse.json({
       user: {
         id: payload.userId.toString(),
         email: payload.email,

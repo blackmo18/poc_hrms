@@ -3,6 +3,7 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from './providers/auth-provider';
+import { useRoleAccess } from './providers/role-access-provider';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -19,10 +20,11 @@ export function ProtectedRoute({
 }: ProtectedRouteProps) {
   const router = useRouter();
   const { user, isLoading } = useAuth();
+  const { hasPermission, isLoading: roleLoading } = useRoleAccess();
 
   useEffect(() => {
     // Don't do anything while loading
-    if (isLoading) return;
+    if (isLoading || roleLoading) return;
 
     // If not logged in, redirect to login
     if (!user) {
@@ -38,15 +40,15 @@ export function ProtectedRoute({
     }
 
     // Check permission requirements
-    if (requiredPermission && user.permissions && !user.permissions.includes(requiredPermission)) {
+    if (requiredPermission && !hasPermission(requiredPermission)) {
       // Redirect to fallback path instead of 404 to avoid aggressive auth checks
       router.push(fallbackPath);
       return;
     }
-  }, [user, isLoading, router, requiredRole, requiredPermission, fallbackPath]);
+  }, [user, isLoading, roleLoading, router, requiredRole, requiredPermission, fallbackPath, hasPermission]);
 
   // Show loading state
-  if (isLoading) {
+  if (isLoading || roleLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
@@ -65,7 +67,7 @@ export function ProtectedRoute({
   }
 
   // Check permission requirements
-  if (requiredPermission && user.permissions && !user.permissions.includes(requiredPermission)) {
+  if (requiredPermission && !hasPermission(requiredPermission)) {
     return null;
   }
 

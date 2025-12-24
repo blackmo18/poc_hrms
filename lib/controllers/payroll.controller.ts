@@ -1,8 +1,9 @@
 import { prisma } from '../db';
 import { CreatePayroll, UpdatePayroll } from '../models/payroll';
+import { generateULID } from '../utils/ulid.service';
 
 export class PayrollController {
-  async getAll(employeeId?: number, periodStart?: Date, periodEnd?: Date) {
+  async getAll(employeeId?: string, periodStart?: Date, periodEnd?: Date) {
     return await prisma.payroll.findMany({
       where: {
         ...(employeeId && { employee_id: employeeId }),
@@ -24,7 +25,7 @@ export class PayrollController {
     });
   }
 
-  async getById(id: number) {
+  async getById(id: string) {
     return await prisma.payroll.findUnique({
       where: { id },
       include: {
@@ -42,6 +43,7 @@ export class PayrollController {
   async create(data: CreatePayroll) {
     return await prisma.payroll.create({
       data: {
+        id: generateULID(),
         ...data,
         processed_at: new Date(),
       },
@@ -57,7 +59,7 @@ export class PayrollController {
     });
   }
 
-  async update(id: number, data: UpdatePayroll) {
+  async update(id: string, data: UpdatePayroll) {
     return await prisma.payroll.update({
       where: { id },
       data,
@@ -73,17 +75,18 @@ export class PayrollController {
     });
   }
 
-  async delete(id: number) {
+  async delete(id: string) {
     return await prisma.payroll.delete({
       where: { id },
     });
   }
 
-  async processPayroll(employeeId: number, periodStart: Date, periodEnd: Date, grossSalary: number, deductions: Array<{ type: string; amount: number }>) {
+  async processPayroll(employeeId: string, periodStart: Date, periodEnd: Date, grossSalary: number, deductions: Array<{ type: string; amount: number }>) {
     const netSalary = deductions.reduce((total, deduction) => total - deduction.amount, grossSalary);
 
     const payroll = await prisma.payroll.create({
       data: {
+        id: generateULID(),
         employee_id: employeeId,
         period_start: periodStart,
         period_end: periodEnd,
@@ -97,6 +100,7 @@ export class PayrollController {
     if (deductions.length > 0) {
       await prisma.deduction.createMany({
         data: deductions.map(deduction => ({
+          id: generateULID(),
           payroll_id: payroll.id,
           type: deduction.type,
           amount: deduction.amount,
@@ -104,7 +108,7 @@ export class PayrollController {
       });
     }
 
-    return this.getById(Number(payroll.id));
+    return this.getById(payroll.id);
   }
 }
 

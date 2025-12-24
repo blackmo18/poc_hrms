@@ -1,8 +1,9 @@
 import { prisma } from '../db';
 import { CreateEmployee, UpdateEmployee } from '../models/employee';
+import { generateULID } from '../utils/ulid.service';
 
 export class EmployeeController {
-  async getAll(organizationId?: number, options?: { page?: number; limit?: number }) {
+  async getAll(organizationId?: string, options?: { page?: number; limit?: number }) {
     const { page = 1, limit = 15 } = options || {};
     const skip = (page - 1) * limit;
 
@@ -17,16 +18,23 @@ export class EmployeeController {
       skip,
       take: limit,
       include: {
-        organization: true,
-        user: true,
-        department: true,
-        jobTitle: true,
-        manager: true,
-        directReports: true,
-        compensations: true,
-        employeeBenefits: {
-          include: {
-            benefit: true,
+        organization: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+        user: false,
+        department: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+        jobTitle: {
+          select: {
+            id: true,
+            name: true,
           },
         },
       },
@@ -48,7 +56,7 @@ export class EmployeeController {
     };
   }
 
-  async getById(id: number) {
+  async getById(id: string) {
     return await prisma.employee.findUnique({
       where: { id },
       include: {
@@ -77,7 +85,7 @@ export class EmployeeController {
 
   async create(data: CreateEmployee) {
     return await prisma.employee.create({
-      data,
+      data: {id: generateULID(), ...data},
       include: {
         organization: true,
         user: true,
@@ -89,7 +97,7 @@ export class EmployeeController {
     });
   }
 
-  async update(id: number, data: UpdateEmployee) {
+  async update(id: string, data: UpdateEmployee) {
     return await prisma.employee.update({
       where: { id },
       data,
@@ -104,13 +112,13 @@ export class EmployeeController {
     });
   }
 
-  async delete(id: number) {
+  async delete(id: string) {
     return await prisma.employee.delete({
       where: { id },
     });
   }
 
-  async getByDepartment(departmentId: number) {
+  async getByDepartment(departmentId: string) {
     return await prisma.employee.findMany({
       where: { department_id: departmentId },
       include: {
@@ -121,7 +129,7 @@ export class EmployeeController {
     });
   }
 
-  async getByManager(managerId: number) {
+  async getByManager(managerId: string) {
     return await prisma.employee.findMany({
       where: { manager_id: managerId },
       include: {
@@ -132,7 +140,7 @@ export class EmployeeController {
     });
   }
 
-  async getByUserId(userId: number) {
+  async getByUserId(userId: string) {
     return await prisma.employee.findUnique({
       where: { user_id: userId },
       include: {

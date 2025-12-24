@@ -16,7 +16,7 @@ export class JWTUtils {
     const serializablePayload: Omit<JWTSerializablePayload, 'type'> = {
       userId: payload.userId.toString(),
       email: payload.email,
-      organizationId: payload.organizationId?.toString(),
+      organizationId: payload.organization_id,
       roleIds: payload.roleIds.map(id => id.toString()),
       username: payload.username
     };
@@ -36,7 +36,7 @@ export class JWTUtils {
     const serializablePayload: Omit<JWTSerializablePayload, 'type'> = {
       userId: payload.userId.toString(),
       email: payload.email,
-      organizationId: payload.organizationId?.toString(),
+      organizationId: payload.organization_id,
       roleIds: payload.roleIds.map(id => id.toString()),
       username: payload.username
     };
@@ -73,7 +73,7 @@ export class JWTUtils {
       const payload: Omit<JWTPayload, 'type'> = {
         userId: user.id,
         email: user.email,
-        organizationId: user.organizationId,
+        organization_id: user.organization_id,
         roleIds,
         username: user.email // Use email as username for now
       };
@@ -91,7 +91,7 @@ export class JWTUtils {
           name: user.name,
           role: roles[0]?.name || 'EMPLOYEE',
           permissions,
-          organizationId: user.organizationId?.toString()
+          organization_id: user.organization_id
         },
         accessToken,
         refreshToken
@@ -112,12 +112,12 @@ export class JWTUtils {
         throw new Error('Invalid token type');
       }
       
-      // Convert back to JWTPayload with number types
+      // Convert back to JWTPayload with string types
       return {
-        userId: Number(decoded.userId),
+        userId: decoded.userId,  // Keep as string
         email: decoded.email,
-        organizationId: decoded.organizationId ? Number(decoded.organizationId) : 0,
-        roleIds: decoded.roleIds.map(id => Number(id)),
+        organization_id: decoded.organizationId,
+        roleIds: decoded.roleIds,  // Keep as string[]
         username: decoded.username,
         type: 'access'
       };
@@ -133,7 +133,7 @@ export class JWTUtils {
     if (!payload) return null;
 
     // Check if user exists and is active
-    const user = await findUserById(payload.userId);
+    const user = await findUserById(payload.userId.toString());
     if (!user || !user.enabled) return null;
 
     // Get user roles
@@ -144,7 +144,7 @@ export class JWTUtils {
     const newAccessToken = this.generateAccessToken({
       userId: user.id,
       email: user.email,
-      organizationId: user.organizationId,
+      organization_id: user.organization_id,
       username: user.email,
       roleIds
     });
@@ -152,7 +152,7 @@ export class JWTUtils {
     const newRefreshToken = this.generateRefreshToken({
       userId: user.id,
       email: user.email,
-      organizationId: user.organizationId,
+      organization_id: user.organization_id,
       username: user.email,
       roleIds
     });
@@ -169,7 +169,7 @@ export class JWTUtils {
         name: user.name,
         role: roles[0]?.name || 'EMPLOYEE',
         permissions,
-        organizationId: user.organizationId
+        organization_id: user.organization_id
       }
     };
 
@@ -189,12 +189,12 @@ export class JWTUtils {
         throw new Error('Invalid token type');
       }
       
-      // Convert back to JWTPayload with number types
+      // Convert back to JWTPayload with string types
       return {
-        userId: Number(decoded.userId),
+        userId: decoded.userId,  // Keep as string
         email: decoded.email,
-        organizationId: decoded.organizationId ? Number(decoded.organizationId) : 0,
-        roleIds: decoded.roleIds.map(id => Number(id)),
+        organization_id: decoded.organizationId,
+        roleIds: decoded.roleIds,  // Keep as string[]
         username: decoded.username,
         type: 'refresh'
       };
@@ -260,12 +260,12 @@ export class JWTUtils {
     try {
       const decoded = jwtDecode<JWTSerializablePayload>(token);
       
-      // Convert back to JWTPayload with number types
+      // Convert back to JWTPayload with string types
       return {
-        userId: Number(decoded.userId),
+        userId: decoded.userId,  // Keep as string
         email: decoded.email,
-        organizationId: decoded.organizationId ? Number(decoded.organizationId) : 0,
-        roleIds: decoded.roleIds.map(id => Number(id)),
+        organization_id: decoded.organizationId,
+        roleIds: decoded.roleIds,  // Keep as string[]
         username: decoded.username,
         type: decoded.type
       };
@@ -278,7 +278,7 @@ export class JWTUtils {
   /**
    * Extract user ID from token
    */
-  static extractUserId(token: string): number | null {
+  static extractUserId(token: string): string | null {
     const decoded = this.decodeToken(token);
     return decoded?.userId || null;
   }
@@ -294,15 +294,15 @@ export class JWTUtils {
   /**
    * Extract organization ID from token
    */
-  static extractOrganizationId(token: string): number | null {
+  static extractOrganizationId(token: string): string | null {
     const decoded = this.decodeToken(token);
-    return decoded?.organizationId || null;
+    return decoded?.organization_id || null;
   }
 
   /**
    * Extract role IDs from token
    */
-  static extractRoleIds(token: string): number[] {
+  static extractRoleIds(token: string): string[] {
     const decoded = this.decodeToken(token);
     return decoded?.roleIds || [];
   }
@@ -329,6 +329,26 @@ export class JWTUtils {
   static getTokenClaims(token: string): Partial<JWTPayload> | null {
     return this.decodeToken(token);
   }
+}
+
+export function extractUserId(token: string): string | null {
+  return JWTUtils.extractUserId(token);
+}
+
+export function extractEmail(token: string): string | null {
+  return JWTUtils.extractEmail(token);
+}
+
+export function extractOrganizationId(token: string): string | null {
+  return JWTUtils.extractOrganizationId(token);
+}
+
+export function extractRoleIds(token: string): string[] {
+  return JWTUtils.extractRoleIds(token);
+}
+
+export function extractUsername(token: string): string | null {
+  return JWTUtils.extractUsername(token);
 }
 
 export default JWTUtils;

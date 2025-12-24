@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 export const OrganizationSchema = z.object({
-  id: z.number().optional(),
+  id: z.string().optional(),
   name: z.string().min(1, 'Organization name is required'),
   email: z.string().email('Invalid email address'),
   contact_number: z.string().optional(),

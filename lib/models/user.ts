@@ -1,8 +1,8 @@
 import { z } from 'zod';
 
 export const UserSchema = z.object({
-  id: z.number().optional(),
-  organization_id: z.number().min(1, 'Organization ID is required'),
+  id: z.string().optional(),
+  organization_id: z.string().min(1, 'Organization ID is required'),
   email: z.string().email('Valid email is required'),
   password_hash: z.string().min(1, 'Password hash is required'),
   status: z.enum(['ACTIVE', 'INACTIVE', 'SUSPENDED']).default('ACTIVE'),

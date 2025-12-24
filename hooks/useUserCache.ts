@@ -6,9 +6,7 @@ interface User {
   email: string;
   username: string;
   role?: string;
-  roles?: string[];
-  permissions?: string[];
-  organization_id?: number;
+  organization_id?: string;
 }
 
 interface UseUserCacheOptions {
@@ -17,8 +15,17 @@ interface UseUserCacheOptions {
   onUserNull?: () => void;
 }
 
+const sanitizeUser = (user: any): User => ({
+  id: user.id,
+  email: user.email,
+  username: user.username,
+  organization_id: user.organization_id
+});
+
 export function useUserCache(
   setUser: (user: User | null) => void,
+  setRoles: (roles: string[]) => void,
+  setPermissions: (permissions: string[]) => void,
   setIsLoading: (loading: boolean) => void,
   setHasCheckedAuth: (checked: boolean) => void,
   options: UseUserCacheOptions = {}
@@ -40,8 +47,9 @@ export function useUserCache(
         const sessionData = sessionManager.getSessionData();
         const cachedUser = sessionData?.user;
         if (cachedUser) {
-          setUser(cachedUser);
-          setInternalUser(cachedUser);
+          const sanitized = sanitizeUser(cachedUser);
+          setUser(sanitized);
+          setInternalUser(sanitized);
           setIsLoading(false);
         }
       }
@@ -59,8 +67,11 @@ export function useUserCache(
       if (response.ok) {
         const data = await response.json();
         if (data.user) {
-          setUser(data.user);
-          setInternalUser(data.user);
+          const sanitized = sanitizeUser(data.user);
+          setUser(sanitized);
+          setInternalUser(sanitized);
+          setRoles(data.user.roles || []);
+          setPermissions(data.user.permissions || []);
         } else {
           setUser(null);
           setInternalUser(null);

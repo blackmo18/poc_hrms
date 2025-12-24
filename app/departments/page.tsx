@@ -238,7 +238,7 @@ export default function DepartmentsPage() {
 
           {/* Desktop Table View */}
           <div className={loading ? 'opacity-50 pointer-events-none' : ''}>
-            <DepartmentTable departments={departments} onDelete={handleDeleteClick} />
+            <DepartmentTable departments={departments} onDelete={handleDeleteClick} currentPage={pagination?.page} limit={pagination?.limit} />
           </div>
 
           {/* Mobile Card View */}

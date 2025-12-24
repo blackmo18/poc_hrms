@@ -1,9 +1,10 @@
 import { prisma } from '../db';
+import { generateULID } from '../utils/ulid.service';
 import { CreateUser, UpdateUser } from '../models/user';
 import bcrypt from 'bcryptjs';
 
 export class UserController {
-  async getAll(organizationId?: number) {
+  async getAll(organizationId?: string) {
     return await prisma.user.findMany({
       where: organizationId ? { organization_id: organizationId } : undefined,
       include: {
@@ -26,7 +27,7 @@ export class UserController {
     });
   }
 
-  async getById(id: number) {
+  async getById(id: string) {
     return await prisma.user.findUnique({
       where: { id },
       include: {
@@ -54,6 +55,7 @@ export class UserController {
     
     return await prisma.user.create({
       data: {
+        id: generateULID(),
         ...data,
         password_hash: hashedPassword,
       },
@@ -69,7 +71,7 @@ export class UserController {
     });
   }
 
-  async update(id: number, data: UpdateUser) {
+  async update(id: string, data: UpdateUser) {
     let updateData = { ...data };
     
     if (data.password_hash) {
@@ -91,7 +93,7 @@ export class UserController {
     });
   }
 
-  async delete(id: number) {
+  async delete(id: string) {
     return await prisma.user.delete({
       where: { id },
     });

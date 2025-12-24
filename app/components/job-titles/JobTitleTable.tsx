@@ -27,15 +27,19 @@ interface JobTitle {
 interface JobTitleTableBodyProps {
   jobTitles: JobTitle[];
   onDelete: (jobTitleId: number, jobTitleName: string) => void;
+  currentPage?: number;
+  limit?: number;
 }
 
-const JobTitleTableBody = memo(function JobTitleTableBody({ jobTitles, onDelete }: JobTitleTableBodyProps) {
+const JobTitleTableBody = memo(function JobTitleTableBody({ jobTitles, onDelete, currentPage = 1, limit = 15 }: JobTitleTableBodyProps) {
   return (
     <>
-      {jobTitles.map((jobTitle) => (
+      {jobTitles.map((jobTitle, index) => {
+        const rowNumber = (currentPage - 1) * limit + index + 1;
+        return (
         <TableRow key={jobTitle.id}>
           <TableCell className="px-5 py-4 text-gray-500 text-start text-theme-sm dark:text-gray-400">
-            {jobTitle.id}
+            {rowNumber}
           </TableCell>
           <TableCell className="px-4 py-3 text-start">
             <span className="font-medium text-gray-800 text-theme-sm dark:text-white/90">
@@ -68,7 +72,8 @@ const JobTitleTableBody = memo(function JobTitleTableBody({ jobTitles, onDelete 
             </div>
           </TableCell>
         </TableRow>
-      ))}
+        );
+      })}
     </>
   );
 });
@@ -78,9 +83,11 @@ interface JobTitleTableProps {
   onDelete: (jobTitleId: number, jobTitleName: string) => void;
   loading?: boolean;
   fallback?: React.ReactNode;
+  currentPage?: number;
+  limit?: number;
 }
 
-export default function JobTitleTable({ jobTitles, onDelete, loading = false, fallback }: JobTitleTableProps) {
+export default function JobTitleTable({ jobTitles, onDelete, loading = false, fallback, currentPage = 1, limit = 15 }: JobTitleTableProps) {
   // Loading skeleton rows
   const LoadingSkeleton = () => (
     <>
@@ -123,7 +130,7 @@ export default function JobTitleTable({ jobTitles, onDelete, loading = false, fa
                 isHeader
                 className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
               >
-                ID
+                No.
               </TableCell>
               <TableCell
                 isHeader

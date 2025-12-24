@@ -1,8 +1,9 @@
 import { prisma } from '../db';
+import { generateULID } from '../utils/ulid.service';
 import { CreateRole, UpdateRole } from '../models/role';
 
 export class RoleController {
-  async getAll(organizationId?: number) {
+  async getAll(organizationId?: string) {
     return await prisma.role.findMany({
       where: organizationId ? { organization_id: organizationId } : undefined,
       include: {
@@ -28,7 +29,7 @@ export class RoleController {
     });
   }
 
-  async getById(id: number) {
+  async getById(id: string) {
     return await prisma.role.findUnique({
       where: { id },
       include: {
@@ -55,7 +56,7 @@ export class RoleController {
 
   async create(data: CreateRole) {
     return await prisma.role.create({
-      data,
+      data: { id: generateULID(), ...data },
       include: {
         organization: true,
         rolePermissions: {
@@ -67,7 +68,7 @@ export class RoleController {
     });
   }
 
-  async update(id: number, data: UpdateRole) {
+  async update(id: string, data: UpdateRole) {
     return await prisma.role.update({
       where: { id },
       data,
@@ -82,7 +83,7 @@ export class RoleController {
     });
   }
 
-  async delete(id: number) {
+  async delete(id: string) {
     // First, delete all user-role associations
     await prisma.userRole.deleteMany({
       where: { role_id: id }
@@ -99,9 +100,10 @@ export class RoleController {
     });
   }
 
-  async assignPermission(roleId: number, permissionId: number) {
+  async assignPermission(roleId: string, permissionId: string) {
     return await prisma.rolePermission.create({
       data: {
+        id: generateULID(),
         role_id: roleId,
         permission_id: permissionId
       },
@@ -112,7 +114,7 @@ export class RoleController {
     });
   }
 
-  async removePermission(roleId: number, permissionId: number) {
+  async removePermission(roleId: string, permissionId: string) {
     return await prisma.rolePermission.deleteMany({
       where: {
         role_id: roleId,
@@ -121,7 +123,7 @@ export class RoleController {
     });
   }
 
-  async getRolePermissions(roleId: number) {
+  async getRolePermissions(roleId: string) {
     const role = await prisma.role.findUnique({
       where: { id: roleId },
       include: {
@@ -140,7 +142,7 @@ export class RoleController {
     return role.rolePermissions.map(rp => rp.permission);
   }
 
-  async getUsersWithRole(roleId: number) {
+  async getUsersWithRole(roleId: string) {
     const role = await prisma.role.findUnique({
       where: { id: roleId },
       include: {

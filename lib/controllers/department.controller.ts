@@ -1,8 +1,9 @@
 import { prisma } from '../db';
 import { CreateDepartment, UpdateDepartment } from '../models/department';
+import { generateULID } from '../utils/ulid.service';
 
 export class DepartmentController {
-  async getAll(session: any, organizationId?: number, page: number = 1, limit: number = 15) {
+  async getAll(session: any, organizationId?: string, page: number = 1, limit: number = 15) {
     // Get authenticated user
     if (!session?.user?.id) {
       throw new Error('Unauthorized');
@@ -10,7 +11,7 @@ export class DepartmentController {
 
     // Get user with roles
     const userWithRoles = await prisma.user.findUnique({
-      where: { id: parseInt(session.user.id) },
+      where: { id: session.user.id },
       include: {
         userRoles: {
           include: {
@@ -78,7 +79,7 @@ export class DepartmentController {
     };
   }
 
-  async getById(session: any, id: number) {
+  async getById(session: any, id: string) {
     // Get authenticated user
     if (!session?.user?.id) {
       throw new Error('Unauthorized');
@@ -86,7 +87,7 @@ export class DepartmentController {
 
     // Get user with roles
     const userWithRoles = await prisma.user.findUnique({
-      where: { id: parseInt(session.user.id) },
+      where: { id: session.user.id },
       include: {
         userRoles: {
           include: {
@@ -143,7 +144,7 @@ export class DepartmentController {
 
     // Get user with roles
     const userWithRoles = await prisma.user.findUnique({
-      where: { id: parseInt(session.user.id) },
+      where: { id: session.user.id },
       include: {
         userRoles: {
           include: {
@@ -168,13 +169,17 @@ export class DepartmentController {
     }
 
     // Set organization_id if not super admin
-    const departmentData = { ...data };
     if (!isSuperAdmin) {
-      departmentData.organization_id = userWithRoles.organization_id!;
+      data.organization_id = userWithRoles.organization_id!;
     }
 
     return await prisma.department.create({
-      data: departmentData,
+      data: {
+        id: generateULID(),
+        name: data.name,
+        description: data.description,
+        organization_id: data.organization_id!
+      },
       include: {
         organization: true,
         employees: true,
@@ -182,7 +187,7 @@ export class DepartmentController {
     });
   }
 
-  async update(session: any, id: number, data: UpdateDepartment) {
+  async update(session: any, id: string, data: UpdateDepartment) {
     // Get authenticated user
     if (!session?.user?.id) {
       throw new Error('Unauthorized');
@@ -190,7 +195,7 @@ export class DepartmentController {
 
     // Get user with roles
     const userWithRoles = await prisma.user.findUnique({
-      where: { id: parseInt(session.user.id) },
+      where: { id: session.user.id },
       include: {
         userRoles: {
           include: {
@@ -237,7 +242,7 @@ export class DepartmentController {
     });
   }
 
-  async delete(session: any, id: number) {
+  async delete(session: any, id: string) {
     // Get authenticated user
     if (!session?.user?.id) {
       throw new Error('Unauthorized');
@@ -245,7 +250,7 @@ export class DepartmentController {
 
     // Get user with roles
     const userWithRoles = await prisma.user.findUnique({
-      where: { id: parseInt(session.user.id) },
+      where: { id: session.user.id },
       include: {
         userRoles: {
           include: {

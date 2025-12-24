@@ -31,12 +31,12 @@ export async function GET(request: NextRequest) {
     if (isSuperAdmin) {
       // Super Admin can see all job titles across all organizations
       result = await jobTitleController.getAll(
-        organizationId ? Number(organizationId) : undefined,
+        organizationId ?? undefined,
         { page, limit }
       );
     } else if (isAdmin) {
       // Admin can see job titles in their organization only
-      result = await jobTitleController.getAll(user.organizationId, { page, limit });
+      result = await jobTitleController.getAll(user.organization_id, { page, limit });
     } else {
       // Regular employees might have limited access or no access
       return NextResponse.json(
@@ -64,7 +64,7 @@ export async function POST(request: NextRequest) {
 
       // Super Admin can create job titles for any organization
       // Admin can only create for their own organization
-      if (!isSuperAdmin && (!isAdmin || validatedData.organization_id !== user.organizationId)) {
+      if (!isSuperAdmin && (!isAdmin || validatedData.organization_id !== user.organization_id)) {
         return NextResponse.json(
           { error: 'Cannot create job titles for this organization' },
           { status: 403 }

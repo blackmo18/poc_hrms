@@ -1,24 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAdmin } from '@/lib/auth/middleware';
+import { requiresAdmin } from '@/lib/auth/middleware';
 import { createUser, assignRoleToUser, updateUser, listUsers, findUserById } from '@/lib/auth/auth-db';
-import { prisma } from '@/lib/db';
+import { getUserService, getUserRoleService } from '@/lib/service';
 
 export async function GET(request: NextRequest) {
-  return requireAdmin(request, async (authRequest) => {
+  return requiresAdmin(request, async (authRequest) => {
     try {
       const { searchParams } = request.nextUrl;
       const userId = searchParams.get('id');
 
       if (userId) {
         // Get specific user
-        const user = await findUserById(Number(userId));
+        const userService = getUserService();
+        const user = await userService.getById(userId);
         if (!user) {
           return NextResponse.json({ error: 'User not found' }, { status: 404 });
         }
         return NextResponse.json(user);
       } else {
         // Get all users for the organization
-        const organizationId = authRequest.user!.organizationId;
+        const organizationId = authRequest.user!.organization_id;
         const users = await listUsers(organizationId);
         return NextResponse.json(users);
       }
@@ -30,7 +31,7 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  return requireAdmin(request, async (authRequest) => {
+  return requiresAdmin(request, async (authRequest) => {
     try {
       const body = await request.json();
       const { email, password, name, roleId } = body;
@@ -43,9 +44,8 @@ export async function POST(request: NextRequest) {
       }
 
       // Check if user already exists
-      const existingUser = await prisma.user.findUnique({
-        where: { email }
-      });
+      const userService = getUserService();
+      const existingUser = await userService.getByEmail(email);
 
       if (existingUser) {
         return NextResponse.json(
@@ -55,12 +55,12 @@ export async function POST(request: NextRequest) {
       }
 
       // Create user
-      const organizationId = authRequest.user!.organizationId;
+      const organizationId = authRequest.user!.organization_id;
       const userId = await createUser(email, password, name, organizationId, authRequest.user!.email);
 
       // Assign role if provided
       if (roleId) {
-        await assignRoleToUser(userId, Number(roleId));
+        await assignRoleToUser(userId, roleId);
       }
 
       // Get the created user
@@ -79,7 +79,7 @@ export async function POST(request: NextRequest) {
 }
 
 export async function PUT(request: NextRequest) {
-  return requireAdmin(request, async (authRequest) => {
+  return requiresAdmin(request, async (authRequest) => {
     try {
       const body = await request.json();
       const { id, email, name, status, roleId } = body;
@@ -89,11 +89,10 @@ export async function PUT(request: NextRequest) {
       }
 
       // Check if user exists and belongs to the same organization
-      const user = await prisma.user.findUnique({
-        where: { id: Number(id) }
-      });
+      const userService = getUserService();
+      const user = await userService.getById(id);
 
-      if (!user || user.organization_id !== authRequest.user!.organizationId) {
+      if (!user || user.organization_id !== authRequest.user!.organization_id) {
         return NextResponse.json({ error: 'User not found' }, { status: 404 });
       }
 
@@ -101,34 +100,36 @@ export async function PUT(request: NextRequest) {
       const updates: any = {};
       if (status !== undefined) updates.status = status;
 
-      await updateUser(Number(id), updates);
+      await updateUser(id, updates);
 
       // Update email and name if provided
       if (email || name) {
-        await prisma.user.update({
-          where: { id: Number(id) },
-          data: {
-            ...(email && { email }),
-            ...(name && { name })
-          }
+        await userService.update(id, {
+          ...(email && { email }),
+          ...(name && { name })
         });
       }
 
       // Update role if provided
       if (roleId !== undefined) {
-        // Remove existing roles
-        await prisma.userRole.deleteMany({
-          where: { user_id: Number(id) }
-        });
+        const userRoleService = getUserRoleService();
+        // Get current roles first
+        const currentUserRoles = await userRoleService.getByUserId(id);
+        const currentRoleId = currentUserRoles[0]?.role_id;
+        
+        // Remove existing roles if different
+        if (currentRoleId && currentRoleId !== roleId) {
+          await userRoleService.deleteByUserAndRole(id, currentRoleId);
+        }
 
-        // Assign new role
+        // Assign new role if provided
         if (roleId) {
-          await assignRoleToUser(Number(id), Number(roleId));
+          await assignRoleToUser(id, roleId);
         }
       }
 
       // Get updated user
-      const updatedUser = await findUserById(Number(id));
+      const updatedUser = await findUserById(id);
 
       return NextResponse.json({
         message: 'User updated successfully',
@@ -143,7 +144,7 @@ export async function PUT(request: NextRequest) {
 }
 
 export async function DELETE(request: NextRequest) {
-  return requireAdmin(request, async (authRequest) => {
+  return requiresAdmin(request, async (authRequest) => {
     try {
       const { searchParams } = request.nextUrl;
       const userId = searchParams.get('id');
@@ -153,16 +154,15 @@ export async function DELETE(request: NextRequest) {
       }
 
       // Check if user exists and belongs to the same organization
-      const user = await prisma.user.findUnique({
-        where: { id: Number(userId) }
-      });
+      const userService = getUserService();
+      const user = await userService.getById(userId);
 
-      if (!user || user.organization_id !== authRequest.user!.organizationId) {
+      if (!user || user.organization_id !== authRequest.user!.organization_id) {
         return NextResponse.json({ error: 'User not found' }, { status: 404 });
       }
 
       // Soft delete by setting status to INACTIVE
-      await updateUser(Number(userId), { status: 'INACTIVE' });
+      await updateUser(userId, { status: 'INACTIVE' });
 
       return NextResponse.json({ message: 'User deleted successfully' });
 
