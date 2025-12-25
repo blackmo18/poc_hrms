@@ -7,6 +7,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/app/components/ui/table';
+import LoadingSkeleton from '@/app/components/ui/LoadingSkeleton';
 import { PencilIcon, TrashBinIcon } from '@/app/icons';
 
 interface JobTitle {
@@ -88,37 +89,6 @@ interface JobTitleTableProps {
 }
 
 export default function JobTitleTable({ jobTitles, onDelete, loading = false, fallback, currentPage = 1, limit = 15 }: JobTitleTableProps) {
-  // Loading skeleton rows
-  const LoadingSkeleton = () => (
-    <>
-      {Array.from({ length: 5 }).map((_, index) => (
-        <TableRow key={`loading-${index}`}>
-          <TableCell className="px-5 py-4">
-            <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
-          </TableCell>
-          <TableCell className="px-4 py-3">
-            <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
-          </TableCell>
-          <TableCell className="px-4 py-3">
-            <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
-          </TableCell>
-          <TableCell className="px-4 py-3">
-            <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
-          </TableCell>
-          <TableCell className="px-4 py-3">
-            <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
-          </TableCell>
-          <TableCell className="px-4 py-3 text-center">
-            <div className="flex items-center justify-center space-x-2">
-              <div className="w-8 h-8 bg-gray-200 dark:bg-gray-700 rounded-lg animate-pulse"></div>
-              <div className="w-8 h-8 bg-gray-200 dark:bg-gray-700 rounded-lg animate-pulse"></div>
-            </div>
-          </TableCell>
-        </TableRow>
-      ))}
-    </>
-  );
-
   return (
     <div className="hidden lg:block overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03]">
       <div className="w-full overflow-x-auto">
@@ -168,7 +138,7 @@ export default function JobTitleTable({ jobTitles, onDelete, loading = false, fa
           {/* Table Body - Loading or Data */}
           <TableBody>
             {loading ? (
-              fallback || <LoadingSkeleton />
+              fallback || <LoadingSkeleton columns={6} hasActions={true} actionButtons={2} />
             ) : (
               <JobTitleTableBody jobTitles={jobTitles} onDelete={onDelete} />
             )}

@@ -47,6 +47,7 @@ import {
   Building2,
   BookUser,
   Briefcase,
+  LayoutGrid,
 } from "lucide-react";
 
 // Create wrapper components for consistency
@@ -110,3 +111,4 @@ export const OrganizationIcon = Building2;
 export const Building2Icon = Building2;
 export const UserGroupIcon = BookUser;
 export const BriefcaseIcon = Briefcase;
+export const LayoutGridIcon = LayoutGrid;

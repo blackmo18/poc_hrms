@@ -4,12 +4,34 @@ import { CreateUser, UpdateUser } from '../models/user';
 import bcrypt from 'bcryptjs';
 
 export class UserController {
-  async getAll(organizationId?: string) {
-    return await prisma.user.findMany({
+  async getAll(organizationId?: string, options?: { page?: number; limit?: number }) {
+    const { page = 1, limit = 15 } = options || {};
+    const skip = (page - 1) * limit;
+
+    // First get the total count
+    const total = await prisma.user.count({
       where: organizationId ? { organization_id: organizationId } : undefined,
+    });
+
+    // Then fetch the paginated users
+    const users = await prisma.user.findMany({
+      where: organizationId ? { organization_id: organizationId } : undefined,
+      skip,
+      take: limit,
       include: {
-        organization: true,
-        employee: true,
+        organization: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+        employee: {
+          select: {
+            id: true,
+            first_name: true,
+            last_name: true,
+          },
+        },
         userRoles: {
           include: {
             role: {
@@ -24,7 +46,22 @@ export class UserController {
           },
         },
       },
+      orderBy: {
+        created_at: 'desc'
+      }
     });
+
+    return {
+      data: users,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+        hasNext: page * limit < total,
+        hasPrev: page > 1
+      }
+    };
   }
 
   async getById(id: string) {

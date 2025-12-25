@@ -10,6 +10,7 @@ import {
   TableRow,
 } from '@/app/components/ui/table';
 import Badge, { BadgeColor } from '@/app/components/ui/badge/Badge';
+import LoadingSkeleton from '@/app/components/ui/LoadingSkeleton';
 import { PencilIcon } from '@/app/icons';
 
 interface Organization {
@@ -85,37 +86,6 @@ interface OrganizationTableProps {
 }
 
 export default function OrganizationTable({ organizations, getStatusColor, loading = false, fallback, currentPage = 1, limit = 15 }: OrganizationTableProps) {
-  // Loading skeleton rows
-  const LoadingSkeleton = () => (
-    <>
-      {Array.from({ length: 5 }).map((_, index) => (
-        <TableRow key={`loading-${index}`}>
-          <TableCell className="px-5 py-4">
-            <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
-          </TableCell>
-          <TableCell className="px-4 py-3">
-            <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
-          </TableCell>
-          <TableCell className="px-4 py-3">
-            <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
-          </TableCell>
-          <TableCell className="px-4 py-3">
-            <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
-          </TableCell>
-          <TableCell className="px-4 py-3">
-            <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
-          </TableCell>
-          <TableCell className="px-4 py-3">
-            <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
-          </TableCell>
-          <TableCell className="px-4 py-3 text-center">
-            <div className="w-8 h-8 bg-gray-200 dark:bg-gray-700 rounded-lg animate-pulse"></div>
-          </TableCell>
-        </TableRow>
-      ))}
-    </>
-  );
-
   return (
     <div className="hidden lg:block overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03]">
       <div className="w-full overflow-x-auto">
@@ -171,7 +141,7 @@ export default function OrganizationTable({ organizations, getStatusColor, loadi
           {/* Table Body - Loading or Data */}
           <TableBody>
             {loading ? (
-              fallback || <LoadingSkeleton />
+              fallback || <LoadingSkeleton columns={7} hasActions={true} actionButtons={1} />
             ) : (
               <OrganizationTableBody organizations={organizations} getStatusColor={getStatusColor} />
             )}

@@ -7,6 +7,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/app/components/ui/table';
+import LoadingSkeleton from '@/app/components/ui/LoadingSkeleton';
 import { PencilIcon, TrashBinIcon } from '@/app/icons';
 
 interface Department {
@@ -33,7 +34,7 @@ interface DepartmentTableBodyProps {
 
 const DepartmentTableBody = memo(function DepartmentTableBody({ departments, onDelete, currentPage = 1, limit = 15 }: DepartmentTableBodyProps) {
   return (
-    <TableBody className="divide-y divide-gray-100 dark:divide-white/[0.05]">
+    <>
       {departments.map((department, index) => {
         const rowNumber = (currentPage - 1) * limit + index + 1;
         return (
@@ -74,7 +75,7 @@ const DepartmentTableBody = memo(function DepartmentTableBody({ departments, onD
         </TableRow>
         );
       })}
-    </TableBody>
+    </>
   );
 });
 
@@ -83,9 +84,10 @@ interface DepartmentTableProps {
   onDelete: (departmentId: number, departmentName: string) => void;
   currentPage?: number;
   limit?: number;
+  loading?: boolean;
 }
 
-export default function DepartmentTable({ departments, onDelete, currentPage = 1, limit = 15 }: DepartmentTableProps) {
+export default function DepartmentTable({ departments, onDelete, currentPage = 1, limit = 15, loading = false }: DepartmentTableProps) {
   return (
     <div className="hidden lg:block overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03]">
       <div className="w-full overflow-x-auto">
@@ -132,8 +134,14 @@ export default function DepartmentTable({ departments, onDelete, currentPage = 1
             </TableRow>
           </TableHeader>
 
-          {/* Table Body - Only re-renders when data changes */}
-          <DepartmentTableBody departments={departments} onDelete={onDelete} />
+          {/* Table Body - Loading or Data */}
+          <TableBody>
+            {loading ? (
+              <LoadingSkeleton columns={6} hasActions={true} actionButtons={2} />
+            ) : (
+              <DepartmentTableBody departments={departments} onDelete={onDelete} currentPage={currentPage} limit={limit} />
+            )}
+          </TableBody>
         </Table>
       </div>
     </div>
