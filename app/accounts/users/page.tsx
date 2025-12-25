@@ -6,7 +6,6 @@ import { useAuth } from "@/app/components/providers/auth-provider";
 import { useRoleAccess } from "@/app/components/providers/role-access-provider";
 import { PencilIcon, PlusIcon, TrashBinIcon, UserIcon } from "@/app/icons";
 import Button from "@/app/components/ui/button/Button";
-import Select from "@/app/components/form/Select";
 import Badge, { BadgeColor } from "@/app/components/ui/badge/Badge";
 import UserCard from "@/app/components/accounts/UserCard";
 import UsersTable from "@/app/components/accounts/UsersTable";
@@ -16,6 +15,8 @@ import ComponentCard from "@/app/components/common/ComponentCard";
 import PageMeta from "@/app/components/common/PageMeta";
 import PageBreadcrumb from "@/app/components/common/PageBreadCrumb";
 import RoleComponentWrapper from "@/app/components/common/RoleComponentWrapper";
+import OrganizationFilter from "@/app/components/common/OrganizationFilter";
+import { useOrganizationFilter } from "@/hooks/useOrganizationFilter";
 
 interface User {
   id: string;
@@ -55,17 +56,13 @@ interface ApiResponse {
 interface UsersState {
   // Data states
   users: User[];
-  organizations: Organization[];
   pagination: ApiResponse['pagination'] | null;
 
   // Loading states
   loading: boolean;
   initialLoading: boolean;
-  isOrganizationFilterLoading: boolean;
 
   // UI states
-  selectedOrganization: string | null;
-  currentPage: number;
   expandedCards: Set<string>;
 
   // Error states
@@ -75,17 +72,13 @@ interface UsersState {
 type UsersAction =
   // Data actions
   | { type: 'SET_USERS'; payload: User[] }
-  | { type: 'SET_ORGANIZATIONS'; payload: Organization[] }
   | { type: 'SET_PAGINATION'; payload: ApiResponse['pagination'] | null }
 
   // Loading actions
   | { type: 'SET_LOADING'; payload: boolean }
   | { type: 'SET_INITIAL_LOADING'; payload: boolean }
-  | { type: 'SET_ORGANIZATION_FILTER_LOADING'; payload: boolean }
 
   // UI actions
-  | { type: 'SET_SELECTED_ORGANIZATION'; payload: string | null }
-  | { type: 'SET_CURRENT_PAGE'; payload: number }
   | { type: 'TOGGLE_CARD_EXPANSION'; payload: string }
 
   // Error actions
@@ -93,16 +86,13 @@ type UsersAction =
 
   // Combined actions
   | { type: 'START_LOADING' }
-  | { type: 'FINISH_LOADING' }
-  | { type: 'START_ORGANIZATION_FILTER'; payload: string | null };
+  | { type: 'FINISH_LOADING' };
 
 function usersReducer(state: UsersState, action: UsersAction): UsersState {
   switch (action.type) {
     // Data actions
     case 'SET_USERS':
       return { ...state, users: action.payload };
-    case 'SET_ORGANIZATIONS':
-      return { ...state, organizations: action.payload };
     case 'SET_PAGINATION':
       return { ...state, pagination: action.payload };
 
@@ -111,14 +101,8 @@ function usersReducer(state: UsersState, action: UsersAction): UsersState {
       return { ...state, loading: action.payload };
     case 'SET_INITIAL_LOADING':
       return { ...state, initialLoading: action.payload };
-    case 'SET_ORGANIZATION_FILTER_LOADING':
-      return { ...state, isOrganizationFilterLoading: action.payload };
 
     // UI actions
-    case 'SET_SELECTED_ORGANIZATION':
-      return { ...state, selectedOrganization: action.payload };
-    case 'SET_CURRENT_PAGE':
-      return { ...state, currentPage: action.payload };
     case 'TOGGLE_CARD_EXPANSION': {
       const newExpanded = new Set(state.expandedCards);
       if (newExpanded.has(action.payload)) {
@@ -137,9 +121,7 @@ function usersReducer(state: UsersState, action: UsersAction): UsersState {
     case 'START_LOADING':
       return { ...state, loading: true, error: null };
     case 'FINISH_LOADING':
-      return { ...state, loading: false, initialLoading: false, isOrganizationFilterLoading: false };
-    case 'START_ORGANIZATION_FILTER':
-      return { ...state, selectedOrganization: action.payload, currentPage: 1, isOrganizationFilterLoading: true };
+      return { ...state, loading: false, initialLoading: false };
 
     default:
       return state;
@@ -149,17 +131,13 @@ function usersReducer(state: UsersState, action: UsersAction): UsersState {
 const initialUsersState: UsersState = {
   // Data states
   users: [],
-  organizations: [],
   pagination: null,
 
   // Loading states
   loading: true,
   initialLoading: true,
-  isOrganizationFilterLoading: false,
 
   // UI states
-  selectedOrganization: null,
-  currentPage: 1,
   expandedCards: new Set(),
 
   // Error states
@@ -171,6 +149,25 @@ export default function UsersPage() {
   const { roles } = useRoleAccess();
   const [state, dispatch] = useReducer(usersReducer, initialUsersState);
 
+  // Use the reusable organization filter hook
+  const {
+    selectedOrganization,
+    organizations,
+    isOrganizationFilterLoading,
+    currentPage: orgFilterCurrentPage,
+    handleOrganizationChange,
+    setCurrentPage: setOrgFilterCurrentPage,
+    isSuperAdmin,
+    organizationOptions,
+  } = useOrganizationFilter({
+    apiEndpoint: '/api/users',
+    defaultPageSize: 10,
+    onDataFetch: async (orgId, page) => {
+      await fetchUsers(orgId, page);
+    },
+  });
+
+  // Memoize super admin check for consistency
   const isSuperAdminMemo = useMemo(() =>
     roles.includes('SUPER_ADMIN'),
     [roles]
@@ -216,51 +213,9 @@ export default function UsersPage() {
     }
   }, []);
 
-  // Fetch organizations for super admin filtering
-  const fetchOrganizations = useCallback(async () => {
-    try {
-      const response = await fetch('/api/organizations', {
-        credentials: 'include',
-      });
-
-      if (response.ok) {
-        const result = await response.json();
-        dispatch({ type: 'SET_ORGANIZATIONS', payload: (result.data || []).map(org => ({ ...org, id: String(org.id) })) });
-      }
-    } catch (error) {
-      console.error('Error fetching organizations:', error);
-    }
-  }, []);
-
   useEffect(() => {
-    if (authLoading) return;
-
-    // For non-super admin, always filter by their organization
-    if (!isSuperAdminMemo && user?.organization_id) {
-      fetchUsers(user.organization_id, state.currentPage);
-    } else {
-      fetchUsers(state.selectedOrganization || undefined, state.currentPage);
-    }
-
-    // Only fetch organizations for super admin
-    if (isSuperAdminMemo && state.organizations.length === 0) {
-      fetchOrganizations();
-    }
-  }, [state.selectedOrganization, state.currentPage, authLoading, isSuperAdminMemo, user?.organization_id, fetchUsers, fetchOrganizations]);
-
-  // Memoize expensive calculations to prevent unnecessary re-renders
-
-  const organizationOptions = useMemo(() =>
-    state.organizations.map((org) => ({
-      value: org.id.toString(),
-      label: org.name,
-    })),
-    [state.organizations]
-  );
-
-  // Memoize event handlers to prevent unnecessary re-renders
-  const handleOrganizationChange = useCallback((orgId: string | null) => {
-    dispatch({ type: 'START_ORGANIZATION_FILTER', payload: orgId });
+    // Organization filtering is now handled by the useOrganizationFilter hook
+    // This effect is no longer needed as the hook handles all data fetching
   }, []);
 
   const handleDeleteUser = async (userId: string) => {
@@ -357,23 +312,14 @@ export default function UsersPage() {
       {/* Content Container */}
       <div className="w-full overflow-x-auto">
         <ComponentCard title="User Management" size="full">
-          {/* Organization Filter - Only for Super Admin */}
+          {/* Organization Filter - Using reusable component */}
           <RoleComponentWrapper roles={['SUPER_ADMIN']} showFallback={false}>
-            <div className="max-w-md mb-6">
-              <label htmlFor="organization-select" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Filter by Organization
-              </label>
-              <Select
-                options={[
-                  { value: '', label: 'All Organizations' },
-                  ...organizationOptions.map((org) => ({ value: org.value, label: org.label }))
-                ]}
-                value={state.selectedOrganization || ''}
-                onChange={(value) => handleOrganizationChange(value || null)}
-                placeholder="Select an organization"
-                disabled={state.isOrganizationFilterLoading}
-              />
-            </div>
+            <OrganizationFilter
+              selectedOrganization={selectedOrganization}
+              organizationOptions={organizationOptions}
+              onOrganizationChange={handleOrganizationChange}
+              disabled={isOrganizationFilterLoading}
+            />
           </RoleComponentWrapper>
 
           {/* Add User Button */}
@@ -388,7 +334,7 @@ export default function UsersPage() {
           </div>
 
           {/* Desktop Table View */}
-          <UsersTable users={state.users} getStatusColor={getStatusColor} loading={state.isOrganizationFilterLoading} onDelete={handleDeleteUser} currentPage={state.pagination?.page} limit={state.pagination?.limit} />
+          <UsersTable users={state.users} getStatusColor={getStatusColor} loading={isOrganizationFilterLoading} onDelete={handleDeleteUser} currentPage={state.pagination?.page} limit={state.pagination?.limit} />
 
           {/* Mobile Card View */}
           <div className="lg:hidden space-y-4">
@@ -405,12 +351,12 @@ export default function UsersPage() {
           </div>
 
           {/* Empty State */}
-          {!state.isOrganizationFilterLoading && state.users.length === 0 && (
+          {!isOrganizationFilterLoading && state.users.length === 0 && (
             <div className="text-center py-12">
               <UserIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
               <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No users found</h3>
               <p className="text-gray-600 dark:text-gray-400 mb-4">
-                {state.selectedOrganization
+                {selectedOrganization
                   ? 'No users in the selected organization.'
                   : 'Get started by adding your first user.'
                 }
@@ -431,8 +377,8 @@ export default function UsersPage() {
       <div className={state.loading ? 'opacity-50 pointer-events-none' : ''}>
         <Pagination
           pagination={state.pagination}
-          currentPage={state.currentPage}
-          onPageChange={(page) => dispatch({ type: 'SET_CURRENT_PAGE', payload: page })}
+          currentPage={orgFilterCurrentPage}
+          onPageChange={(page) => setOrgFilterCurrentPage(page)}
           itemName="users"
         />
       </div>

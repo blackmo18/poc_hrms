@@ -53,6 +53,7 @@ export default function EmployeeOnboardingPage() {
     department_id: '',
     job_title_id: '',
     manager_id: '',
+    custom_id: '', // Organization-specific custom employee ID
     first_name: '',
     last_name: '',
     // Work details (required work email)

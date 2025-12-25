@@ -7,6 +7,7 @@ export const EmployeeSchema = z.object({
   department_id: z.string().min(1, 'Department ID is required'),
   job_title_id: z.string().min(1, 'Job title ID is required'),
   manager_id: z.string().optional(),
+  custom_id: z.string().optional(), // Organization-specific employee ID
   first_name: z.string().min(1, 'First name is required'),
   last_name: z.string().min(1, 'Last name is required'),
   email: z.string().email('Valid email is required'),

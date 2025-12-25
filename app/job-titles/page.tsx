@@ -14,6 +14,8 @@ import JobTitleCardList from '@/app/components/job-titles/JobTitleCardList';
 import RoleComponentWrapper from '@/app/components/common/RoleComponentWrapper';
 import { useAuth } from '@/app/components/providers/auth-provider';
 import { useRoleAccess } from '@/app/components/providers/role-access-provider';
+import OrganizationFilter from '@/app/components/common/OrganizationFilter';
+import { useOrganizationFilter } from '@/hooks/useOrganizationFilter';
 
 interface Organization {
   id: number;
@@ -50,18 +52,13 @@ interface ApiResponse {
 interface JobTitlesState {
   // Data states
   jobTitles: JobTitle[];
-  organizations: Organization[];
   pagination: ApiResponse['pagination'] | null;
 
   // Loading states
   loading: boolean;
   initialLoading: boolean;
-  isOrganizationFilterLoading: boolean;
-  isDeleting: boolean;
 
   // UI states
-  selectedOrganization: string | null;
-  currentPage: number;
   showDeleteModal: boolean;
   showErrorModal: boolean;
   deleteSuccess: boolean;
@@ -75,18 +72,13 @@ interface JobTitlesState {
 type JobTitlesAction =
   // Data actions
   | { type: 'SET_JOB_TITLES'; payload: JobTitle[] }
-  | { type: 'SET_ORGANIZATIONS'; payload: Organization[] }
   | { type: 'SET_PAGINATION'; payload: ApiResponse['pagination'] | null }
 
   // Loading actions
   | { type: 'SET_LOADING'; payload: boolean }
   | { type: 'SET_INITIAL_LOADING'; payload: boolean }
-  | { type: 'SET_ORGANIZATION_FILTER_LOADING'; payload: boolean }
-  | { type: 'SET_DELETING'; payload: boolean }
 
   // UI actions
-  | { type: 'SET_SELECTED_ORGANIZATION'; payload: string | null }
-  | { type: 'SET_CURRENT_PAGE'; payload: number }
   | { type: 'SET_SHOW_DELETE_MODAL'; payload: boolean }
   | { type: 'SET_SHOW_ERROR_MODAL'; payload: boolean }
   | { type: 'SET_DELETE_SUCCESS'; payload: boolean }
@@ -99,7 +91,6 @@ type JobTitlesAction =
   // Combined actions
   | { type: 'START_LOADING' }
   | { type: 'FINISH_LOADING' }
-  | { type: 'START_ORGANIZATION_FILTER', payload: string | null }
   | { type: 'START_DELETE'; payload: { id: number; name: string } }
   | { type: 'CANCEL_DELETE' }
   | { type: 'FINISH_DELETE' };
@@ -109,8 +100,6 @@ function jobTitlesReducer(state: JobTitlesState, action: JobTitlesAction): JobTi
     // Data actions
     case 'SET_JOB_TITLES':
       return { ...state, jobTitles: action.payload };
-    case 'SET_ORGANIZATIONS':
-      return { ...state, organizations: action.payload };
     case 'SET_PAGINATION':
       return { ...state, pagination: action.payload };
 
@@ -119,16 +108,8 @@ function jobTitlesReducer(state: JobTitlesState, action: JobTitlesAction): JobTi
       return { ...state, loading: action.payload };
     case 'SET_INITIAL_LOADING':
       return { ...state, initialLoading: action.payload };
-    case 'SET_ORGANIZATION_FILTER_LOADING':
-      return { ...state, isOrganizationFilterLoading: action.payload };
-    case 'SET_DELETING':
-      return { ...state, isDeleting: action.payload };
 
     // UI actions
-    case 'SET_SELECTED_ORGANIZATION':
-      return { ...state, selectedOrganization: action.payload };
-    case 'SET_CURRENT_PAGE':
-      return { ...state, currentPage: action.payload };
     case 'SET_SHOW_DELETE_MODAL':
       return { ...state, showDeleteModal: action.payload };
     case 'SET_SHOW_ERROR_MODAL':
@@ -148,15 +129,13 @@ function jobTitlesReducer(state: JobTitlesState, action: JobTitlesAction): JobTi
     case 'START_LOADING':
       return { ...state, loading: true, error: null };
     case 'FINISH_LOADING':
-      return { ...state, loading: false, initialLoading: false, isOrganizationFilterLoading: false };
-    case 'START_ORGANIZATION_FILTER':
-      return { ...state, selectedOrganization: action.payload, currentPage: 1, isOrganizationFilterLoading: true };
+      return { ...state, loading: false, initialLoading: false };
     case 'START_DELETE':
       return { ...state, jobTitleToDelete: action.payload, showDeleteModal: true, deleteSuccess: false };
     case 'CANCEL_DELETE':
       return { ...state, showDeleteModal: false, jobTitleToDelete: null };
     case 'FINISH_DELETE':
-      return { ...state, isDeleting: false, showDeleteModal: false, jobTitleToDelete: null, deleteSuccess: false };
+      return { ...state, loading: false, showDeleteModal: false, jobTitleToDelete: null, deleteSuccess: false };
 
     default:
       return state;
@@ -166,18 +145,13 @@ function jobTitlesReducer(state: JobTitlesState, action: JobTitlesAction): JobTi
 const initialState: JobTitlesState = {
   // Data states
   jobTitles: [],
-  organizations: [],
   pagination: null,
 
   // Loading states
   loading: true,
   initialLoading: true,
-  isOrganizationFilterLoading: false,
-  isDeleting: false,
 
   // UI states
-  selectedOrganization: null,
-  currentPage: 1,
   showDeleteModal: false,
   showErrorModal: false,
   deleteSuccess: false,
@@ -193,26 +167,28 @@ export default function JobTitlesPage() {
   const { roles } = useRoleAccess();
   const [state, dispatch] = useReducer(jobTitlesReducer, initialState);
 
-  const isSuperAdmin = roles.includes('SUPER_ADMIN');
+  // Use the reusable organization filter hook
+  const {
+    selectedOrganization,
+    organizations,
+    isOrganizationFilterLoading,
+    currentPage: orgFilterCurrentPage,
+    handleOrganizationChange,
+    setCurrentPage: setOrgFilterCurrentPage,
+    isSuperAdmin,
+    organizationOptions,
+  } = useOrganizationFilter({
+    apiEndpoint: '/api/job-titles',
+    defaultPageSize: 10,
+    onDataFetch: async (orgId, page) => {
+      await fetchJobTitles(orgId, page);
+    },
+  });
 
-  // Memoize expensive calculations to prevent unnecessary re-renders
-  const isSuperAdminMemo = useMemo(() => 
-    roles.includes('SUPER_ADMIN'), 
+  const isSuperAdminMemo = useMemo(() =>
+    roles.includes('SUPER_ADMIN'),
     [roles]
   );
-
-  const organizationOptions = useMemo(() => 
-    state.organizations.map((org) => ({
-      value: org.id.toString(),
-      label: org.name,
-    })), 
-    [state.organizations]
-  );
-
-  // Memoize event handlers to prevent unnecessary re-renders
-  const handleOrganizationChange = useCallback((orgId: string | null) => {
-    dispatch({ type: 'START_ORGANIZATION_FILTER', payload: orgId });
-  }, []);
 
   const handleDeleteClick = useCallback((jobTitleId: number, jobTitleName: string) => {
     dispatch({ type: 'START_DELETE', payload: { id: jobTitleId, name: jobTitleName } });
@@ -281,40 +257,18 @@ export default function JobTitlesPage() {
   };
 
   const fetchOrganizations = async () => {
-    try {
-      const response = await fetch('/api/organizations?limit=100', {
-        credentials: 'include',
-      });
-
-      if (response.ok) {
-        const result = await response.json();
-        dispatch({ type: 'SET_ORGANIZATIONS', payload: result.data || [] });
-      }
-    } catch (error) {
-      console.error('Error fetching organizations:', error);
-    }
+    // This is now handled by the useOrganizationFilter hook
   };
 
   useEffect(() => {
-    if (authLoading) return;
-
-    // For non-super admin, always filter by their organization
-    if (!isSuperAdminMemo && user?.organization_id) {
-      fetchJobTitles(user.organization_id, state.currentPage);
-    } else {
-      fetchJobTitles(state.selectedOrganization, state.currentPage);
-    }
-
-    // Only fetch organizations for super admin
-    if (isSuperAdminMemo) {
-      fetchOrganizations();
-    }
-  }, [state.selectedOrganization, state.currentPage, authLoading, isSuperAdminMemo, user?.organization_id]);
+    // Organization filtering is now handled by the useOrganizationFilter hook
+    // This effect is no longer needed as the hook handles all data fetching
+  }, []);
 
   const handleConfirmDelete = async () => {
     if (!state.jobTitleToDelete) return;
 
-    dispatch({ type: 'SET_DELETING', payload: true });
+    dispatch({ type: 'SET_LOADING', payload: true });
     try {
       const response = await fetch(`/api/job-titles/${state.jobTitleToDelete.id}`, {
         method: 'DELETE',
@@ -327,9 +281,9 @@ export default function JobTitlesPage() {
         setTimeout(() => {
           dispatch({ type: 'FINISH_DELETE' });
           if (!isSuperAdminMemo && user?.organization_id) {
-            fetchJobTitles(user.organization_id, state.currentPage);
+            fetchJobTitles(user.organization_id, orgFilterCurrentPage);
           } else {
-            fetchJobTitles(state.selectedOrganization, state.currentPage);
+            fetchJobTitles(selectedOrganization, orgFilterCurrentPage);
           }
         }, 1500);
       } else {
@@ -403,27 +357,14 @@ export default function JobTitlesPage() {
       {/* Content Container */}
       <div className="w-full overflow-x-auto">
         <ComponentCard title="Job Title Management" size="full">
-          {/* Organization Filter - Only for Super Admin */}
+          {/* Organization Filter - Using reusable component */}
           <RoleComponentWrapper roles={['SUPER_ADMIN']} showFallback={false}>
-            <div className="mb-6">
-              <label htmlFor="organization-select" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Filter by Organization
-              </label>
-              <select
-                id="organization-select"
-                value={state.selectedOrganization || ''}
-                onChange={(e) => handleOrganizationChange(e.target.value || null)}
-                disabled={state.loading}
-                className="block w-full max-w-xs px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <option value="">All Organizations</option>
-                {organizationOptions.map((org) => (
-                  <option key={org.value} value={org.value}>
-                    {org.label}
-                  </option>
-                ))}
-              </select>
-            </div>
+            <OrganizationFilter
+              selectedOrganization={selectedOrganization}
+              organizationOptions={organizationOptions}
+              onOrganizationChange={handleOrganizationChange}
+              disabled={state.loading}
+            />
           </RoleComponentWrapper>
 
           {/* Add Job Title Button */}
@@ -438,13 +379,13 @@ export default function JobTitlesPage() {
           </div>
 
           {/* Desktop Table View */}
-          <JobTitleTable jobTitles={state.jobTitles} onDelete={handleDeleteClick} loading={state.isOrganizationFilterLoading} currentPage={state.pagination?.page} limit={state.pagination?.limit} />
+          <JobTitleTable jobTitles={state.jobTitles} onDelete={handleDeleteClick} loading={isOrganizationFilterLoading} currentPage={state.pagination?.page} limit={state.pagination?.limit} />
 
           {/* Mobile Card View */}
           <JobTitleCardList jobTitles={state.jobTitles} onDelete={handleDeleteClick} />
 
           {/* Empty State */}
-          {!state.isOrganizationFilterLoading && emptyStateComponent}
+          {!isOrganizationFilterLoading && emptyStateComponent}
         </ComponentCard>
       </div>
 
@@ -452,8 +393,8 @@ export default function JobTitlesPage() {
       <div className={state.loading ? 'opacity-50 pointer-events-none' : ''}>
         <Pagination
           pagination={state.pagination}
-          currentPage={state.currentPage}
-          onPageChange={(page) => dispatch({ type: 'SET_CURRENT_PAGE', payload: page })}
+          currentPage={orgFilterCurrentPage}
+          onPageChange={(page) => setOrgFilterCurrentPage(page)}
           itemName="job titles"
         />
       </div>

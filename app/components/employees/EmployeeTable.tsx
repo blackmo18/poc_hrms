@@ -16,6 +16,7 @@ export interface Employee {
   first_name: string;
   last_name: string;
   email: string;
+  custom_id?: string; // Organization-specific custom employee ID
   employment_status: 'ACTIVE' | 'INACTIVE' | 'TERMINATED' | 'ON_LEAVE';
   hire_date: string;
   organization: {
@@ -62,6 +63,9 @@ const EmployeeTableBody = memo(function EmployeeTableBody({ employees, getStatus
             <span className="font-medium text-gray-800 text-theme-sm dark:text-white/90">
               {employee.first_name} {employee.last_name}
             </span>
+          </TableCell>
+          <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
+            {employee.custom_id || '-'}
           </TableCell>
           <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
             {employee.email}
@@ -131,6 +135,12 @@ export default function EmployeeTable({ employees, getStatusColor, loading = fal
                 isHeader
                 className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
               >
+                Employee ID
+              </TableCell>
+              <TableCell
+                isHeader
+                className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
+              >
                 Email
               </TableCell>
               <TableCell
@@ -169,7 +179,7 @@ export default function EmployeeTable({ employees, getStatusColor, loading = fal
           {/* Table Body - Loading or Data */}
           <TableBody>
             {loading ? (
-              fallback || <LoadingSkeleton columns={8} hasActions={true} actionButtons={1} />
+              fallback || <LoadingSkeleton columns={9} hasActions={true} actionButtons={1} />
             ) : (
               <EmployeeTableBody employees={employees} getStatusColor={getStatusColor} currentPage={currentPage} limit={limit} />
             )}

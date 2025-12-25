@@ -14,6 +14,8 @@ import { useAuth } from '@/app/components/providers/auth-provider';
 import { useRoleAccess } from '@/app/components/providers/role-access-provider';
 import { BadgeColor } from '../components/ui/badge/Badge';
 import Select from '../components/form/Select';
+import OrganizationFilter from '@/app/components/common/OrganizationFilter';
+import { useOrganizationFilter } from '@/hooks/useOrganizationFilter';
 
 interface Organization {
   id: string;
@@ -35,17 +37,13 @@ interface ApiResponse {
 interface EmployeesState {
   // Data states
   employees: Employee[];
-  organizations: Organization[];
   pagination: ApiResponse['pagination'] | null;
 
   // Loading states
   loading: boolean;
   initialLoading: boolean;
-  isOrganizationFilterLoading: boolean;
 
   // UI states
-  selectedOrganization: string | null;
-  currentPage: number;
   expandedCards: Set<string>;
 
   // Error states
@@ -55,17 +53,13 @@ interface EmployeesState {
 type EmployeesAction =
   // Data actions
   | { type: 'SET_EMPLOYEES'; payload: Employee[] }
-  | { type: 'SET_ORGANIZATIONS'; payload: Organization[] }
   | { type: 'SET_PAGINATION'; payload: ApiResponse['pagination'] | null }
 
   // Loading actions
   | { type: 'SET_LOADING'; payload: boolean }
   | { type: 'SET_INITIAL_LOADING'; payload: boolean }
-  | { type: 'SET_ORGANIZATION_FILTER_LOADING'; payload: boolean }
 
   // UI actions
-  | { type: 'SET_SELECTED_ORGANIZATION'; payload: string | null }
-  | { type: 'SET_CURRENT_PAGE'; payload: number }
   | { type: 'TOGGLE_CARD_EXPANSION'; payload: string }
 
   // Error actions
@@ -73,16 +67,13 @@ type EmployeesAction =
 
   // Combined actions
   | { type: 'START_LOADING' }
-  | { type: 'FINISH_LOADING' }
-  | { type: 'START_ORGANIZATION_FILTER'; payload: string | null };
+  | { type: 'FINISH_LOADING' };
 
 function employeesReducer(state: EmployeesState, action: EmployeesAction): EmployeesState {
   switch (action.type) {
     // Data actions
     case 'SET_EMPLOYEES':
       return { ...state, employees: action.payload };
-    case 'SET_ORGANIZATIONS':
-      return { ...state, organizations: action.payload };
     case 'SET_PAGINATION':
       return { ...state, pagination: action.payload };
 
@@ -91,14 +82,8 @@ function employeesReducer(state: EmployeesState, action: EmployeesAction): Emplo
       return { ...state, loading: action.payload };
     case 'SET_INITIAL_LOADING':
       return { ...state, initialLoading: action.payload };
-    case 'SET_ORGANIZATION_FILTER_LOADING':
-      return { ...state, isOrganizationFilterLoading: action.payload };
 
     // UI actions
-    case 'SET_SELECTED_ORGANIZATION':
-      return { ...state, selectedOrganization: action.payload };
-    case 'SET_CURRENT_PAGE':
-      return { ...state, currentPage: action.payload };
     case 'TOGGLE_CARD_EXPANSION': {
       const newExpanded = new Set(state.expandedCards);
       if (newExpanded.has(action.payload)) {
@@ -117,9 +102,7 @@ function employeesReducer(state: EmployeesState, action: EmployeesAction): Emplo
     case 'START_LOADING':
       return { ...state, loading: true, error: null };
     case 'FINISH_LOADING':
-      return { ...state, loading: false, initialLoading: false, isOrganizationFilterLoading: false };
-    case 'START_ORGANIZATION_FILTER':
-      return { ...state, selectedOrganization: action.payload, currentPage: 1, isOrganizationFilterLoading: true };
+      return { ...state, loading: false, initialLoading: false };
 
     default:
       return state;
@@ -129,17 +112,13 @@ function employeesReducer(state: EmployeesState, action: EmployeesAction): Emplo
 const initialEmployeesState: EmployeesState = {
   // Data states
   employees: [],
-  organizations: [],
   pagination: null,
 
   // Loading states
   loading: true,
   initialLoading: true,
-  isOrganizationFilterLoading: false,
 
   // UI states
-  selectedOrganization: null,
-  currentPage: 1,
   expandedCards: new Set(),
 
   // Error states
@@ -151,6 +130,25 @@ export default function EmployeesPage() {
   const { roles } = useRoleAccess();
   const [state, dispatch] = useReducer(employeesReducer, initialEmployeesState);
 
+  // Use the reusable organization filter hook
+  const {
+    selectedOrganization,
+    organizations,
+    isOrganizationFilterLoading,
+    currentPage: orgFilterCurrentPage,
+    handleOrganizationChange,
+    setCurrentPage: setOrgFilterCurrentPage,
+    isSuperAdmin,
+    organizationOptions,
+  } = useOrganizationFilter({
+    apiEndpoint: '/api/employees',
+    defaultPageSize: 15,
+    onDataFetch: async (orgId, page) => {
+      await fetchEmployees(orgId, page);
+    },
+  });
+
+  // Memoize super admin check for consistency
   const isSuperAdminMemo = useMemo(() =>
     roles.includes('SUPER_ADMIN'),
     [roles]
@@ -196,50 +194,17 @@ export default function EmployeesPage() {
   };
 
   const fetchOrganizations = async () => {
-    try {
-      const response = await fetch('/api/organizations', {
-        credentials: 'include',
-      });
-
-      if (response.ok) {
-        const result = await response.json();
-        dispatch({ type: 'SET_ORGANIZATIONS', payload: (result.data || []).map(org => ({ ...org, id: String(org.id) })) });
-      }
-    } catch (error) {
-      console.error('Error fetching organizations:', error);
-    }
+    // This is now handled by the useOrganizationFilter hook
   };
 
   useEffect(() => {
-    if (authLoading) return;
-
-    // For non-super admin, always filter by their organization
-    if (!isSuperAdminMemo && user?.organization_id) {
-      fetchEmployees(user.organization_id, state.currentPage);
-    } else {
-      fetchEmployees(state.selectedOrganization || undefined, state.currentPage);
-    }
-
-    // Only fetch organizations for super admin
-    if (isSuperAdminMemo && state.organizations.length === 0) {
-      fetchOrganizations();
-    }
-  }, [state.selectedOrganization, state.currentPage, authLoading, isSuperAdminMemo, user?.organization_id]);
+    // Organization filtering is now handled by the useOrganizationFilter hook
+    // This effect is no longer needed as the hook handles all data fetching
+  }, []);
 
   // Memoize expensive calculations to prevent unnecessary re-renders
 
-  const organizationOptions = useMemo(() =>
-    state.organizations.map((org) => ({
-      value: org.id.toString(),
-      label: org.name,
-    })),
-    [state.organizations]
-  );
-
   // Memoize event handlers to prevent unnecessary re-renders
-  const handleOrganizationChange = useCallback((orgId: string | null) => {
-    dispatch({ type: 'START_ORGANIZATION_FILTER', payload: orgId });
-  }, []);
 
   const getStatusColor = (status: string): BadgeColor => {
     switch (status) {
@@ -335,23 +300,14 @@ export default function EmployeesPage() {
       {/* Content Container */}
       <div className="w-full overflow-x-auto">
         <ComponentCard title="Employee Management" size="full">
-          {/* Organization Filter - Only for Super Admin */}
+          {/* Organization Filter - Using reusable component */}
           <RoleComponentWrapper roles={['SUPER_ADMIN']} showFallback={false}>
-            <div className="max-w-md mb-6">
-              <label htmlFor="organization-select" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Filter by Organization
-              </label>
-              <Select
-                options={[
-                  { value: '', label: 'All Organizations' },
-                  ...organizationOptions.map((org) => ({ value: org.value, label: org.label }))
-                ]}
-                value={state.selectedOrganization || ''}
-                onChange={(value) => handleOrganizationChange(value || null)}
-                placeholder="Select an organization"
-                disabled={state.isOrganizationFilterLoading}
-              />
-            </div>
+            <OrganizationFilter
+              selectedOrganization={selectedOrganization}
+              organizationOptions={organizationOptions}
+              onOrganizationChange={handleOrganizationChange}
+              disabled={isOrganizationFilterLoading}
+            />
           </RoleComponentWrapper>
 
           {/* Add Employee Button */}
@@ -366,7 +322,7 @@ export default function EmployeesPage() {
           </div>
 
           {/* Desktop Table View */}
-          <EmployeeTable employees={state.employees} getStatusColor={getStatusColor} loading={state.isOrganizationFilterLoading} currentPage={state.pagination?.page} limit={state.pagination?.limit} />
+          <EmployeeTable employees={state.employees} getStatusColor={getStatusColor} loading={isOrganizationFilterLoading} currentPage={state.pagination?.page} limit={state.pagination?.limit} />
 
           {/* Mobile Card View */}
           <div className="lg:hidden space-y-4">
@@ -382,12 +338,12 @@ export default function EmployeesPage() {
           </div>
 
           {/* Empty State */}
-          {!state.isOrganizationFilterLoading && state.employees.length === 0 && (
+          {!isOrganizationFilterLoading && state.employees.length === 0 && (
             <div className="text-center py-12">
               <UserIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
               <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No employees found</h3>
               <p className="text-gray-600 dark:text-gray-400 mb-4">
-                {state.selectedOrganization
+                {selectedOrganization
                   ? 'No employees in the selected organization.'
                   : 'Get started by onboarding your first employee.'
                 }
@@ -408,8 +364,8 @@ export default function EmployeesPage() {
       <div className={state.loading ? 'opacity-50 pointer-events-none' : ''}>
         <Pagination
           pagination={state.pagination}
-          currentPage={state.currentPage}
-          onPageChange={(page) => dispatch({ type: 'SET_CURRENT_PAGE', payload: page })}
+          currentPage={orgFilterCurrentPage}
+          onPageChange={(page) => setOrgFilterCurrentPage(page)}
           itemName="employees"
         />
       </div>

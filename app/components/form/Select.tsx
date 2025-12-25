@@ -73,7 +73,7 @@ const Select: React.FC<SelectProps> = ({
 
       <div className="absolute inset-y-0 right-0 flex items-center justify-center w-11 pointer-events-none">
         <svg
-          className="stroke-current"
+          className="stroke-current text-gray-600 dark:text-white/70"
           width="20"
           height="20"
           viewBox="0 0 20 20"

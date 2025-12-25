@@ -8,6 +8,7 @@ interface EmployeeFormData {
   department_id: string;
   job_title_id: string;
   manager_id: string;
+  custom_id: string; // Organization-specific custom employee ID
   first_name: string;
   last_name: string;
   work_email: string;
@@ -99,115 +100,107 @@ export default function EmployeeForm({
 
   return (
     <form className='space-y-6 mb-7'>
-      <div className='grid grid-cols-1 gap-6 lg:grid-cols-2'>
-        <div>
-          <Label>Organization {isEdit ? '' : '*'}</Label>
-          {isEdit && !isSuperAdmin ? (
+      {/* Organization Details Section */}
+      <div className='border-b border-gray-200 dark:border-gray-700 pb-6'>
+        <h4 className='text-lg font-medium text-gray-900 dark:text-white mb-4'>Organization Details</h4>
+        <div className='grid grid-cols-1 gap-6 lg:grid-cols-2'>
+          <div>
+            <Label>Organization {isEdit ? '' : '*'}</Label>
+            {isEdit && !isSuperAdmin ? (
+              <Input
+                type='text'
+                value={availableOrganizations.find(org => org.id.toString() === formData.organization_id)?.name || ''}
+                disabled
+                className='bg-gray-100 dark:bg-gray-800'
+              />
+            ) : (
+              <Select
+                options={organizationOptions(isEdit ? availableOrganizations : organizations)}
+                value={formData.organization_id}
+                onChange={(value) => handleInputChange('organization_id', value)}
+                placeholder='Select organization'
+                required={!isEdit}
+              />
+            )}
+          </div>
+
+          <div>
+            <Label>Employee ID</Label>
             <Input
               type='text'
-              value={availableOrganizations.find(org => org.id.toString() === formData.organization_id)?.name || ''}
-              disabled
-              className='bg-gray-100 dark:bg-gray-800'
+              value={formData.custom_id}
+              onChange={(e) => handleInputChange('custom_id', e.target.value)}
+              placeholder='Enter organization-specific employee ID (optional)'
             />
-          ) : (
+          </div>
+
+          <div>
+            <Label>Employment Status</Label>
             <Select
-              options={organizationOptions(isEdit ? availableOrganizations : organizations)}
-              value={formData.organization_id}
-              onChange={(value) => handleInputChange('organization_id', value)}
-              placeholder='Select organization'
-              required={!isEdit}
+              options={statusOptions}
+              value={formData.employment_status}
+              onChange={(value) => handleInputChange('employment_status', value)}
+              placeholder='Select status'
             />
-          )}
-        </div>
+          </div>
 
-        <div>
-          <Label>Department {isEdit ? '' : '*'}</Label>
-          <Select
-            options={departmentOptions(departments)}
-            value={formData.department_id}
-            onChange={(value) => handleInputChange('department_id', value)}
-            placeholder='Select department'
-            disabled={!formData.organization_id}
-            required={!isEdit}
-          />
-        </div>
-
-        <div>
-          <Label>Job Title {isEdit ? '' : '*'}</Label>
-          <Select
-            options={jobTitleOptions(jobTitles)}
-            value={formData.job_title_id}
-            onChange={(value) => handleInputChange('job_title_id', value)}
-            placeholder='Select job title'
-            disabled={!formData.organization_id}
-            required={!isEdit}
-          />
-        </div>
-
-        <div>
-          <Label>Manager</Label>
-          <Select
-            options={managerOptions(managers)}
-            value={formData.manager_id}
-            onChange={(value) => handleInputChange('manager_id', value)}
-            placeholder='Select manager (optional)'
-            disabled={!formData.organization_id}
-          />
-        </div>
-
-        <div>
-          <Label>First Name {isEdit ? '' : '*'}</Label>
-          <Input
-            type='text'
-            value={formData.first_name}
-            onChange={(e) => handleInputChange('first_name', e.target.value)}
-            placeholder='Enter first name'
-            required={!isEdit}
-          />
-        </div>
-
-        <div>
-          <Label>Last Name {isEdit ? '' : '*'}</Label>
-          <Input
-            type='text'
-            value={formData.last_name}
-            onChange={(e) => handleInputChange('last_name', e.target.value)}
-            placeholder='Enter last name'
-            required={!isEdit}
-          />
-        </div>
-
-        <div>
-          <Label>Hire Date {isEdit ? '' : '*'}</Label>
-          <DatePicker
-            id="hire_date"
-            mode="single"
-            defaultDate={formData.hire_date}
-            onChange={(dates) => {
-              if (dates && dates.length > 0) {
-                const dateStr = dates[0].toISOString().split('T')[0];
-                handleInputChange('hire_date', dateStr);
-              }
-            }}
-            placeholder="Select hire date"
-          />
-        </div>
-
-        <div>
-          <Label>Employment Status</Label>
-          <Select
-            options={statusOptions}
-            value={formData.employment_status}
-            onChange={(value) => handleInputChange('employment_status', value)}
-            placeholder='Select status'
-          />
+          <div>
+            <Label>Hire Date {isEdit ? '' : '*'}</Label>
+            <DatePicker
+              id="hire_date"
+              mode="single"
+              defaultDate={formData.hire_date}
+              onChange={(dates) => {
+                if (dates && dates.length > 0) {
+                  const dateStr = dates[0].toISOString().split('T')[0];
+                  handleInputChange('hire_date', dateStr);
+                }
+              }}
+              placeholder="Select hire date"
+            />
+          </div>
         </div>
       </div>
 
       {/* Work Details Section */}
-      <div className='border-t border-gray-200 dark:border-gray-700 pt-6'>
+      <div className='border-b border-gray-200 dark:border-gray-700 pb-6'>
         <h4 className='text-lg font-medium text-gray-900 dark:text-white mb-4'>Work Details</h4>
         <div className='grid grid-cols-1 gap-6 lg:grid-cols-2'>
+          <div>
+            <Label>Department {isEdit ? '' : '*'}</Label>
+            <Select
+              options={departmentOptions(departments)}
+              value={formData.department_id}
+              onChange={(value) => handleInputChange('department_id', value)}
+              placeholder='Select department'
+              disabled={!formData.organization_id}
+              required={!isEdit}
+            />
+          </div>
+
+          <div>
+            <Label>Job Title {isEdit ? '' : '*'}</Label>
+            <Select
+              options={jobTitleOptions(jobTitles)}
+              value={formData.job_title_id}
+              onChange={(value) => handleInputChange('job_title_id', value)}
+              placeholder='Select job title'
+              disabled={!formData.organization_id}
+              required={!isEdit}
+            />
+          </div>
+
+          <div>
+            <Label>Manager</Label>
+            <Select
+              options={managerOptions(managers)}
+              value={formData.manager_id}
+              onChange={(value) => handleInputChange('manager_id', value)}
+              placeholder='Select manager (optional)'
+              disabled={!formData.organization_id}
+            />
+          </div>
+
           <div>
             <Label>Work Email {isEdit ? '' : '*'}</Label>
             <Input
@@ -235,6 +228,28 @@ export default function EmployeeForm({
       <div className='border-t border-gray-200 dark:border-gray-700 pt-6'>
         <h4 className='text-lg font-medium text-gray-900 dark:text-white mb-4'>Personal Details</h4>
         <div className='grid grid-cols-1 gap-6 lg:grid-cols-2'>
+          <div>
+            <Label>First Name {isEdit ? '' : '*'}</Label>
+            <Input
+              type='text'
+              value={formData.first_name}
+              onChange={(e) => handleInputChange('first_name', e.target.value)}
+              placeholder='Enter first name'
+              required={!isEdit}
+            />
+          </div>
+
+          <div>
+            <Label>Last Name {isEdit ? '' : '*'}</Label>
+            <Input
+              type='text'
+              value={formData.last_name}
+              onChange={(e) => handleInputChange('last_name', e.target.value)}
+              placeholder='Enter last name'
+              required={!isEdit}
+            />
+          </div>
+
           <div>
             <Label>Personal Address {isEdit ? '' : '*'}</Label>
             <Input

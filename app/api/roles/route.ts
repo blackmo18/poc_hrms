@@ -30,10 +30,10 @@ export async function GET(request: NextRequest) {
 
     if (isSuperAdmin) {
       // Super Admin can see all roles across all organizations
-      roles = await roleController.getAll(organizationId ? organizationId : undefined);
+      roles = await roleController.getAll(organizationId ? organizationId : undefined, { page, limit });
     } else if (isAdmin) {
       // Admin can see roles in their organization only
-      roles = await roleController.getAll(user.organization_id);
+      roles = await roleController.getAll(user.organization_id, { page, limit });
     } else {
       // Regular employees might have limited access or no access
       return NextResponse.json(
@@ -42,19 +42,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // For now, return roles as a simple array
-    // TODO: Implement pagination for roles if needed
-    return NextResponse.json({
-      data: roles,
-      pagination: {
-        page: 1,
-        limit: roles.length,
-        total: roles.length,
-        totalPages: 1,
-        hasNext: false,
-        hasPrev: false
-      }
-    });
+    return NextResponse.json(roles);
   });
 }
 

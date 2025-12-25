@@ -17,6 +17,14 @@ export class PermissionService {
     return await this.permissionRepository.findAll();
   }
 
+  async getAllWithPagination(organizationId?: string, options?: { page?: number; limit?: number }) {
+    return await this.permissionRepository.findAllWithPagination(organizationId, options);
+  }
+
+  async getByIdWithRelations(id: string) {
+    return await this.permissionRepository.findByIdWithRelations(id);
+  }
+
   async create(data: Omit<Permission, 'id' | 'created_at' | 'updated_at'>): Promise<Permission> {
     const id = generateULID();
     return await this.permissionRepository.create({ ...data, id });

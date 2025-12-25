@@ -140,30 +140,21 @@ export class EmployeeController {
     });
   }
 
-  async getByUserId(userId: string) {
-    return await prisma.employee.findUnique({
-      where: { user_id: userId },
-      include: {
-        organization: true,
-        user: true,
-        department: true,
-        jobTitle: true,
-        manager: true,
-        directReports: true,
-        compensations: true,
-        employeeBenefits: {
-          include: {
-            benefit: true,
-          },
-        },
-        timesheets: true,
-        leaveRequests: true,
-        payrolls: {
-          include: {
-            deductions: true,
-          },
-        },
+  async search(organizationId: string, query: string, limit: number = 10) {
+    return await prisma.employee.findMany({
+      where: {
+        organization_id: organizationId,
+        OR: [
+          { first_name: { startsWith: query, mode: 'insensitive' as const } },
+          { last_name: { startsWith: query, mode: 'insensitive' as const } },
+          { custom_id: { startsWith: query, mode: 'insensitive' as const } },
+          { email: { startsWith: query, mode: 'insensitive' as const } },
+        ],
       },
+      include: {
+        jobTitle: true,
+      },
+      take: limit,
     });
   }
 }

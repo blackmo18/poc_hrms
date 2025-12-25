@@ -86,6 +86,16 @@ const navItems: NavItem[] = [
 
 const othersItems: NavItem[] = [
   {
+    icon: <UserGroupIcon />,
+    name: "Accounts",
+    subItems: [
+      { name: "Users", path: "/accounts/users", pro: false },
+      { name: "Roles", path: "/accounts/roles", pro: false },
+      { name: "Permissions", path: "/accounts/permissions", pro: false },
+    ],
+    systemAdminOnly: true,
+  },
+  {
     icon: <LayoutGridIcon />,
     name: "Departments",
     subItems: [
@@ -99,16 +109,6 @@ const othersItems: NavItem[] = [
       { name: "Analytics", path: "/reports/analytics", pro: false },
       { name: "Attendance", path: "/reports/attendance", pro: false },
     ],
-  },
-  {
-    icon: <UserGroupIcon />,
-    name: "Accounts",
-    subItems: [
-      { name: "Users", path: "/accounts/users", pro: false },
-      { name: "Roles", path: "/accounts/roles", pro: false },
-      { name: "Permissions", path: "/accounts/permissions", pro: false },
-    ],
-    systemAdminOnly: true,
   },
   {
     icon: <BoxCubeIcon />,

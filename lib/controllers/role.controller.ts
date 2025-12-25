@@ -3,9 +3,20 @@ import { generateULID } from '../utils/ulid.service';
 import { CreateRole, UpdateRole } from '../models/role';
 
 export class RoleController {
-  async getAll(organizationId?: string) {
-    return await prisma.role.findMany({
+  async getAll(organizationId?: string, options?: { page?: number; limit?: number }) {
+    const { page = 1, limit = 15 } = options || {};
+    const skip = (page - 1) * limit;
+
+    // First get the total count
+    const total = await prisma.role.count({
       where: organizationId ? { organization_id: organizationId } : undefined,
+    });
+
+    // Then fetch the paginated roles
+    const roles = await prisma.role.findMany({
+      where: organizationId ? { organization_id: organizationId } : undefined,
+      skip,
+      take: limit,
       include: {
         organization: true,
         userRoles: {
@@ -27,6 +38,18 @@ export class RoleController {
       },
       orderBy: { name: 'asc' }
     });
+
+    return {
+      data: roles,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+        hasNext: page * limit < total,
+        hasPrev: page > 1
+      }
+    };
   }
 
   async getById(id: string) {

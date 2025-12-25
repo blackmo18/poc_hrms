@@ -1,9 +1,20 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useCallback, useReducer } from "react";
 import Link from "next/link";
-import { PencilIcon, PlusIcon, TrashBinIcon, EyeIcon } from "@/app/icons";
+import { PencilIcon, PlusIcon, TrashBinIcon, EyeIcon, UserGroupIcon } from "@/app/icons";
 import Button from "@/app/components/ui/button/Button";
+import ComponentCard from '@/app/components/common/ComponentCard';
+import PageMeta from '@/app/components/common/PageMeta';
+import PageBreadcrumb from '@/app/components/common/PageBreadCrumb';
+import Pagination from '@/app/components/ui/pagination';
+import RoleComponentWrapper from '@/app/components/common/RoleComponentWrapper';
+import OrganizationFilter from '@/app/components/common/OrganizationFilter';
+import { useOrganizationFilter } from '@/hooks/useOrganizationFilter';
+import { useAuth } from '@/app/components/providers/auth-provider';
+import { useRoleAccess } from '@/app/components/providers/role-access-provider';
+import RoleCard from '@/app/components/accounts/RoleCard';
+import RolesTable from '@/app/components/accounts/RolesTable';
 
 interface Role {
   id: string;
@@ -13,33 +24,177 @@ interface Role {
     id: string;
     name: string;
   };
-  permissions: {
+  rolePermissions: {
     id: string;
-    name: string;
+    permission: {
+      id: string;
+      name: string;
+    };
+  }[];
+  userRoles: {
+    id: string;
+    user: {
+      id: string;
+      email: string;
+      name: string;
+    };
   }[];
   created_at: string;
-  _count: {
-    userRoles: number;
+}
+
+interface ApiResponse {
+  data: Role[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+    hasNext: boolean;
+    hasPrev: boolean;
   };
 }
 
+interface RolesState {
+  // Data states
+  roles: Role[];
+  pagination: ApiResponse['pagination'] | null;
+
+  // Loading states
+  loading: boolean;
+  initialLoading: boolean;
+
+  // UI states
+  expandedCards: Set<string>;
+
+  // Error states
+  error: string | null;
+}
+
+type RolesAction =
+  // Data actions
+  | { type: 'SET_ROLES'; payload: Role[] }
+  | { type: 'SET_PAGINATION'; payload: ApiResponse['pagination'] | null }
+
+  // Loading actions
+  | { type: 'SET_LOADING'; payload: boolean }
+  | { type: 'SET_INITIAL_LOADING'; payload: boolean }
+
+  // UI actions
+  | { type: 'TOGGLE_CARD_EXPANSION'; payload: string }
+
+  // Error actions
+  | { type: 'SET_ERROR'; payload: string | null }
+
+  // Combined actions
+  | { type: 'START_LOADING' }
+  | { type: 'FINISH_LOADING' };
+
+function rolesReducer(state: RolesState, action: RolesAction): RolesState {
+  switch (action.type) {
+    // Data actions
+    case 'SET_ROLES':
+      return { ...state, roles: action.payload };
+    case 'SET_PAGINATION':
+      return { ...state, pagination: action.payload };
+
+    // Loading actions
+    case 'SET_LOADING':
+      return { ...state, loading: action.payload };
+    case 'SET_INITIAL_LOADING':
+      return { ...state, initialLoading: action.payload };
+
+    // UI actions
+    case 'TOGGLE_CARD_EXPANSION': {
+      const newExpanded = new Set(state.expandedCards);
+      if (newExpanded.has(action.payload)) {
+        newExpanded.delete(action.payload);
+      } else {
+        newExpanded.add(action.payload);
+      }
+      return { ...state, expandedCards: newExpanded };
+    }
+
+    // Error actions
+    case 'SET_ERROR':
+      return { ...state, error: action.payload };
+
+    // Combined actions
+    case 'START_LOADING':
+      return { ...state, loading: true, error: null };
+    case 'FINISH_LOADING':
+      return { ...state, loading: false, initialLoading: false };
+
+    default:
+      return state;
+  }
+}
+
+const initialRolesState: RolesState = {
+  // Data states
+  roles: [],
+  pagination: null,
+
+  // Loading states
+  loading: true,
+  initialLoading: true,
+
+  // UI states
+  expandedCards: new Set(),
+
+  // Error states
+  error: null,
+};
+
 export default function RolesPage() {
-  const [roles, setRoles] = useState<Role[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { user, isLoading: authLoading } = useAuth();
+  const { roles } = useRoleAccess();
+  const [state, dispatch] = useReducer(rolesReducer, initialRolesState);
 
-  // Fetch roles
-  const fetchRoles = async () => {
+  // Use the reusable organization filter hook
+  const {
+    selectedOrganization,
+    organizations,
+    isOrganizationFilterLoading,
+    currentPage: orgFilterCurrentPage,
+    handleOrganizationChange,
+    setCurrentPage: setOrgFilterCurrentPage,
+    isSuperAdmin,
+    organizationOptions,
+  } = useOrganizationFilter({
+    apiEndpoint: '/api/roles',
+    defaultPageSize: 15,
+    onDataFetch: async (orgId, page) => {
+      await fetchRoles(orgId, page);
+    },
+  });
+
+  // Memoize super admin check for consistency
+  const isSuperAdminMemo = useMemo(() =>
+    roles.includes('SUPER_ADMIN'),
+    [roles]
+  );
+
+  const fetchRoles = async (orgId?: string, page: number = 1) => {
     try {
-      setLoading(true);
-      setError(null);
+      dispatch({ type: 'START_LOADING' });
 
-      const response = await fetch('/api/roles', {
+      const params = new URLSearchParams();
+      if (orgId) params.set('organizationId', orgId.toString());
+      params.set('page', page.toString());
+      params.set('limit', '15');
+
+      const url = `/api/roles?${params.toString()}`;
+      const response = await fetch(url, {
         credentials: 'include',
       });
 
+      if (response.status === 401) {
+        dispatch({ type: 'SET_ERROR', payload: 'Unauthorized access. Please log in.' });
+        return;
+      }
+
       if (response.status === 403) {
-        setError('Access denied. Insufficient permissions.');
+        dispatch({ type: 'SET_ERROR', payload: 'Access denied. Insufficient permissions.' });
         return;
       }
 
@@ -47,19 +202,16 @@ export default function RolesPage() {
         throw new Error('Failed to fetch roles');
       }
 
-      const result = await response.json();
-      setRoles(result.data || []);
+      const result: ApiResponse = await response.json();
+      dispatch({ type: 'SET_ROLES', payload: result.data || [] });
+      dispatch({ type: 'SET_PAGINATION', payload: result.pagination });
     } catch (error) {
       console.error('Error fetching roles:', error);
-      setError('Failed to load roles. Please try again.');
+      dispatch({ type: 'SET_ERROR', payload: 'Failed to load roles. Please try again.' });
     } finally {
-      setLoading(false);
+      dispatch({ type: 'FINISH_LOADING' });
     }
   };
-
-  useEffect(() => {
-    fetchRoles();
-  }, []);
 
   const handleDeleteRole = async (roleId: string) => {
     if (!confirm('Are you sure you want to delete this role? This action cannot be undone.')) return;
@@ -71,7 +223,8 @@ export default function RolesPage() {
       });
 
       if (response.ok) {
-        setRoles(roles.filter(role => role.id !== roleId));
+        // Refresh the roles list
+        await fetchRoles(selectedOrganization, orgFilterCurrentPage);
       } else {
         alert('Failed to delete role');
       }
@@ -81,132 +234,140 @@ export default function RolesPage() {
     }
   };
 
-  return (
-    <div>
-      {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-6">
-        <div>
-          <h3 className="text-xl font-semibold text-black dark:text-white">
-            Roles
-          </h3>
-          <p className="text-sm text-gray-500 dark:text-gray-400">
-            Manage user roles and their permissions
-          </p>
+  if (state.initialLoading) { // display this only on first page load
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+              Roles
+            </h1>
+            <p className="mt-2 text-gray-600 dark:text-gray-300">
+              Manage user roles and their permissions
+            </p>
+          </div>
         </div>
+        <div className="flex items-center justify-center h-64">
+          <div className="text-lg text-gray-600 dark:text-gray-300">Loading roles...</div>
+        </div>
+      </div>
+    );
+  }
 
-        <Link href="/accounts/roles/create">
-          <Button>
-            <PlusIcon className="w-4 h-4 mr-2" />
-            Add Role
-          </Button>
-        </Link>
+  if (state.error) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+              Roles
+            </h1>
+            <p className="mt-2 text-gray-600 dark:text-gray-300">
+              Manage user roles and their permissions
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <div className="text-red-600 dark:text-red-400 text-lg mb-2">Error</div>
+            <div className="text-gray-600 dark:text-gray-300">{state.error}</div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const toggleCardExpansion = (roleId: string) => {
+    dispatch({ type: 'TOGGLE_CARD_EXPANSION', payload: roleId });
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <PageMeta title='Roles - HR Management System' description='Manage roles and permissions' />
+      <PageBreadcrumb
+        pageTitle='Roles'
+        breadcrumbs={[
+          { label: 'Roles' }
+        ]}
+      />
+
+      {/* Content Container */}
+      <div className="w-full overflow-x-auto">
+        <ComponentCard title="Role Management" size="full">
+          {/* Organization Filter - Using reusable component */}
+          <RoleComponentWrapper roles={['SUPER_ADMIN']} showFallback={false}>
+            <OrganizationFilter
+              selectedOrganization={selectedOrganization}
+              organizationOptions={organizationOptions}
+              onOrganizationChange={handleOrganizationChange}
+              disabled={isOrganizationFilterLoading}
+            />
+          </RoleComponentWrapper>
+
+          {/* Add Role Button */}
+          <div className="flex justify-end mb-6">
+            <Link
+              href="/accounts/roles/create"
+              className="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <PlusIcon className="w-4 h-4 mr-2" />
+              Add Role
+            </Link>
+          </div>
+
+          {/* Desktop Table View */}
+          <RolesTable
+            roles={state.roles}
+            loading={isOrganizationFilterLoading}
+            currentPage={state.pagination?.page}
+            limit={state.pagination?.limit}
+            onDeleteRole={handleDeleteRole}
+          />
+
+          {/* Mobile Card View */}
+          <div className="lg:hidden space-y-4">
+            {state.roles.map((role) => (
+              <RoleCard
+                key={role.id}
+                role={role}
+                isExpanded={state.expandedCards.has(role.id)}
+                onToggle={toggleCardExpansion}
+              />
+            ))}
+          </div>
+
+          {/* Empty State */}
+          {!isOrganizationFilterLoading && state.roles.length === 0 && !state.loading && (
+            <div className="text-center py-12">
+              <UserGroupIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No roles found</h3>
+              <p className="text-gray-600 dark:text-gray-400 mb-4">
+                {selectedOrganization
+                  ? 'No roles in the selected organization.'
+                  : 'Get started by creating your first role.'
+                }
+              </p>
+              <Link
+                href="/accounts/roles/create"
+                className="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 transition-colors"
+              >
+                <PlusIcon className="w-4 h-4 mr-2" />
+                Create Role
+              </Link>
+            </div>
+          )}
+        </ComponentCard>
       </div>
 
-      {/* Roles Table */}
-      <div className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03]">
-        <div className="w-full overflow-x-auto">
-          <table className="w-full table-auto">
-            <thead className="border-b border-gray-100 dark:border-white/[0.05]">
-              <tr>
-                <th className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">
-                  Name
-                </th>
-                <th className="px-4 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">
-                  Description
-                </th>
-                <th className="px-4 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">
-                  Organization
-                </th>
-                <th className="px-4 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">
-                  Permissions
-                </th>
-                <th className="px-4 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">
-                  Users Count
-                </th>
-                <th className="px-4 py-3 font-medium text-gray-500 text-center text-theme-xs dark:text-gray-400">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100 dark:divide-white/[0.05]">
-              {loading ? (
-                <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center text-gray-500">
-                    Loading roles...
-                  </td>
-                </tr>
-              ) : error ? (
-                <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center text-red-500">
-                    {error}
-                  </td>
-                </tr>
-              ) : roles.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center text-gray-500">
-                    No roles found
-                  </td>
-                </tr>
-              ) : (
-                roles.map((role) => (
-                  <tr key={role.id}>
-                    <td className="px-5 py-4 text-gray-800 text-start text-theme-sm dark:text-white/90">
-                      <div className="font-medium">{role.name}</div>
-                    </td>
-                    <td className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
-                      {role.description || 'No description'}
-                    </td>
-                    <td className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
-                      {role.organization.name}
-                    </td>
-                    <td className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
-                      <div className="flex flex-wrap gap-1">
-                        {role.permissions.slice(0, 3).map((permission) => (
-                          <span
-                            key={permission.id}
-                            className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
-                          >
-                            {permission.name}
-                          </span>
-                        ))}
-                        {role.permissions.length > 3 && (
-                          <span className="text-xs text-gray-500">
-                            +{role.permissions.length - 3} more
-                          </span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
-                      {role._count.userRoles} users
-                    </td>
-                    <td className="px-4 py-3 text-center">
-                      <div className="flex items-center justify-center space-x-2">
-                        <Link
-                          href={`/accounts/roles/${role.id}`}
-                          className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-800 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700 transition-colors"
-                        >
-                          <EyeIcon className="w-4 h-4" />
-                        </Link>
-                        <Link
-                          href={`/accounts/roles/${role.id}/edit`}
-                          className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-blue-100 text-blue-600 hover:bg-blue-200 hover:text-blue-800 dark:bg-blue-900 dark:text-blue-400 dark:hover:bg-blue-800 transition-colors"
-                        >
-                          <PencilIcon className="w-4 h-4" />
-                        </Link>
-                        <button
-                          onClick={() => handleDeleteRole(role.id)}
-                          className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-red-100 text-red-600 hover:bg-red-200 hover:text-red-800 dark:bg-red-900 dark:text-red-400 dark:hover:bg-red-800 transition-colors"
-                        >
-                          <TrashBinIcon className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+      {/* Pagination */}
+      <div className={state.loading ? 'opacity-50 pointer-events-none' : ''}>
+        <Pagination
+          pagination={state.pagination}
+          currentPage={orgFilterCurrentPage}
+          onPageChange={(page) => setOrgFilterCurrentPage(page)}
+          itemName="roles"
+        />
       </div>
     </div>
   );

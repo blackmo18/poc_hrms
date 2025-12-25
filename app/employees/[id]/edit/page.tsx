@@ -89,6 +89,7 @@ export default function EditEmployeePage({ params }: { params: Promise<{ id: str
     department_id: '',
     job_title_id: '',
     manager_id: '',
+    custom_id: '', // Organization-specific employee ID
     first_name: '',
     last_name: '',
     // Work details (required work email)
@@ -184,6 +185,7 @@ export default function EditEmployeePage({ params }: { params: Promise<{ id: str
           department_id: employeeData.department_id?.toString() || '',
           job_title_id: employeeData.job_title_id?.toString() || '',
           manager_id: employeeData.manager_id?.toString() || '',
+          custom_id: employeeData.custom_id || '', // Organization-specific employee ID
           first_name: employeeData.first_name || '',
           last_name: employeeData.last_name || '',
           // Work details (required work email)

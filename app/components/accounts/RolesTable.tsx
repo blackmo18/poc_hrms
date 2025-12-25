@@ -1,83 +1,103 @@
-import Link from "next/link";
-import { memo } from "react";
-import { PencilIcon, TrashBinIcon } from "@/app/icons";
-import { Table, TableBody, TableCell, TableHeader, TableRow } from "@/app/components/ui/table";
-import Badge, { BadgeColor } from "@/app/components/ui/badge/Badge";
-import LoadingSkeleton from "@/app/components/ui/LoadingSkeleton";
-import UserCard from "@/app/components/accounts/UserCard";
+import { memo } from 'react';
+import Link from 'next/link';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHeader,
+  TableRow,
+} from '@/app/components/ui/table';
+import LoadingSkeleton from '@/app/components/ui/LoadingSkeleton';
+import { PencilIcon, EyeIcon, TrashBinIcon } from '@/app/icons';
 
-interface User {
+export interface Role {
   id: string;
   name: string;
-  email: string;
-  employee?: {
-    id: string;
-    first_name: string;
-    last_name: string;
-    custom_id?: string;
-  };
-  status: string;
+  description: string;
   organization: {
     id: string;
     name: string;
   };
-  userRoles: {
-    role: {
+  rolePermissions: {
+    id: string;
+    permission: {
       id: string;
+      name: string;
+    };
+  }[];
+  userRoles: {
+    id: string;
+    user: {
+      id: string;
+      email: string;
       name: string;
     };
   }[];
   created_at: string;
 }
 
-interface UsersTableBodyProps {
-  users: User[];
-  getStatusColor: (status: string) => BadgeColor;
+interface RolesTableBodyProps {
+  roles: Role[];
   currentPage?: number;
   limit?: number;
-  onDelete: (userId: string) => void;
+  onDeleteRole: (roleId: string) => void;
 }
 
-const UsersTableBody = memo(function UsersTableBody({ users, getStatusColor, currentPage = 1, limit = 10, onDelete }: UsersTableBodyProps) {
+const RolesTableBody = memo(function RolesTableBody({ roles, currentPage = 1, limit = 15, onDeleteRole }: RolesTableBodyProps) {
   return (
     <>
-      {users.map((user, index) => {
+      {roles.map((role, index) => {
         const rowNumber = (currentPage - 1) * limit + index + 1;
         return (
-          <TableRow key={user.id}>
+          <TableRow key={role.id}>
             <TableCell className="px-5 py-4 text-gray-500 text-start text-theme-sm dark:text-gray-400">
               {rowNumber}
             </TableCell>
-            <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
-              {user.employee?.custom_id || '-'}
+            <TableCell className="px-5 py-4 text-gray-800 text-start text-theme-sm dark:text-white/90">
+              <div className="font-medium">{role.name}</div>
             </TableCell>
             <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
-              {user.email}
+              {role.description || 'No description'}
             </TableCell>
             <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
-              {user.organization.name}
+              {role.organization.name}
             </TableCell>
             <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
-              {user.userRoles.map(userRole => userRole.role.name).join(', ') || 'No roles'}
+              <div className="flex flex-wrap gap-1">
+                {role.rolePermissions.slice(0, 3).map((rolePermission) => (
+                  <span
+                    key={rolePermission.id}
+                    className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
+                  >
+                    {rolePermission.permission.name}
+                  </span>
+                ))}
+                {role.rolePermissions.length > 3 && (
+                  <span className="text-xs text-gray-500">
+                    +{role.rolePermissions.length - 3} more
+                  </span>
+                )}
+              </div>
             </TableCell>
-            <TableCell className="px-4 py-3 text-start">
-              <Badge
-                size="sm"
-                color={getStatusColor(user.status)}
-              >
-                {user.status}
-              </Badge>
+            <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
+              {role.userRoles?.length || 0} users
             </TableCell>
             <TableCell className="px-4 py-3 text-center">
               <div className="flex items-center justify-center space-x-2">
                 <Link
-                  href={`/accounts/users/${user.id}/edit`}
+                  href={`/accounts/roles/${role.id}`}
                   className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-800 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700 transition-colors"
+                >
+                  <EyeIcon className="w-4 h-4" />
+                </Link>
+                <Link
+                  href={`/accounts/roles/${role.id}/edit`}
+                  className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-blue-100 text-blue-600 hover:bg-blue-200 hover:text-blue-800 dark:bg-blue-900 dark:text-blue-400 dark:hover:bg-blue-800 transition-colors"
                 >
                   <PencilIcon className="w-4 h-4" />
                 </Link>
                 <button
-                  onClick={() => onDelete(user.id)}
+                  onClick={() => onDeleteRole(role.id)}
                   className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-red-100 text-red-600 hover:bg-red-200 hover:text-red-800 dark:bg-red-900 dark:text-red-400 dark:hover:bg-red-800 transition-colors"
                 >
                   <TrashBinIcon className="w-4 h-4" />
@@ -91,21 +111,21 @@ const UsersTableBody = memo(function UsersTableBody({ users, getStatusColor, cur
   );
 });
 
-interface UsersTableProps {
-  users: User[];
+interface RolesTableProps {
+  roles: Role[];
   loading?: boolean;
-  onDelete: (userId: string) => void;
-  getStatusColor: (status: string) => BadgeColor;
+  fallback?: React.ReactNode;
   currentPage?: number;
   limit?: number;
-  fallback?: React.ReactNode;
+  onDeleteRole: (roleId: string) => void;
 }
 
-export default function UsersTable({ users, loading = false, onDelete, getStatusColor, currentPage = 1, limit = 10, fallback }: UsersTableProps) {
+export default function RolesTable({ roles, loading = false, fallback, currentPage = 1, limit = 15, onDeleteRole }: RolesTableProps) {
   return (
     <div className="hidden lg:block overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03]">
       <div className="w-full overflow-x-auto">
         <Table>
+          {/* Table Header - Static, doesn't re-render */}
           <TableHeader className="border-b border-gray-100 dark:border-white/[0.05]">
             <TableRow>
               <TableCell
@@ -116,15 +136,15 @@ export default function UsersTable({ users, loading = false, onDelete, getStatus
               </TableCell>
               <TableCell
                 isHeader
-                className="px-4 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
+                className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
               >
-                Employee ID
+                Name
               </TableCell>
               <TableCell
                 isHeader
                 className="px-4 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
               >
-                Email
+                Description
               </TableCell>
               <TableCell
                 isHeader
@@ -136,13 +156,13 @@ export default function UsersTable({ users, loading = false, onDelete, getStatus
                 isHeader
                 className="px-4 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
               >
-                Roles
+                Permissions
               </TableCell>
               <TableCell
                 isHeader
                 className="px-4 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
               >
-                Status
+                Users Count
               </TableCell>
               <TableCell
                 isHeader
@@ -152,17 +172,13 @@ export default function UsersTable({ users, loading = false, onDelete, getStatus
               </TableCell>
             </TableRow>
           </TableHeader>
+
+          {/* Table Body - Loading or Data */}
           <TableBody>
             {loading ? (
-              fallback || <LoadingSkeleton columns={7} hasActions={true} actionButtons={2} />
-            ) : users.length === 0 ? (
-              <TableRow>
-                <TableCell className="px-4 py-8 text-center text-gray-500">
-                  <div>No users found</div>
-                </TableCell>
-              </TableRow>
+              fallback || <LoadingSkeleton columns={7} hasActions={true} actionButtons={3} />
             ) : (
-              <UsersTableBody users={users} getStatusColor={getStatusColor} currentPage={currentPage} limit={limit} onDelete={onDelete} />
+              <RolesTableBody roles={roles} currentPage={currentPage} limit={limit} onDeleteRole={onDeleteRole} />
             )}
           </TableBody>
         </Table>

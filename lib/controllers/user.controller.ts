@@ -30,6 +30,7 @@ export class UserController {
             id: true,
             first_name: true,
             last_name: true,
+            custom_id: true,
           },
         },
         userRoles: {

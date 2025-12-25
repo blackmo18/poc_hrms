@@ -3,6 +3,7 @@ interface EmployeeFormData {
   department_id: string;
   job_title_id: string;
   manager_id: string;
+  custom_id: string;
   first_name: string;
   last_name: string;
   work_email: string;
@@ -46,35 +47,31 @@ export function getEmployeeGroupedDetails(
 ) {
   // Helper functions
   const getOrganizationName = (id: string) => {
-    const org = organizations.find(o => o.id === Number(id));
+    const org = organizations.find(o => o.id.toString() === id || o.id === Number(id));
     return org?.name || 'Unknown';
   };
 
   const getDepartmentName = (id: string) => {
-    const dept = departments.find(d => d.id === Number(id));
+    const dept = departments.find(d => d.id.toString() === id || d.id === Number(id));
     return dept?.name || 'Unknown';
   };
 
   const getJobTitleName = (id: string) => {
-    const job = jobTitles.find(j => j.id === Number(id));
+    const job = jobTitles.find(j => j.id.toString() === id || j.id === Number(id));
     return job?.name || 'Unknown';
   };
 
   const getManagerName = (id: string) => {
-    const mgr = managers.find(m => m.id === Number(id));
+    const mgr = managers.find(m => m.id.toString() === id || m.id === Number(id));
     return mgr ? `${mgr.first_name} ${mgr.last_name}` : 'None';
   };
 
   return [
     {
-      name: 'Employee Details',
+      name: 'Organization Details',
       fields: [
-        { label: 'Full Name', value: `${formData.first_name} ${formData.last_name}` },
-        { label: 'Work Email', value: formData.work_email },
         { label: 'Organization', value: getOrganizationName(formData.organization_id) },
-        { label: 'Department', value: getDepartmentName(formData.department_id) },
-        { label: 'Job Title', value: getJobTitleName(formData.job_title_id) },
-        { label: 'Manager', value: getManagerName(formData.manager_id) },
+        { label: 'Employee ID', value: formData.custom_id || 'Not provided' },
         { label: 'Employment Status', value: formData.employment_status },
         { label: 'Hire Date', value: new Date(formData.hire_date).toLocaleDateString() },
       ]
@@ -82,12 +79,18 @@ export function getEmployeeGroupedDetails(
     {
       name: 'Work Details',
       fields: [
+        { label: 'Department', value: getDepartmentName(formData.department_id) },
+        { label: 'Job Title', value: getJobTitleName(formData.job_title_id) },
+        { label: 'Manager', value: getManagerName(formData.manager_id) },
+        { label: 'Work Email', value: formData.work_email },
         { label: 'Work Contact', value: formData.work_contact || 'Not provided' },
       ]
     },
     {
       name: 'Personal Details',
       fields: [
+        { label: 'First Name', value: formData.first_name },
+        { label: 'Last Name', value: formData.last_name },
         { label: 'Personal Address', value: formData.personal_address },
         { label: 'Personal Contact Number', value: formData.personal_contact_number },
         { label: 'Personal Email', value: formData.personal_email || 'Not provided' },

@@ -15,6 +15,8 @@ import RoleComponentWrapper from '@/app/components/common/RoleComponentWrapper';
 import { useAuth } from '@/app/components/providers/auth-provider';
 import { useRoleAccess } from '@/app/components/providers/role-access-provider';
 import Select from '@/app/components/form/Select';
+import OrganizationFilter from '@/app/components/common/OrganizationFilter';
+import { useOrganizationFilter } from '@/hooks/useOrganizationFilter';
 
 interface Organization {
   id: string;
@@ -52,10 +54,7 @@ export default function DepartmentsPage() {
   const { user, isLoading: authLoading } = useAuth();
   const { roles } = useRoleAccess();
   const [departments, setDepartments] = useState<Department[]>([]);
-  const [organizations, setOrganizations] = useState<Organization[]>([]);
-  const [selectedOrganization, setSelectedOrganization] = useState<string | null>(null);
   const [pagination, setPagination] = useState<ApiResponse['pagination'] | null>(null);
-  const [currentPage, setCurrentPage] = useState(1);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showErrorModal, setShowErrorModal] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
@@ -63,12 +62,29 @@ export default function DepartmentsPage() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteSuccess, setDeleteSuccess] = useState(false);
 
-  // Loading states similar to employees page
+  // Loading states
   const [initialLoading, setInitialLoading] = useState(true);
-  const [isOrganizationFilterLoading, setIsOrganizationFilterLoading] = useState(false);
 
   // Error state
   const [error, setError] = useState<string | null>(null);
+
+  // Use the reusable organization filter hook
+  const {
+    selectedOrganization,
+    organizations,
+    isOrganizationFilterLoading,
+    currentPage: orgFilterCurrentPage,
+    handleOrganizationChange,
+    setCurrentPage: setOrgFilterCurrentPage,
+    isSuperAdmin,
+    organizationOptions,
+  } = useOrganizationFilter({
+    apiEndpoint: '/api/departments',
+    defaultPageSize: 15,
+    onDataFetch: async (orgId, page) => {
+      await fetchDepartments(orgId, page);
+    },
+  });
 
   const isSuperAdminMemo = useMemo(() =>
     roles.includes('SUPER_ADMIN'),
@@ -76,24 +92,13 @@ export default function DepartmentsPage() {
   );
 
   const fetchOrganizations = async () => {
-    try {
-      const response = await fetch('/api/organizations', {
-        credentials: 'include',
-      });
-
-      if (response.ok) {
-        const result = await response.json();
-        setOrganizations((result.data || []).map(org => ({ ...org, id: String(org.id) })));
-      }
-    } catch (error) {
-      console.error('Error fetching organizations:', error);
-    }
+    // This is now handled by the useOrganizationFilter hook
   };
 
   const fetchDepartments = async (orgId?: string, page: number = 1, isOrganizationChange: boolean = false) => {
     try {
       if (isOrganizationChange) {
-        setIsOrganizationFilterLoading(true);
+        // This is now handled by the hook
       } else {
         setInitialLoading(true);
       }
@@ -130,38 +135,22 @@ export default function DepartmentsPage() {
       console.error('Error fetching departments:', error);
       setError('Failed to load departments. Please try again.');
     } finally {
-      if (isOrganizationChange) {
-        setIsOrganizationFilterLoading(false);
-      } else {
+      if (!isOrganizationChange) {
         setInitialLoading(false);
       }
     }
   };
 
   useEffect(() => {
-    if (authLoading) return;
-
-    // For non-super admin, always filter by their organization
-    if (!isSuperAdminMemo && user?.organization_id) {
-      fetchDepartments(user.organization_id.toString(), currentPage);
-    } else {
-      fetchDepartments(selectedOrganization || undefined, currentPage);
-    }
-
-    // Only fetch organizations for super admin
-    if (isSuperAdminMemo && organizations.length === 0) {
-      fetchOrganizations();
-    }
-  }, [currentPage, authLoading, isSuperAdminMemo, user?.organization_id]);
+    // Organization filtering is now handled by the useOrganizationFilter hook
+    // This effect is no longer needed as the hook handles all data fetching
+  }, []);
 
   // Separate effect for organization changes to trigger loading overlay
   useEffect(() => {
-    if (authLoading || initialLoading) return;
-
-    if (isSuperAdminMemo) {
-      fetchDepartments(selectedOrganization || undefined, currentPage, true);
-    }
-  }, [selectedOrganization, isSuperAdminMemo, initialLoading, authLoading]);
+    // Organization filtering is now handled by the useOrganizationFilter hook
+    // This effect is no longer needed as the hook handles all data fetching
+  }, []);
 
   const handleDeleteClick = useCallback((departmentId: number, departmentName: string) => {
     setDepartmentToDelete({ id: departmentId, name: departmentName });
@@ -206,12 +195,12 @@ export default function DepartmentsPage() {
           setShowDeleteModal(false);
           setDepartmentToDelete(null);
           setDeleteSuccess(false);
-          fetchDepartments(
-            !isSuperAdminMemo && user?.organization_id
-              ? user.organization_id.toString()
-              : selectedOrganization || undefined,
-            currentPage
-          );
+          // Refresh with current organization filter
+          if (!isSuperAdminMemo && user?.organization_id) {
+            fetchDepartments(user.organization_id.toString(), orgFilterCurrentPage);
+          } else {
+            fetchDepartments(selectedOrganization || undefined, orgFilterCurrentPage);
+          }
         }, 1500);
       } else {
         const errorData = await response.json();
@@ -286,24 +275,14 @@ export default function DepartmentsPage() {
       {/* Content Container */}
       <div className="w-full overflow-x-auto">
         <ComponentCard title="Department Management" size="full">
+          {/* Organization Filter - Using reusable component */}
           <RoleComponentWrapper roles={['SUPER_ADMIN']} showFallback={false}>
-            <div className="max-w-md mb-6">
-              <label htmlFor="organization-select" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Filter by Organization
-              </label>
-              <Select
-                options={[
-                  { value: '', label: 'All Organizations' },
-                  ...organizations.map((org) => ({
-                    value: org.id,
-                    label: org.name,
-                  })),
-                ]}
-                placeholder="Select an organization"
-                onChange={(value) => setSelectedOrganization(value || null)}
-                disabled={initialLoading || isOrganizationFilterLoading}
-              />
-            </div>
+            <OrganizationFilter
+              selectedOrganization={selectedOrganization}
+              organizationOptions={organizationOptions}
+              onOrganizationChange={handleOrganizationChange}
+              disabled={isOrganizationFilterLoading}
+            />
           </RoleComponentWrapper>
 
           {/* Add Department Button */}
@@ -352,8 +331,8 @@ export default function DepartmentsPage() {
       <div className={isOrganizationFilterLoading ? 'opacity-50 pointer-events-none' : ''}>
         <Pagination
           pagination={pagination}
-          currentPage={currentPage}
-          onPageChange={setCurrentPage}
+          currentPage={orgFilterCurrentPage}
+          onPageChange={(page) => setOrgFilterCurrentPage(page)}
           itemName="departments"
         />
       </div>

@@ -78,13 +78,6 @@ function DashboardContent() {
       iconColor: 'text-orange-600 dark:text-orange-400',
       iconBgColor: 'bg-orange-50 dark:bg-orange-900/20',
     },
-    {
-      title: 'Pending Leave Requests',
-      value: stats.pendingLeaveRequests,
-      icon: Calendar,
-      iconColor: 'text-orange-600 dark:text-orange-400',
-      iconBgColor: 'bg-orange-50 dark:bg-orange-900/20',
-    },
   ];
 
   if (loading) {

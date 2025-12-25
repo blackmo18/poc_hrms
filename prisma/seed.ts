@@ -253,16 +253,16 @@ async function seedDatabase() {
   // Create permissions using upsert
   console.log('🔑 Creating permissions...');
   const permissionNames = [
-    { name: 'users.create', description: 'Create users' },
-    { name: 'users.read', description: 'Read users' },
-    { name: 'users.update', description: 'Update users' },
-    { name: 'users.delete', description: 'Delete users' },
-    { name: 'employees.create', description: 'Create employees' },
-    { name: 'employees.read', description: 'Read employees' },
-    { name: 'employees.update', description: 'Update employees' },
-    { name: 'employees.delete', description: 'Delete employees' },
-    { name: 'payroll.process', description: 'Process payroll' },
-    { name: 'leave.approve', description: 'Approve leave requests' },
+    { name: 'users.create', description: 'Create users', organization_id: systemOrg!.id },
+    { name: 'users.read', description: 'Read users', organization_id: systemOrg!.id },
+    { name: 'users.update', description: 'Update users', organization_id: systemOrg!.id },
+    { name: 'users.delete', description: 'Delete users', organization_id: systemOrg!.id },
+    { name: 'employees.create', description: 'Create employees', organization_id: organization.id },
+    { name: 'employees.read', description: 'Read employees', organization_id: organization.id },
+    { name: 'employees.update', description: 'Update employees', organization_id: organization.id },
+    { name: 'employees.delete', description: 'Delete employees', organization_id: organization.id },
+    { name: 'payroll.process', description: 'Process payroll', organization_id: organization.id },
+    { name: 'leave.approve', description: 'Approve leave requests', organization_id: organization.id },
   ];
 
   const permissions = await Promise.all(
@@ -507,6 +507,7 @@ async function seedDatabase() {
       user_id: adminUser.id,
       department_id: hrDept.id,
       job_title_id: hrManager.id,
+      custom_id: 'ADMIN-001', // Organization-specific custom employee ID
       first_name: 'Admin',
       last_name: 'User',
       email: 'admin@techcorp.com',
@@ -585,6 +586,7 @@ async function seedDatabase() {
       user_id: superAdminUser.id,
       department_id: systemDept.id,
       job_title_id: systemJobTitle.id,
+      custom_id: 'SYS-001', // Organization-specific custom employee ID
       first_name: 'Super',
       last_name: 'Admin',
       email: 'superadmin@hrsystem.com',
@@ -629,6 +631,7 @@ async function seedDatabase() {
           department_id: engineeringDept.id,
           job_title_id: seniorEngineer.id,
           manager_id: adminEmployee.id,
+          custom_id: 'ENG-001', // Organization-specific custom employee ID
           first_name: 'John',
           last_name: 'Doe',
           email: 'john.doe@techcorp.com',
@@ -669,6 +672,7 @@ async function seedDatabase() {
           department_id: hrDept.id,
           job_title_id: hrManager.id,
           manager_id: adminEmployee.id,
+          custom_id: 'HR-001', // Organization-specific custom employee ID
           first_name: 'Jane',
           last_name: 'Smith',
           email: 'jane.smith@techcorp.com',
@@ -709,6 +713,7 @@ async function seedDatabase() {
           department_id: salesDept.id,
           job_title_id: salesRep.id,
           manager_id: adminEmployee.id,
+          custom_id: 'SALES-001', // Organization-specific custom employee ID
           first_name: 'Mike',
           last_name: 'Johnson',
           email: 'mike.johnson@techcorp.com',

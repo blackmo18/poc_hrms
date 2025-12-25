@@ -1,9 +1,20 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useCallback, useReducer } from "react";
 import Link from "next/link";
-import { PencilIcon, PlusIcon, TrashIcon, EyeIcon } from "@/app/icons";
+import { PencilIcon, PlusIcon, TrashIcon, EyeIcon, LockIcon } from "@/app/icons";
 import Button from "@/app/components/ui/button/Button";
+import ComponentCard from '@/app/components/common/ComponentCard';
+import PageMeta from '@/app/components/common/PageMeta';
+import PageBreadcrumb from '@/app/components/common/PageBreadCrumb';
+import Pagination from '@/app/components/ui/pagination';
+import RoleComponentWrapper from '@/app/components/common/RoleComponentWrapper';
+import OrganizationFilter from '@/app/components/common/OrganizationFilter';
+import { useOrganizationFilter } from '@/hooks/useOrganizationFilter';
+import { useAuth } from '@/app/components/providers/auth-provider';
+import { useRoleAccess } from '@/app/components/providers/role-access-provider';
+import PermissionsTable from '@/app/components/accounts/PermissionsTable';
+import PermissionCard from '@/app/components/accounts/PermissionCard';
 
 interface Permission {
   id: string;
@@ -22,23 +33,159 @@ interface Permission {
   created_at: string;
 }
 
+interface ApiResponse {
+  data: Permission[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+    hasNext: boolean;
+    hasPrev: boolean;
+  };
+}
+
+interface PermissionsState {
+  // Data states
+  permissions: Permission[];
+  pagination: ApiResponse['pagination'] | null;
+
+  // Loading states
+  loading: boolean;
+  initialLoading: boolean;
+
+  // UI states
+  expandedCards: Set<string>;
+
+  // Error states
+  error: string | null;
+}
+
+type PermissionsAction =
+  // Data actions
+  | { type: 'SET_PERMISSIONS'; payload: Permission[] }
+  | { type: 'SET_PAGINATION'; payload: ApiResponse['pagination'] | null }
+
+  // Loading actions
+  | { type: 'SET_LOADING'; payload: boolean }
+  | { type: 'SET_INITIAL_LOADING'; payload: boolean }
+
+  // UI actions
+  | { type: 'TOGGLE_CARD_EXPANSION'; payload: string }
+
+  // Error actions
+  | { type: 'SET_ERROR'; payload: string | null }
+
+  // Combined actions
+  | { type: 'START_LOADING' }
+  | { type: 'FINISH_LOADING' };
+
+function permissionsReducer(state: PermissionsState, action: PermissionsAction): PermissionsState {
+  switch (action.type) {
+    // Data actions
+    case 'SET_PERMISSIONS':
+      return { ...state, permissions: action.payload };
+    case 'SET_PAGINATION':
+      return { ...state, pagination: action.payload };
+
+    // Loading actions
+    case 'SET_LOADING':
+      return { ...state, loading: action.payload };
+    case 'SET_INITIAL_LOADING':
+      return { ...state, initialLoading: action.payload };
+
+    // UI actions
+    case 'TOGGLE_CARD_EXPANSION': {
+      const newExpanded = new Set(state.expandedCards);
+      if (newExpanded.has(action.payload)) {
+        newExpanded.delete(action.payload);
+      } else {
+        newExpanded.add(action.payload);
+      }
+      return { ...state, expandedCards: newExpanded };
+    }
+
+    // Error actions
+    case 'SET_ERROR':
+      return { ...state, error: action.payload };
+
+    // Combined actions
+    case 'START_LOADING':
+      return { ...state, loading: true, error: null };
+    case 'FINISH_LOADING':
+      return { ...state, loading: false, initialLoading: false };
+
+    default:
+      return state;
+  }
+}
+
+const initialPermissionsState: PermissionsState = {
+  // Data states
+  permissions: [],
+  pagination: null,
+
+  // Loading states
+  loading: true,
+  initialLoading: true,
+
+  // UI states
+  expandedCards: new Set(),
+
+  // Error states
+  error: null,
+};
+
 export default function PermissionsPage() {
-  const [permissions, setPermissions] = useState<Permission[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { user, isLoading: authLoading } = useAuth();
+  const { roles } = useRoleAccess();
+  const [state, dispatch] = useReducer(permissionsReducer, initialPermissionsState);
 
-  // Fetch permissions
-  const fetchPermissions = async () => {
+  // Use the reusable organization filter hook
+  const {
+    selectedOrganization,
+    organizations,
+    isOrganizationFilterLoading,
+    currentPage: orgFilterCurrentPage,
+    handleOrganizationChange,
+    setCurrentPage: setOrgFilterCurrentPage,
+    isSuperAdmin,
+    organizationOptions,
+  } = useOrganizationFilter({
+    apiEndpoint: '/api/permissions',
+    defaultPageSize: 15,
+    onDataFetch: async (orgId, page) => {
+      await fetchPermissions(orgId, page);
+    },
+  });
+
+  // Memoize super admin check for consistency
+  const isSuperAdminMemo = useMemo(() =>
+    roles.includes('SUPER_ADMIN'),
+    [roles]
+  );
+
+  const fetchPermissions = async (orgId?: string, page: number = 1) => {
     try {
-      setLoading(true);
-      setError(null);
+      dispatch({ type: 'START_LOADING' });
 
-      const response = await fetch('/api/permissions', {
+      const params = new URLSearchParams();
+      if (orgId) params.set('organizationId', orgId.toString());
+      params.set('page', page.toString());
+      params.set('limit', '15');
+
+      const url = `/api/permissions?${params.toString()}`;
+      const response = await fetch(url, {
         credentials: 'include',
       });
 
+      if (response.status === 401) {
+        dispatch({ type: 'SET_ERROR', payload: 'Unauthorized access. Please log in.' });
+        return;
+      }
+
       if (response.status === 403) {
-        setError('Access denied. Insufficient permissions.');
+        dispatch({ type: 'SET_ERROR', payload: 'Access denied. Insufficient permissions.' });
         return;
       }
 
@@ -46,19 +193,16 @@ export default function PermissionsPage() {
         throw new Error('Failed to fetch permissions');
       }
 
-      const result = await response.json();
-      setPermissions(result.data || []);
+      const result: ApiResponse = await response.json();
+      dispatch({ type: 'SET_PERMISSIONS', payload: result.data || [] });
+      dispatch({ type: 'SET_PAGINATION', payload: result.pagination });
     } catch (error) {
       console.error('Error fetching permissions:', error);
-      setError('Failed to load permissions. Please try again.');
+      dispatch({ type: 'SET_ERROR', payload: 'Failed to load permissions. Please try again.' });
     } finally {
-      setLoading(false);
+      dispatch({ type: 'FINISH_LOADING' });
     }
   };
-
-  useEffect(() => {
-    fetchPermissions();
-  }, []);
 
   const handleDeletePermission = async (permissionId: string) => {
     if (!confirm('Are you sure you want to delete this permission? This action cannot be undone.')) return;
@@ -70,7 +214,8 @@ export default function PermissionsPage() {
       });
 
       if (response.ok) {
-        setPermissions(permissions.filter(permission => permission.id !== permissionId));
+        // Refresh the permissions list
+        await fetchPermissions(selectedOrganization, orgFilterCurrentPage);
       } else {
         alert('Failed to delete permission');
       }
@@ -80,112 +225,140 @@ export default function PermissionsPage() {
     }
   };
 
-  return (
-    <div>
-      {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-6">
-        <div>
-          <h3 className="text-xl font-semibold text-black dark:text-white">
-            Permissions
-          </h3>
-          <p className="text-sm text-gray-500 dark:text-gray-400">
-            Manage system permissions and their assignments
-          </p>
-        </div>
+  const toggleCardExpansion = (permissionId: string) => {
+    dispatch({ type: 'TOGGLE_CARD_EXPANSION', payload: permissionId });
+  };
 
-        <Link href="/accounts/permissions/create">
-          <Button>
-            <PlusIcon className="w-4 h-4 mr-2" />
-            Add Permission
-          </Button>
-        </Link>
+  if (state.initialLoading) { // display this only on first page load
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+              Permissions
+            </h1>
+            <p className="mt-2 text-gray-600 dark:text-gray-300">
+              Manage system permissions and their assignments
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center justify-center h-64">
+          <div className="text-lg text-gray-600 dark:text-gray-300">Loading permissions...</div>
+        </div>
+      </div>
+    );
+  }
+
+  if (state.error) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+              Permissions
+            </h1>
+            <p className="mt-2 text-gray-600 dark:text-gray-300">
+              Manage system permissions and their assignments
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <div className="text-red-600 dark:text-red-400 text-lg mb-2">Error</div>
+            <div className="text-gray-600 dark:text-gray-300">{state.error}</div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <PageMeta title='Permissions - HR Management System' description='Manage permissions and assignments' />
+      <PageBreadcrumb
+        pageTitle='Permissions'
+        breadcrumbs={[
+          { label: 'Permissions' }
+        ]}
+      />
+
+      {/* Content Container */}
+      <div className="w-full overflow-x-auto">
+        <ComponentCard title="Permission Management" size="full">
+          {/* Organization Filter - Using reusable component */}
+          <RoleComponentWrapper roles={['SUPER_ADMIN']} showFallback={false}>
+            <OrganizationFilter
+              selectedOrganization={selectedOrganization}
+              organizationOptions={organizationOptions}
+              onOrganizationChange={handleOrganizationChange}
+              disabled={isOrganizationFilterLoading}
+            />
+          </RoleComponentWrapper>
+
+          {/* Add Permission Button */}
+          <div className="flex justify-end mb-6">
+            <Link
+              href="/accounts/permissions/create"
+              className="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <PlusIcon className="w-4 h-4 mr-2" />
+              Add Permission
+            </Link>
+          </div>
+
+          {/* Desktop Table View */}
+          <PermissionsTable
+            permissions={state.permissions}
+            loading={isOrganizationFilterLoading}
+            currentPage={state.pagination?.page}
+            limit={state.pagination?.limit}
+            onDeletePermission={handleDeletePermission}
+          />
+
+          {/* Mobile Card View */}
+          <div className="lg:hidden space-y-4">
+            {state.permissions.map((permission) => (
+              <PermissionCard
+                key={permission.id}
+                permission={permission}
+                isExpanded={state.expandedCards.has(permission.id)}
+                onToggle={toggleCardExpansion}
+              />
+            ))}
+          </div>
+
+          {/* Empty State */}
+          {!isOrganizationFilterLoading && state.permissions.length === 0 && !state.loading && (
+            <div className="text-center py-12">
+              <LockIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No permissions found</h3>
+              <p className="text-gray-600 dark:text-gray-400 mb-4">
+                {selectedOrganization
+                  ? 'No permissions in the selected organization.'
+                  : 'Get started by creating your first permission.'
+                }
+              </p>
+              <Link
+                href="/accounts/permissions/create"
+                className="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 transition-colors"
+              >
+                <PlusIcon className="w-4 h-4 mr-2" />
+                Create Permission
+              </Link>
+            </div>
+          )}
+        </ComponentCard>
       </div>
 
-      {/* Permissions Table */}
-      <div className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03]">
-        <div className="w-full overflow-x-auto">
-          <table className="w-full table-auto">
-            <thead className="border-b border-gray-100 dark:border-white/[0.05]">
-              <tr>
-                <th className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">
-                  Name
-                </th>
-                <th className="px-4 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">
-                  Description
-                </th>
-                <th className="px-4 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">
-                  Organization
-                </th>
-                <th className="px-4 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">
-                  Roles Count
-                </th>
-                <th className="px-4 py-3 font-medium text-gray-500 text-center text-theme-xs dark:text-gray-400">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100 dark:divide-white/[0.05]">
-              {loading ? (
-                <tr>
-                  <td colSpan={5} className="px-4 py-8 text-center text-gray-500">
-                    Loading permissions...
-                  </td>
-                </tr>
-              ) : error ? (
-                <tr>
-                  <td colSpan={5} className="px-4 py-8 text-center text-red-500">
-                    {error}
-                  </td>
-                </tr>
-              ) : permissions.length === 0 ? (
-                <tr>
-                  <td colSpan={5} className="px-4 py-8 text-center text-gray-500">
-                    No permissions found
-                  </td>
-                </tr>
-              ) : (
-                permissions.map((permission) => (
-                  <tr key={permission.id}>
-                    <td className="px-5 py-4 text-gray-800 text-start text-theme-sm dark:text-white/90">
-                      <div className="font-medium">{permission.name}</div>
-                    </td>
-                    <td className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
-                      {permission.description || 'No description'}
-                    </td>
-                    <td className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
-                      {permission.organization?.name || 'Global'}
-                    </td>
-                    <td className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
-                      {permission.rolePermissions.length} roles
-                    </td>
-                    <td className="px-4 py-3 text-center">
-                      <div className="flex items-center justify-center space-x-2">
-                        <Link
-                          href={`/accounts/permissions/${permission.id}`}
-                          className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-800 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700 transition-colors"
-                        >
-                          <EyeIcon className="w-4 h-4" />
-                        </Link>
-                        <Link
-                          href={`/accounts/permissions/${permission.id}/edit`}
-                          className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-blue-100 text-blue-600 hover:bg-blue-200 hover:text-blue-800 dark:bg-blue-900 dark:text-blue-400 dark:hover:bg-blue-800 transition-colors"
-                        >
-                          <PencilIcon className="w-4 h-4" />
-                        </Link>
-                        <button
-                          onClick={() => handleDeletePermission(permission.id)}
-                          className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-red-100 text-red-600 hover:bg-red-200 hover:text-red-800 dark:bg-red-900 dark:text-red-400 dark:hover:bg-red-800 transition-colors"
-                        >
-                          <TrashIcon className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+      {/* Pagination */}
+      <div className={state.loading ? 'opacity-50 pointer-events-none' : ''}>
+        <Pagination
+          pagination={state.pagination}
+          currentPage={orgFilterCurrentPage}
+          onPageChange={(page) => setOrgFilterCurrentPage(page)}
+          itemName="permissions"
+        />
       </div>
     </div>
   );
