@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useReducer } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/app/components/providers/auth-provider";
@@ -14,6 +14,7 @@ import ErrorModal from "@/app/components/ui/modal/ErrorModal";
 import EmployeeSearchModal from "@/app/components/employees/EmployeeSearchModal";
 import CreateUserForm from "@/app/components/users/CreateUserForm";
 import PasswordPanel from "@/app/components/users/PasswordPanel";
+import InitialLoadingScreen from '@/app/components/common/InitialLoadingScreen';
 import { DetailItem, GroupedItem } from "@/lib/models/modal";
 
 interface Organization {
@@ -46,30 +47,141 @@ interface ValidationError {
   [key: string]: string;
 }
 
+interface CreateUserState {
+  // Form data
+  formData: UserFormData;
+  errors: ValidationError;
+
+  // Loading states
+  loading: boolean;
+  initialLoading: boolean;
+  fetchLoading: boolean;
+
+  // UI states
+  showConfirmModal: boolean;
+  showErrorModal: boolean;
+  showEmployeeModal: boolean;
+  showSuccessModal: boolean;
+  errorMessage: string;
+
+  // Data states
+  organizations: Organization[];
+  availableRoles: Role[];
+  selectedEmployeeName: string;
+  passwordResetLink: string;
+}
+
+type CreateUserAction =
+  // Form actions
+  | { type: 'SET_FORM_DATA'; payload: Partial<UserFormData> }
+  | { type: 'SET_ERRORS'; payload: ValidationError }
+  | { type: 'CLEAR_FIELD_ERROR'; payload: keyof UserFormData }
+
+  // Loading actions
+  | { type: 'SET_LOADING'; payload: boolean }
+  | { type: 'SET_INITIAL_LOADING'; payload: boolean }
+  | { type: 'SET_FETCH_LOADING'; payload: boolean }
+
+  // UI actions
+  | { type: 'SET_SHOW_CONFIRM_MODAL'; payload: boolean }
+  | { type: 'SET_SHOW_ERROR_MODAL'; payload: boolean }
+  | { type: 'SET_SHOW_EMPLOYEE_MODAL'; payload: boolean }
+  | { type: 'SET_SHOW_SUCCESS_MODAL'; payload: boolean }
+  | { type: 'SET_ERROR_MESSAGE'; payload: string }
+
+  // Combined actions
+  | { type: 'FINISH_LOADING' }
+
+  // Data actions
+  | { type: 'SET_ORGANIZATIONS'; payload: Organization[] }
+  | { type: 'SET_AVAILABLE_ROLES'; payload: Role[] }
+  | { type: 'SET_SELECTED_EMPLOYEE_NAME'; payload: string }
+  | { type: 'SET_PASSWORD_RESET_LINK'; payload: string };
+
+function createUserReducer(state: CreateUserState, action: CreateUserAction): CreateUserState {
+  switch (action.type) {
+    // Form actions
+    case 'SET_FORM_DATA':
+      return { ...state, formData: { ...state.formData, ...action.payload } };
+    case 'SET_ERRORS':
+      return { ...state, errors: action.payload };
+    case 'CLEAR_FIELD_ERROR':
+      return { ...state, errors: { ...state.errors, [action.payload]: '' } };
+
+    // Loading actions
+    case 'SET_LOADING':
+      return { ...state, loading: action.payload };
+    case 'SET_INITIAL_LOADING':
+      return { ...state, initialLoading: action.payload };
+    case 'SET_FETCH_LOADING':
+      return { ...state, fetchLoading: action.payload };
+
+    // UI actions
+    case 'SET_SHOW_CONFIRM_MODAL':
+      return { ...state, showConfirmModal: action.payload };
+    case 'SET_SHOW_ERROR_MODAL':
+      return { ...state, showErrorModal: action.payload };
+    case 'SET_SHOW_EMPLOYEE_MODAL':
+      return { ...state, showEmployeeModal: action.payload };
+    case 'SET_SHOW_SUCCESS_MODAL':
+      return { ...state, showSuccessModal: action.payload };
+    case 'SET_ERROR_MESSAGE':
+      return { ...state, errorMessage: action.payload };
+
+    // Combined actions
+    case 'FINISH_LOADING':
+      return { ...state, loading: false, initialLoading: false };
+
+    // Data actions
+    case 'SET_ORGANIZATIONS':
+      return { ...state, organizations: action.payload };
+    case 'SET_AVAILABLE_ROLES':
+      return { ...state, availableRoles: action.payload };
+    case 'SET_SELECTED_EMPLOYEE_NAME':
+      return { ...state, selectedEmployeeName: action.payload };
+    case 'SET_PASSWORD_RESET_LINK':
+      return { ...state, passwordResetLink: action.payload };
+
+    default:
+      return state;
+  }
+}
+
+const initialCreateUserState: CreateUserState = {
+  // Form data
+  formData: {
+    employee_id: '',
+    email: '',
+    organization_id: '',
+    role_ids: [],
+    generated_password: '',
+  },
+  errors: {},
+
+  // Loading states
+  loading: false,
+  initialLoading: true,
+  fetchLoading: false,
+
+  // UI states
+  showConfirmModal: false,
+  showErrorModal: false,
+  showEmployeeModal: false,
+  showSuccessModal: false,
+  errorMessage: '',
+
+  // Data states
+  organizations: [],
+  availableRoles: [],
+  selectedEmployeeName: '',
+  passwordResetLink: '',
+};
+
 export default function CreateUserPage() {
   const router = useRouter();
   const { user } = useAuth();
   const { roles } = useRoleAccess();
-
-  const [formData, setFormData] = useState<UserFormData>({
-    employee_id: "",
-    email: "",
-    organization_id: "",
-    role_ids: [],
-    generated_password: "",
-  });
-
-  const [errors, setErrors] = useState<ValidationError>({});
-  const [loading, setLoading] = useState(false);
-  const [showConfirmModal, setShowConfirmModal] = useState(false);
-  const [showErrorModal, setShowErrorModal] = useState(false);
-  const [errorMessage, setErrorMessage] = useState("");
-  const [showEmployeeModal, setShowEmployeeModal] = useState(false);
-  const [selectedEmployeeName, setSelectedEmployeeName] = useState("");
-  const [organizations, setOrganizations] = useState<Organization[]>([]);
-  const [availableRoles, setAvailableRoles] = useState<Role[]>([]);
-  const [passwordResetLink, setPasswordResetLink] = useState("");
-  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [state, dispatch] = useReducer(createUserReducer, initialCreateUserState);
 
   useEffect(() => {
     fetchOrganizations();
@@ -89,24 +201,26 @@ export default function CreateUserPage() {
 
         // Handle paginated API response { data: organizations, pagination: {...} }
         if (data && data.data && Array.isArray(data.data)) {
-          setOrganizations(data.data);
+          dispatch({ type: 'SET_ORGANIZATIONS', payload: data.data });
         } else if (Array.isArray(data)) {
           // Handle direct array response
-          setOrganizations(data);
+          dispatch({ type: 'SET_ORGANIZATIONS', payload: data });
         } else if (data && typeof data === 'object' && data.organizations && Array.isArray(data.organizations)) {
           // Handle case where API returns { organizations: [...] }
-          setOrganizations(data.organizations);
+          dispatch({ type: 'SET_ORGANIZATIONS', payload: data.organizations });
         } else {
           console.warn('Unexpected organizations data format:', data);
-          setOrganizations([]);
+          dispatch({ type: 'SET_ORGANIZATIONS', payload: [] });
         }
       } else {
         console.error('Failed to fetch organizations:', response.status);
-        setOrganizations([]);
+        dispatch({ type: 'SET_ORGANIZATIONS', payload: [] });
       }
     } catch (error) {
       console.error("Error fetching organizations:", error);
-      setOrganizations([]);
+      dispatch({ type: 'SET_ORGANIZATIONS', payload: [] });
+    } finally {
+      dispatch({ type: 'FINISH_LOADING' });
     }
   };
 
@@ -121,83 +235,77 @@ export default function CreateUserPage() {
 
         // Handle paginated API response { data: roles, pagination: {...} }
         if (data && data.data && Array.isArray(data.data)) {
-          setAvailableRoles(data.data);
+          dispatch({ type: 'SET_AVAILABLE_ROLES', payload: data.data });
         } else if (Array.isArray(data)) {
           // Handle direct array response
-          setAvailableRoles(data);
+          dispatch({ type: 'SET_AVAILABLE_ROLES', payload: data });
         } else if (data && typeof data === 'object' && data.roles && Array.isArray(data.roles)) {
           // Handle case where API returns { roles: [...] }
-          setAvailableRoles(data.roles);
+          dispatch({ type: 'SET_AVAILABLE_ROLES', payload: data.roles });
         } else {
           console.warn('Unexpected roles data format:', data);
-          setAvailableRoles([]);
+          dispatch({ type: 'SET_AVAILABLE_ROLES', payload: [] });
         }
       } else {
         console.error('Failed to fetch roles:', response.status);
-        setAvailableRoles([]);
+        dispatch({ type: 'SET_AVAILABLE_ROLES', payload: [] });
       }
     } catch (error) {
       console.error("Error fetching roles:", error);
-      setAvailableRoles([]);
+      dispatch({ type: 'SET_AVAILABLE_ROLES', payload: [] });
     }
   };
 
   const handleInputChange = (field: keyof UserFormData, value: any) => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: value,
-    }));
+    dispatch({ type: 'SET_FORM_DATA', payload: { [field]: value } });
 
     // Clear error for this field
-    if (errors[field]) {
-      setErrors(prev => ({
-        ...prev,
-        [field]: "",
-      }));
+    if (state.errors[field]) {
+      dispatch({ type: 'CLEAR_FIELD_ERROR', payload: field });
     }
   };
 
   const validateForm = () => {
     const newErrors: ValidationError = {};
 
-    if (!formData.employee_id) {
+    if (!state.formData.employee_id) {
       newErrors.employee_id = "Employee is required";
     }
 
-    if (!formData.email.trim()) {
+    if (!state.formData.email.trim()) {
       newErrors.email = "Email is required";
-    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
+    } else if (!/\S+@\S+\.\S+/.test(state.formData.email)) {
       newErrors.email = "Email is invalid";
     }
 
-    if (!formData.organization_id) {
+    if (!state.formData.organization_id) {
       newErrors.organization_id = "Organization is required";
     }
 
-    if (formData.role_ids.length === 0) {
+    if (state.formData.role_ids.length === 0) {
       newErrors.role_ids = "At least one role is required";
     }
 
-    setErrors(newErrors);
+    dispatch({ type: 'SET_ERRORS', payload: newErrors });
     return Object.keys(newErrors).length === 0;
   };
 
   const handleCreateClick = () => {
     if (!validateForm()) {
-      setErrorMessage('Please fill in all required fields');
-      setShowErrorModal(true);
+      dispatch({ type: 'SET_ERROR_MESSAGE', payload: 'Please fill in all required fields' });
+      dispatch({ type: 'SET_SHOW_ERROR_MODAL', payload: true });
       return;
     }
-    setShowConfirmModal(true);
+    dispatch({ type: 'SET_SHOW_CONFIRM_MODAL', payload: true });
   };
 
   const handleConfirmCreate = async () => {
-    setShowConfirmModal(false);
+    dispatch({ type: 'SET_SHOW_CONFIRM_MODAL', payload: false });
     await performCreate();
   };
 
   const performCreate = async () => {
-    setLoading(true);
+    dispatch({ type: 'SET_LOADING', payload: true });
 
     try {
       const response = await fetch('/api/users', {
@@ -207,11 +315,11 @@ export default function CreateUserPage() {
         },
         credentials: 'include',
         body: JSON.stringify({
-          employee_id: formData.employee_id,
-          email: formData.email,
-          organization_id: formData.organization_id,
-          role_ids: formData.role_ids,
-          generated_password: formData.generated_password,
+          employee_id: state.formData.employee_id,
+          email: state.formData.email,
+          organization_id: state.formData.organization_id,
+          role_ids: state.formData.role_ids,
+          generated_password: state.formData.generated_password,
         }),
       });
 
@@ -220,30 +328,29 @@ export default function CreateUserPage() {
 
         // Generate password reset link
         const resetLink = `${window.location.origin}/auth/reset-password?token=${result.passwordResetToken}`;
-        setPasswordResetLink(resetLink);
+        dispatch({ type: 'SET_PASSWORD_RESET_LINK', payload: resetLink });
 
-        setShowSuccessModal(true);
+        dispatch({ type: 'SET_SHOW_SUCCESS_MODAL', payload: true });
       } else {
         const errorData = await response.json();
-        setErrorMessage(errorData.message || 'Failed to create user');
-        setShowErrorModal(true);
+        dispatch({ type: 'SET_ERROR_MESSAGE', payload: errorData.message || 'Failed to create user' });
+        dispatch({ type: 'SET_SHOW_ERROR_MODAL', payload: true });
       }
     } catch (error) {
       console.error('Error creating user:', error);
-      setErrorMessage('Failed to create user. Please try again.');
-      setShowErrorModal(true);
+      dispatch({ type: 'SET_ERROR_MESSAGE', payload: 'Failed to create user. Please try again.' });
+      dispatch({ type: 'SET_SHOW_ERROR_MODAL', payload: true });
     } finally {
-      setLoading(false);
+      dispatch({ type: 'SET_LOADING', payload: false });
     }
   };
 
   const handleSelectEmployee = (employee: any) => {
-    setFormData(prev => ({
-      ...prev,
+    dispatch({ type: 'SET_FORM_DATA', payload: {
       employee_id: employee.id,
       email: employee.email
-    }));
-    setSelectedEmployeeName(`${employee.first_name} ${employee.last_name}`);
+    }});
+    dispatch({ type: 'SET_SELECTED_EMPLOYEE_NAME', payload: `${employee.first_name} ${employee.last_name}` });
   };
 
   const handleGeneratePassword = (e?: React.MouseEvent) => {
@@ -251,14 +358,14 @@ export default function CreateUserPage() {
       e.preventDefault();
     }
 
-    if (!selectedEmployeeName) {
-      setErrorMessage('Please select an employee first');
-      setShowErrorModal(true);
+    if (!state.selectedEmployeeName) {
+      dispatch({ type: 'SET_ERROR_MESSAGE', payload: 'Please select an employee first' });
+      dispatch({ type: 'SET_SHOW_ERROR_MODAL', payload: true });
       return;
     }
 
     // Parse the employee name to get first and last name
-    const nameParts = selectedEmployeeName.trim().split(' ');
+    const nameParts = state.selectedEmployeeName.trim().split(' ');
     const firstName = nameParts[0]?.toLowerCase() || '';
     const lastName = nameParts[nameParts.length - 1]?.toLowerCase() || '';
 
@@ -281,13 +388,10 @@ export default function CreateUserPage() {
     // Final password format: [password]-[random alphanumeric 7]
     const generatedPassword = `${basePassword}-${randomAlphanumeric}`;
 
-    setFormData(prev => ({
-      ...prev,
-      generated_password: generatedPassword
-    }));
+    dispatch({ type: 'SET_FORM_DATA', payload: { generated_password: generatedPassword } });
   };
 
-  const roleOptions = Array.isArray(availableRoles) ? availableRoles.map(role => ({
+  const roleOptions = Array.isArray(state.availableRoles) ? state.availableRoles.map(role => ({
     value: role.id,
     text: `${role.name.split('_').join(' ')}`,
   })) : [];
@@ -296,19 +400,29 @@ export default function CreateUserPage() {
     {
       name: 'User Details',
       fields: [
-        { label: 'Organization', value: Array.isArray(organizations) ? organizations.find(org => org.id === formData.organization_id)?.name || 'Unknown' : 'Unknown' },
-        { label: 'Employee', value: selectedEmployeeName || 'Unknown' },
-        { label: 'Login Email', value: formData.email },
+        { label: 'Organization', value: Array.isArray(state.organizations) ? state.organizations.find(org => org.id === state.formData.organization_id)?.name || 'Unknown' : 'Unknown' },
+        { label: 'Employee', value: state.selectedEmployeeName || 'Unknown' },
+        { label: 'Login Email', value: state.formData.email },
       ]
     },
     {
       name: 'Access Details',
       fields: [
-        { label: 'Roles', value: formData.role_ids.length > 0 && Array.isArray(availableRoles) ? availableRoles.filter(role => formData.role_ids.includes(role.id)).map(role => role.name).join(', ') : 'None' },
-        { label: 'Password', value: formData.generated_password ? formData.generated_password : 'Not generated' },
+        { label: 'Roles', value: state.formData.role_ids.length > 0 && Array.isArray(state.availableRoles) ? state.availableRoles.filter(role => state.formData.role_ids.includes(role.id)).map(role => role.name).join(', ') : 'None' },
+        { label: 'Password', value: state.formData.generated_password ? state.formData.generated_password : 'Not generated' },
       ]
     },
   ];
+
+  if (state.initialLoading) {
+    return (
+      <InitialLoadingScreen
+        title="Create User"
+        subtitle="Create a new user account"
+        loadingText="Loading..."
+      />
+    );
+  }
 
   return (
     <>
@@ -331,43 +445,43 @@ export default function CreateUserPage() {
           </p>
         </div>
         <CreateUserForm
-          formData={formData}
-          errors={errors}
-          organizations={organizations}
+          formData={state.formData}
+          errors={state.errors}
+          organizations={state.organizations}
           roleOptions={roleOptions}
-          selectedEmployeeName={selectedEmployeeName}
+          selectedEmployeeName={state.selectedEmployeeName}
           onChange={handleInputChange}
-          onEmployeeSelect={() => setShowEmployeeModal(true)}
+          onEmployeeSelect={() => dispatch({ type: 'SET_SHOW_EMPLOYEE_MODAL', payload: true })}
           onGeneratePassword={handleGeneratePassword}
-          loading={loading}
+          loading={state.loading}
         />
         <div className='space-y-6 mb-7' />
         <PasswordPanel
-          password={formData.generated_password || ''}
+          password={state.formData.generated_password || ''}
           onPasswordChange={(value) => handleInputChange('generated_password', value)}
           onGeneratePassword={handleGeneratePassword}
-          resetLink={passwordResetLink}
-          disabled={!selectedEmployeeName}
-          loading={loading}
-          error={errors.generated_password}
+          resetLink={state.passwordResetLink}
+          disabled={!state.selectedEmployeeName}
+          loading={state.loading}
+          error={state.errors.generated_password}
         />
         <div className='flex justify-end pt-4 gap-3'>
           <Link href="/accounts/users">
             <Button
               variant='outline'
               size='md'
-              disabled={loading}
+              disabled={state.loading}
             >
               Cancel
             </Button>
           </Link>
           <Button
             variant='primary'
-            disabled={loading}
+            disabled={state.loading}
             className='bg-blue-600 hover:bg-blue-700 text-white'
             onClick={handleCreateClick}
           >
-            {loading ? 'Creating...' : 'Create User'}
+            {state.loading ? 'Creating...' : 'Create User'}
           </Button>
         </div>
       </div>
@@ -375,43 +489,43 @@ export default function CreateUserPage() {
       <EmployeeSearchModal
         height='sm'
         width='xx-wide'
-        isOpen={showEmployeeModal}
-        onClose={() => setShowEmployeeModal(false)}
+        isOpen={state.showEmployeeModal}
+        onClose={() => dispatch({ type: 'SET_SHOW_EMPLOYEE_MODAL', payload: false })}
         onSelectEmployee={handleSelectEmployee}
-        organizationId={formData.organization_id}
+        organizationId={state.formData.organization_id}
       />
 
       {/* Confirmation Modal */}
       <DetailsConfirmationModal
         size='wider'
         displayStyle='plain'
-        isOpen={showConfirmModal}
-        onClose={() => setShowConfirmModal(false)}
+        isOpen={state.showConfirmModal}
+        onClose={() => dispatch({ type: 'SET_SHOW_CONFIRM_MODAL', payload: false })}
         onConfirm={handleConfirmCreate}
         title="Confirm User Creation"
         description="Please review the user details before creating."
         groupedDetails={confirmationDetails}
-        confirmText={loading ? 'Creating...' : 'Create User'}
+        confirmText={state.loading ? 'Creating...' : 'Create User'}
         cancelText="Cancel"
-        isLoading={loading}
+        isLoading={state.loading}
       />
 
       {/* Error Modal */}
       <ErrorModal
-        isOpen={showErrorModal}
-        onClose={() => setShowErrorModal(false)}
-        errorMessage={errorMessage}
+        isOpen={state.showErrorModal}
+        onClose={() => dispatch({ type: 'SET_SHOW_ERROR_MODAL', payload: false })}
+        errorMessage={state.errorMessage}
       />
 
       {/* Success Modal */}
       <ConfirmationModal
-        isOpen={showSuccessModal}
+        isOpen={state.showSuccessModal}
         onClose={() => {
-          setShowSuccessModal(false);
+          dispatch({ type: 'SET_SHOW_SUCCESS_MODAL', payload: false });
           router.push('/accounts/users');
         }}
         onConfirm={() => {
-          setShowSuccessModal(false);
+          dispatch({ type: 'SET_SHOW_SUCCESS_MODAL', payload: false });
           router.push('/accounts/users');
         }}
         displayStyle='plain'

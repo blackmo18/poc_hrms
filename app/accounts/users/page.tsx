@@ -12,8 +12,9 @@ import PageMeta from "@/app/components/common/PageMeta";
 import PageBreadcrumb from "@/app/components/common/PageBreadCrumb";
 import RoleComponentWrapper from "@/app/components/common/RoleComponentWrapper";
 import OrganizationFilter from "@/app/components/common/OrganizationFilter";
-import { useOrganizationFilter } from "@/hooks/useOrganizationFilter";
+import { useOrganizationFilter } from '@/hooks/useOrganizationFilter';
 import { BadgeColor } from "@/app/components/ui/badge/Badge";
+import InitialLoadingScreen from '@/app/components/common/InitialLoadingScreen';
 import { UserWithRelations } from "@/lib/models/user";
 
 interface ApiResponse {
@@ -223,21 +224,11 @@ export default function UsersPage() {
 
   if (state.initialLoading) { // display this only on first page load
     return (
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-              Users
-            </h1>
-            <p className="mt-2 text-gray-600 dark:text-gray-300">
-              Manage user accounts and their roles
-            </p>
-          </div>
-        </div>
-        <div className="flex items-center justify-center h-64">
-          <div className="text-lg text-gray-600 dark:text-gray-300">Loading users...</div>
-        </div>
-      </div>
+      <InitialLoadingScreen
+        title="Users"
+        subtitle="Manage user accounts and their roles"
+        loadingText="Loading users..."
+      />
     );
   }
 

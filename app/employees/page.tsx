@@ -16,6 +16,7 @@ import { BadgeColor } from '../components/ui/badge/Badge';
 import Select from '../components/form/Select';
 import OrganizationFilter from '@/app/components/common/OrganizationFilter';
 import { useOrganizationFilter } from '@/hooks/useOrganizationFilter';
+import InitialLoadingScreen from '@/app/components/common/InitialLoadingScreen';
 
 interface Organization {
   id: string;
@@ -233,21 +234,11 @@ export default function EmployeesPage() {
 
   if (state.initialLoading) { // display this only on first page load
     return (
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-              Employees
-            </h1>
-            <p className="mt-2 text-gray-600 dark:text-gray-300">
-              Manage and view all employees in the system
-            </p>
-          </div>
-        </div>
-        <div className="flex items-center justify-center h-64">
-          <div className="text-lg text-gray-600 dark:text-gray-300">Loading employees...</div>
-        </div>
-      </div>
+      <InitialLoadingScreen
+        title="Employees"
+        subtitle="Manage and view all employees in the system"
+        loadingText="Loading employees..."
+      />
     );
   }
 

@@ -15,6 +15,7 @@ import { useAuth } from '@/app/components/providers/auth-provider';
 import { useRoleAccess } from '@/app/components/providers/role-access-provider';
 import RoleCard from '@/app/components/accounts/RoleCard';
 import RolesTable from '@/app/components/accounts/RolesTable';
+import InitialLoadingScreen from '@/app/components/common/InitialLoadingScreen';
 
 interface Role {
   id: string;
@@ -228,21 +229,11 @@ export default function RolesPage() {
 
   if (state.initialLoading) { // display this only on first page load
     return (
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-              Roles
-            </h1>
-            <p className="mt-2 text-gray-600 dark:text-gray-300">
-              Manage user roles and their permissions
-            </p>
-          </div>
-        </div>
-        <div className="flex items-center justify-center h-64">
-          <div className="text-lg text-gray-600 dark:text-gray-300">Loading roles...</div>
-        </div>
-      </div>
+      <InitialLoadingScreen
+        title="Roles"
+        subtitle="Manage user roles and their permissions"
+        loadingText="Loading roles..."
+      />
     );
   }
 

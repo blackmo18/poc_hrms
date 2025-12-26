@@ -15,6 +15,7 @@ import { useAuth } from '@/app/components/providers/auth-provider';
 import { useRoleAccess } from '@/app/components/providers/role-access-provider';
 import PermissionsTable from '@/app/components/accounts/PermissionsTable';
 import PermissionCard from '@/app/components/accounts/PermissionCard';
+import InitialLoadingScreen from '@/app/components/common/InitialLoadingScreen';
 
 interface Permission {
   id: string;
@@ -223,21 +224,11 @@ export default function PermissionsPage() {
 
   if (state.initialLoading) { // display this only on first page load
     return (
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-              Permissions
-            </h1>
-            <p className="mt-2 text-gray-600 dark:text-gray-300">
-              Manage system permissions and their assignments
-            </p>
-          </div>
-        </div>
-        <div className="flex items-center justify-center h-64">
-          <div className="text-lg text-gray-600 dark:text-gray-300">Loading permissions...</div>
-        </div>
-      </div>
+      <InitialLoadingScreen
+        title="Permissions"
+        subtitle="Manage system permissions and their assignments"
+        loadingText="Loading permissions..."
+      />
     );
   }
 

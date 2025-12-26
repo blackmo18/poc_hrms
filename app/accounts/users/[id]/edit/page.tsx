@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useReducer } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/app/components/providers/auth-provider";
@@ -12,9 +12,10 @@ import DetailsConfirmationModal from "@/app/components/ui/modal/DetailsConfirmat
 import ConfirmationModal from "@/app/components/ui/modal/ConfirmationModal";
 import ErrorModal from "@/app/components/ui/modal/ErrorModal";
 import EmployeeSearchModal from "@/app/components/employees/EmployeeSearchModal";
-import EditUserForm from "@/app/components/users/EditUserForm";
-import PasswordPanel from "@/app/components/users/PasswordPanel";
-import { DetailItem, GroupedItem } from "@/lib/models/modal";
+import EditUserForm from '@/app/components/users/EditUserForm';
+import PasswordPanel from '@/app/components/users/PasswordPanel';
+import { DetailItem, GroupedItem } from '@/lib/models/modal';
+import InitialLoadingScreen from '@/app/components/common/InitialLoadingScreen';
 
 interface Organization {
   id: string;
@@ -69,34 +70,148 @@ interface UserData {
   updated_at: string;
 }
 
+interface EditUserState {
+  // Form data
+  formData: UserFormData;
+  errors: ValidationError;
+
+  // Loading states
+  loading: boolean;
+  initialLoading: boolean;
+  fetchLoading: boolean;
+
+  // UI states
+  showConfirmModal: boolean;
+  showErrorModal: boolean;
+  showEmployeeModal: boolean;
+  showSuccessModal: boolean;
+  errorMessage: string;
+
+  // Data states
+  organizations: Organization[];
+  availableRoles: Role[];
+  userData: UserData | null;
+  selectedEmployeeName: string;
+  passwordResetLink: string;
+}
+
+type EditUserAction =
+  // Form actions
+  | { type: 'SET_FORM_DATA'; payload: Partial<UserFormData> }
+  | { type: 'SET_ERRORS'; payload: ValidationError }
+  | { type: 'CLEAR_FIELD_ERROR'; payload: keyof UserFormData }
+
+  // Loading actions
+  | { type: 'SET_LOADING'; payload: boolean }
+  | { type: 'SET_INITIAL_LOADING'; payload: boolean }
+  | { type: 'SET_FETCH_LOADING'; payload: boolean }
+
+  // UI actions
+  | { type: 'SET_SHOW_CONFIRM_MODAL'; payload: boolean }
+  | { type: 'SET_SHOW_ERROR_MODAL'; payload: boolean }
+  | { type: 'SET_SHOW_EMPLOYEE_MODAL'; payload: boolean }
+  | { type: 'SET_SHOW_SUCCESS_MODAL'; payload: boolean }
+  | { type: 'SET_ERROR_MESSAGE'; payload: string }
+
+  // Combined actions
+  | { type: 'FINISH_LOADING' }
+
+  // Data actions
+  | { type: 'SET_ORGANIZATIONS'; payload: Organization[] }
+  | { type: 'SET_AVAILABLE_ROLES'; payload: Role[] }
+  | { type: 'SET_USER_DATA'; payload: UserData | null }
+  | { type: 'SET_SELECTED_EMPLOYEE_NAME'; payload: string }
+  | { type: 'SET_PASSWORD_RESET_LINK'; payload: string };
+
+function editUserReducer(state: EditUserState, action: EditUserAction): EditUserState {
+  switch (action.type) {
+    // Form actions
+    case 'SET_FORM_DATA':
+      return { ...state, formData: { ...state.formData, ...action.payload } };
+    case 'SET_ERRORS':
+      return { ...state, errors: action.payload };
+    case 'CLEAR_FIELD_ERROR':
+      return { ...state, errors: { ...state.errors, [action.payload]: '' } };
+
+    // Loading actions
+    case 'SET_LOADING':
+      return { ...state, loading: action.payload };
+    case 'SET_INITIAL_LOADING':
+      return { ...state, initialLoading: action.payload };
+    case 'SET_FETCH_LOADING':
+      return { ...state, fetchLoading: action.payload };
+
+    // UI actions
+    case 'SET_SHOW_CONFIRM_MODAL':
+      return { ...state, showConfirmModal: action.payload };
+    case 'SET_SHOW_ERROR_MODAL':
+      return { ...state, showErrorModal: action.payload };
+    case 'SET_SHOW_EMPLOYEE_MODAL':
+      return { ...state, showEmployeeModal: action.payload };
+    case 'SET_SHOW_SUCCESS_MODAL':
+      return { ...state, showSuccessModal: action.payload };
+    case 'SET_ERROR_MESSAGE':
+      return { ...state, errorMessage: action.payload };
+
+    // Combined actions
+    case 'FINISH_LOADING':
+      return { ...state, loading: false, initialLoading: false };
+
+    // Data actions
+    case 'SET_ORGANIZATIONS':
+      return { ...state, organizations: action.payload };
+    case 'SET_AVAILABLE_ROLES':
+      return { ...state, availableRoles: action.payload };
+    case 'SET_USER_DATA':
+      return { ...state, userData: action.payload };
+    case 'SET_SELECTED_EMPLOYEE_NAME':
+      return { ...state, selectedEmployeeName: action.payload };
+    case 'SET_PASSWORD_RESET_LINK':
+      return { ...state, passwordResetLink: action.payload };
+
+    default:
+      return state;
+  }
+}
+
+const initialEditUserState: EditUserState = {
+  // Form data
+  formData: {
+    employee_id: '',
+    email: '',
+    organization_id: '',
+    role_ids: [],
+    generated_password: '',
+  },
+  errors: {},
+
+  // Loading states
+  loading: false,
+  initialLoading: true,
+  fetchLoading: false,
+
+  // UI states
+  showConfirmModal: false,
+  showErrorModal: false,
+  showEmployeeModal: false,
+  showSuccessModal: false,
+  errorMessage: '',
+
+  // Data states
+  organizations: [],
+  availableRoles: [],
+  userData: null,
+  selectedEmployeeName: '',
+  passwordResetLink: '',
+};
+
 export default function EditUserPage() {
   const router = useRouter();
   const params = useParams();
   const userId = params.id as string;
   const { user } = useAuth();
   const { roles } = useRoleAccess();
-
-  const [formData, setFormData] = useState<UserFormData>({
-    employee_id: "",
-    email: "",
-    organization_id: "",
-    role_ids: [],
-    generated_password: "",
-  });
-
-  const [errors, setErrors] = useState<ValidationError>({});
-  const [loading, setLoading] = useState(false);
-  const [showConfirmModal, setShowConfirmModal] = useState(false);
-  const [showErrorModal, setShowErrorModal] = useState(false);
-  const [errorMessage, setErrorMessage] = useState("");
-  const [showEmployeeModal, setShowEmployeeModal] = useState(false);
-  const [selectedEmployeeName, setSelectedEmployeeName] = useState("");
-  const [organizations, setOrganizations] = useState<Organization[]>([]);
-  const [availableRoles, setAvailableRoles] = useState<Role[]>([]);
-  const [showSuccessModal, setShowSuccessModal] = useState(false);
-  const [userData, setUserData] = useState<UserData | null>(null);
-  const [fetchLoading, setFetchLoading] = useState(true);
-  const [passwordResetLink, setPasswordResetLink] = useState("");
+  const [state, dispatch] = useReducer(editUserReducer, initialEditUserState);
 
   useEffect(() => {
     fetchRoles();
@@ -113,29 +228,29 @@ export default function EditUserPage() {
 
         // Handle paginated API response { data: roles, pagination: {...} }
         if (data && data.data && Array.isArray(data.data)) {
-          setAvailableRoles(data.data);
+          dispatch({ type: 'SET_AVAILABLE_ROLES', payload: data.data });
         } else if (Array.isArray(data)) {
           // Handle direct array response
-          setAvailableRoles(data);
+          dispatch({ type: 'SET_AVAILABLE_ROLES', payload: data });
         } else if (data && typeof data === 'object' && data.roles && Array.isArray(data.roles)) {
           // Handle case where API returns { roles: [...] }
-          setAvailableRoles(data.roles);
+          dispatch({ type: 'SET_AVAILABLE_ROLES', payload: data.roles });
         } else {
           console.warn('Unexpected roles data format:', data);
-          setAvailableRoles([]);
+          dispatch({ type: 'SET_AVAILABLE_ROLES', payload: [] });
         }
       } else {
         console.error('Failed to fetch roles:', response.status);
-        setAvailableRoles([]);
+        dispatch({ type: 'SET_AVAILABLE_ROLES', payload: [] });
       }
     } catch (error) {
       console.error("Error fetching roles:", error);
-      setAvailableRoles([]);
+      dispatch({ type: 'SET_AVAILABLE_ROLES', payload: [] });
     }
   };
 
   const fetchUserData = async () => {
-    setFetchLoading(true);
+    dispatch({ type: 'SET_FETCH_LOADING', payload: true });
     try {
       const response = await fetch(`/api/users/${userId}`, {
         credentials: "include",
@@ -143,98 +258,92 @@ export default function EditUserPage() {
 
       if (response.ok) {
         const userData: UserData = await response.json();
-        setUserData(userData);
+        dispatch({ type: 'SET_USER_DATA', payload: userData });
 
         // Set organization from user data
         if (userData.organization) {
-          setOrganizations([userData.organization]);
+          dispatch({ type: 'SET_ORGANIZATIONS', payload: [userData.organization] });
         }
 
         // Populate form data with null checking
         if (!userData.employee) {
-          setErrorMessage('User data is incomplete - employee information missing');
-          setShowErrorModal(true);
+          dispatch({ type: 'SET_ERROR_MESSAGE', payload: 'User data is incomplete - employee information missing' });
+          dispatch({ type: 'SET_SHOW_ERROR_MODAL', payload: true });
           return;
         }
 
-        setFormData({
+        dispatch({ type: 'SET_FORM_DATA', payload: {
           employee_id: userData.employee.id,
           email: userData.email,
           organization_id: userData.organization_id,
           role_ids: userData.roles ? userData.roles.map(role => role.id) : [],
-        });
+        }});
 
-        setSelectedEmployeeName(`${userData.employee.first_name} ${userData.employee.last_name}`);
+        dispatch({ type: 'SET_SELECTED_EMPLOYEE_NAME', payload: `${userData.employee.first_name} ${userData.employee.last_name}` });
       } else {
         console.error('Failed to fetch user data:', response.status);
-        setErrorMessage('Failed to load user data');
-        setShowErrorModal(true);
+        dispatch({ type: 'SET_ERROR_MESSAGE', payload: 'Failed to load user data' });
+        dispatch({ type: 'SET_SHOW_ERROR_MODAL', payload: true });
       }
     } catch (error) {
       console.error("Error fetching user data:", error);
-      setErrorMessage('Failed to load user data');
-      setShowErrorModal(true);
+      dispatch({ type: 'SET_ERROR_MESSAGE', payload: 'Failed to load user data' });
+      dispatch({ type: 'SET_SHOW_ERROR_MODAL', payload: true });
     } finally {
-      setFetchLoading(false);
+      dispatch({ type: 'FINISH_LOADING' });
     }
   };
 
   const handleInputChange = (field: keyof UserFormData, value: any) => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: value,
-    }));
+    dispatch({ type: 'SET_FORM_DATA', payload: { [field]: value } });
 
     // Clear error for this field
-    if (errors[field]) {
-      setErrors(prev => ({
-        ...prev,
-        [field]: "",
-      }));
+    if (state.errors[field]) {
+      dispatch({ type: 'CLEAR_FIELD_ERROR', payload: field });
     }
   };
 
   const validateForm = () => {
     const newErrors: ValidationError = {};
 
-    if (!formData.employee_id) {
+    if (!state.formData.employee_id) {
       newErrors.employee_id = "Employee is required";
     }
 
-    if (!formData.email.trim()) {
+    if (!state.formData.email.trim()) {
       newErrors.email = "Email is required";
-    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
+    } else if (!/\S+@\S+\.\S+/.test(state.formData.email)) {
       newErrors.email = "Email is invalid";
     }
 
-    if (!formData.organization_id) {
+    if (!state.formData.organization_id) {
       newErrors.organization_id = "Organization is required";
     }
 
-    if (formData.role_ids.length === 0) {
+    if (state.formData.role_ids.length === 0) {
       newErrors.role_ids = "At least one role is required";
     }
 
-    setErrors(newErrors);
+    dispatch({ type: 'SET_ERRORS', payload: newErrors });
     return Object.keys(newErrors).length === 0;
   };
 
   const handleUpdateClick = () => {
     if (!validateForm()) {
-      setErrorMessage('Please fill in all required fields');
-      setShowErrorModal(true);
+      dispatch({ type: 'SET_ERROR_MESSAGE', payload: 'Please fill in all required fields' });
+      dispatch({ type: 'SET_SHOW_ERROR_MODAL', payload: true });
       return;
     }
-    setShowConfirmModal(true);
+    dispatch({ type: 'SET_SHOW_CONFIRM_MODAL', payload: true });
   };
 
   const handleConfirmUpdate = async () => {
-    setShowConfirmModal(false);
+    dispatch({ type: 'SET_SHOW_CONFIRM_MODAL', payload: false });
     await performUpdate();
   };
 
   const performUpdate = async () => {
-    setLoading(true);
+    dispatch({ type: 'SET_LOADING', payload: true });
 
     try {
       const response = await fetch(`/api/users/${userId}`, {
@@ -244,36 +353,35 @@ export default function EditUserPage() {
         },
         credentials: 'include',
         body: JSON.stringify({
-          employee_id: formData.employee_id,
-          email: formData.email,
-          organization_id: formData.organization_id,
-          role_ids: formData.role_ids,
+          employee_id: state.formData.employee_id,
+          email: state.formData.email,
+          organization_id: state.formData.organization_id,
+          role_ids: state.formData.role_ids,
         }),
       });
 
       if (response.ok) {
-        setShowSuccessModal(true);
+        dispatch({ type: 'SET_SHOW_SUCCESS_MODAL', payload: true });
       } else {
         const errorData = await response.json();
-        setErrorMessage(errorData.message || 'Failed to update user');
-        setShowErrorModal(true);
+        dispatch({ type: 'SET_ERROR_MESSAGE', payload: errorData.message || 'Failed to update user' });
+        dispatch({ type: 'SET_SHOW_ERROR_MODAL', payload: true });
       }
     } catch (error) {
       console.error('Error updating user:', error);
-      setErrorMessage('Failed to update user. Please try again.');
-      setShowErrorModal(true);
+      dispatch({ type: 'SET_ERROR_MESSAGE', payload: 'Failed to update user. Please try again.' });
+      dispatch({ type: 'SET_SHOW_ERROR_MODAL', payload: true });
     } finally {
-      setLoading(false);
+      dispatch({ type: 'SET_LOADING', payload: false });
     }
   };
 
   const handleSelectEmployee = (employee: any) => {
-    setFormData(prev => ({
-      ...prev,
+    dispatch({ type: 'SET_FORM_DATA', payload: {
       employee_id: employee.id,
       email: employee.email
-    }));
-    setSelectedEmployeeName(`${employee.first_name} ${employee.last_name}`);
+    }});
+    dispatch({ type: 'SET_SELECTED_EMPLOYEE_NAME', payload: `${employee.first_name} ${employee.last_name}` });
   };
 
   const handleGeneratePassword = (e?: React.MouseEvent) => {
@@ -281,14 +389,14 @@ export default function EditUserPage() {
       e.preventDefault();
     }
 
-    if (!selectedEmployeeName) {
-      setErrorMessage('Please select an employee first');
-      setShowErrorModal(true);
+    if (!state.selectedEmployeeName) {
+      dispatch({ type: 'SET_ERROR_MESSAGE', payload: 'Please select an employee first' });
+      dispatch({ type: 'SET_SHOW_ERROR_MODAL', payload: true });
       return;
     }
 
     // Generate password: [lastname.firstname.yyyy.mm.dd]-[random alphanumeric 7]
-    const [firstName, lastName] = selectedEmployeeName.split(' ');
+    const [firstName, lastName] = state.selectedEmployeeName.split(' ');
     const now = new Date();
     const year = now.getFullYear();
     const month = String(now.getMonth() + 1).padStart(2, '0');
@@ -302,10 +410,7 @@ export default function EditUserPage() {
     }
 
     const password = `${lastName}.${firstName}.${year}.${month}.${day}-${randomSuffix}`;
-    setFormData(prev => ({
-      ...prev,
-      generated_password: password
-    }));
+    dispatch({ type: 'SET_FORM_DATA', payload: { generated_password: password } });
   };
 
   const handleResetPassword = async (e?: React.MouseEvent) => {
@@ -313,13 +418,13 @@ export default function EditUserPage() {
       e.preventDefault();
     }
 
-    if (!formData.generated_password) {
-      setErrorMessage('Please generate a password first');
-      setShowErrorModal(true);
+    if (!state.formData.generated_password) {
+      dispatch({ type: 'SET_ERROR_MESSAGE', payload: 'Please generate a password first' });
+      dispatch({ type: 'SET_SHOW_ERROR_MODAL', payload: true });
       return;
     }
 
-    setLoading(true);
+    dispatch({ type: 'SET_LOADING', payload: true });
 
     try {
       const response = await fetch(`/api/users/${userId}/reset-password`, {
@@ -329,33 +434,30 @@ export default function EditUserPage() {
         },
         credentials: 'include',
         body: JSON.stringify({
-          new_password: formData.generated_password,
+          new_password: state.formData.generated_password,
         }),
       });
 
       if (response.ok) {
         const data = await response.json();
-        setPasswordResetLink(data.resetLink);
-        setErrorMessage('');
-        setFormData(prev => ({
-          ...prev,
-          generated_password: ''
-        }));
+        dispatch({ type: 'SET_PASSWORD_RESET_LINK', payload: data.resetLink });
+        dispatch({ type: 'SET_ERROR_MESSAGE', payload: '' });
+        dispatch({ type: 'SET_FORM_DATA', payload: { generated_password: '' } });
       } else {
         const errorData = await response.json();
-        setErrorMessage(errorData.error || 'Failed to reset password');
-        setShowErrorModal(true);
+        dispatch({ type: 'SET_ERROR_MESSAGE', payload: errorData.error || 'Failed to reset password' });
+        dispatch({ type: 'SET_SHOW_ERROR_MODAL', payload: true });
       }
     } catch (error) {
       console.error('Error resetting password:', error);
-      setErrorMessage('Failed to reset password. Please try again.');
-      setShowErrorModal(true);
+      dispatch({ type: 'SET_ERROR_MESSAGE', payload: 'Failed to reset password. Please try again.' });
+      dispatch({ type: 'SET_SHOW_ERROR_MODAL', payload: true });
     } finally {
-      setLoading(false);
+      dispatch({ type: 'SET_LOADING', payload: false });
     }
   };
 
-  const roleOptions = Array.isArray(availableRoles) ? availableRoles.map(role => ({
+  const roleOptions = Array.isArray(state.availableRoles) ? state.availableRoles.map(role => ({
     value: role.id,
     text: `${role.name.split('_').join(' ')}`,
   })) : [];
@@ -364,27 +466,26 @@ export default function EditUserPage() {
     {
       name: 'User Details',
       fields: [
-        { label: 'Organization', value: Array.isArray(organizations) ? organizations.find(org => org.id === formData.organization_id)?.name || 'Unknown' : 'Unknown' },
-        { label: 'Employee', value: selectedEmployeeName || 'Unknown' },
-        { label: 'Login Email', value: formData.email },
+        { label: 'Organization', value: Array.isArray(state.organizations) ? state.organizations.find(org => org.id === state.formData.organization_id)?.name || 'Unknown' : 'Unknown' },
+        { label: 'Employee', value: state.selectedEmployeeName || 'Unknown' },
+        { label: 'Login Email', value: state.formData.email },
       ]
     },
     {
       name: 'Access Details',
       fields: [
-        { label: 'Roles', value: formData.role_ids.length > 0 && Array.isArray(availableRoles) ? availableRoles.filter(role => formData.role_ids.includes(role.id)).map(role => role.name).join(', ') : 'None' },
+        { label: 'Roles', value: state.formData.role_ids.length > 0 && Array.isArray(state.availableRoles) ? state.availableRoles.filter(role => state.formData.role_ids.includes(role.id)).map(role => role.name).join(', ') : 'None' },
       ]
     },
   ];
 
-  if (fetchLoading) {
+  if (state.initialLoading) { // display this only on first page load
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600 dark:text-gray-400">Loading user data...</p>
-        </div>
-      </div>
+      <InitialLoadingScreen
+        title="Edit User"
+        subtitle="Edit user account details and role assignments"
+        loadingText="Loading employees..."
+      />
     );
   }
 
@@ -409,20 +510,20 @@ export default function EditUserPage() {
           </p>
         </div>
         <EditUserForm
-          formData={formData}
-          errors={errors}
-          organizations={organizations}
+          formData={state.formData}
+          errors={state.errors}
+          organizations={state.organizations}
           roleOptions={roleOptions}
-          selectedEmployeeName={selectedEmployeeName}
+          selectedEmployeeName={state.selectedEmployeeName}
           onChange={handleInputChange}
-          onEmployeeSelect={() => setShowEmployeeModal(true)}
-          loading={loading}
-          employeeDetails={userData?.employee ? {
-            id: userData.employee.id,
-            first_name: userData.employee.first_name,
-            last_name: userData.employee.last_name,
-            email: userData.email,
-            custom_id: userData.employee.custom_id
+          onEmployeeSelect={() => dispatch({ type: 'SET_SHOW_EMPLOYEE_MODAL', payload: true })}
+          loading={state.loading}
+          employeeDetails={state.userData?.employee ? {
+            id: state.userData.employee.id,
+            first_name: state.userData.employee.first_name,
+            last_name: state.userData.employee.last_name,
+            email: state.formData.email,
+            custom_id: state.userData.employee.custom_id
           } : undefined}
         />
         <div className='flex justify-end pt-4 gap-3'>
@@ -430,81 +531,89 @@ export default function EditUserPage() {
             <Button
               variant='outline'
               size='md'
-              disabled={loading}
+              disabled={state.loading}
             >
               Cancel
             </Button>
           </Link>
           <Button
             variant='primary'
-            disabled={loading}
+            disabled={state.loading}
             className='bg-blue-600 hover:bg-blue-700 text-white'
             onClick={handleUpdateClick}
           >
-            {loading ? 'Updating...' : 'Update User'}
+            {state.loading ? 'Updating...' : 'Update User'}
           </Button>
         </div>
       </div>
       <div className='space-y-6 mb-7' />
       <div className='rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03] lg:p-6'>
         <PasswordPanel
-          password={formData.generated_password || ''}
+          password={state.formData.generated_password || ''}
           onPasswordChange={(value) => handleInputChange('generated_password', value)}
           onGeneratePassword={handleGeneratePassword}
-          resetLink={passwordResetLink}
+          resetLink={state.passwordResetLink}
           resetLinkLabel="Password Reset Link"
           resetLinkDescription="Generate a new password and share the reset link with the user"
-          disabled={!selectedEmployeeName}
-          loading={loading}
-          error={errors.generated_password}
+          disabled={!state.selectedEmployeeName}
+          loading={state.loading}
+          error={state.errors.generated_password}
           showPasswordSection={true}
           showLinkSection={true}
         />
         <div className='flex justify-end pt-4 gap-3'>
           <Button
             variant='primary'
-            disabled={loading || !formData.generated_password}
+            disabled={state.loading || !state.formData.generated_password}
             className='bg-blue-600 hover:bg-blue-700 text-white'
             onClick={handleResetPassword}
           >
-            {loading ? 'Resetting...' : 'Reset Password'}
+            {state.loading ? 'Resetting...' : 'Reset Password'}
           </Button>
         </div>
       </div>
 
       {/* Employee Search Modal */}
+      <EmployeeSearchModal
+        height='sm'
+        width='xx-wide'
+        isOpen={state.showEmployeeModal}
+        onClose={() => dispatch({ type: 'SET_SHOW_EMPLOYEE_MODAL', payload: false })}
+        onSelectEmployee={handleSelectEmployee}
+        organizationId={state.formData.organization_id}
+      />
 
       {/* Confirmation Modal */}
       <DetailsConfirmationModal
         size='wider'
         displayStyle='plain'
-        isOpen={showConfirmModal}
-        onClose={() => setShowConfirmModal(false)}
+        isOpen={state.showConfirmModal}
+        onClose={() => dispatch({ type: 'SET_SHOW_CONFIRM_MODAL', payload: false })}
         onConfirm={handleConfirmUpdate}
         title="Confirm User Update"
         description="Please review the changes before updating the user."
         groupedDetails={confirmationDetails}
-        confirmText={loading ? 'Updating...' : 'Update User'}
+        confirmText={state.loading ? 'Updating...' : 'Update User'}
         cancelText="Cancel"
-        isLoading={loading}
+        isLoading={state.loading}
       />
 
       {/* Error Modal */}
       <ErrorModal
-        isOpen={showErrorModal}
-        onClose={() => setShowErrorModal(false)}
-        errorMessage={errorMessage}
+        isOpen={state.showErrorModal}
+        onClose={() => dispatch({ type: 'SET_SHOW_ERROR_MODAL', payload: false })}
+        errorMessage={state.errorMessage}
       />
 
       {/* Success Modal */}
       <ConfirmationModal
-        isOpen={showSuccessModal}
+        isOpen={state.showSuccessModal}
         onClose={() => {
-          setShowSuccessModal(false);
+          dispatch({ type: 'SET_SHOW_SUCCESS_MODAL', payload: false });
           router.push('/accounts/users');
         }}
         onConfirm={() => {
-          setShowSuccessModal(false);
+          dispatch({ type: 'SET_SHOW_SUCCESS_MODAL', payload: false });
           router.push('/accounts/users');
         }}
         displayStyle='plain'
