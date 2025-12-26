@@ -338,6 +338,27 @@ export class UserController {
 
     return user;
   }
+
+  async getUserPermissions(userId: string): Promise<string[]> {
+    const user = await this.getById(userId);
+    if (!user) return [];
+    
+    const roleIds = user.userRoles.map(ur => ur.role_id);
+    
+    const rolePermissions = await prisma.rolePermission.findMany({
+      where: {
+        role_id: {
+          in: roleIds
+        }
+      },
+      include: {
+        permission: true
+      }
+    });
+    
+    const permissions = rolePermissions.map(rp => rp.permission.name);
+    return [...new Set(permissions)]; // Remove duplicates
+  }
 }
 
 export const userController = new UserController();

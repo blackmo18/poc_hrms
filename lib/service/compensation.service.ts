@@ -9,8 +9,7 @@ export class CompensationService {
   }
 
   async getByEmployeeId(employeeId: string): Promise<Compensation[]> {
-    const result = await compensationController.getAll();
-    return result.filter(c => c.employee_id === employeeId);
+    return await compensationController.findByEmployeeId(employeeId);
   }
 
   async getAll(): Promise<Compensation[]> {

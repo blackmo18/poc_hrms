@@ -13,14 +13,14 @@ export class UserService {
     return await userController.getByEmail(email);
   }
 
-  async getByOrganizationId(organizationId: string): Promise<User[]> {
-    const result = await userController.getAll(organizationId);
+  async getByOrganizationId(organizationId: string, options?: { page?: number; limit?: number }): Promise<User[]> {
+    const result = await userController.getAll(organizationId, options);
     return result.data;
   }
 
-  async getAll(): Promise<User[]> {
-    const result = await userController.getAll();
-    return result.data;
+  async getAll(organizationId?: string, options?: { page?: number; limit?: number }) {
+    const result = await userController.getAll(organizationId, options);
+    return result;
   }
 
   async create(data: CreateUser): Promise<User> {
@@ -44,27 +44,7 @@ export class UserService {
   }
 
   async getUserPermissions(userId: string): Promise<string[]> {
-    // Fetch user with roles and permissions directly
-    const user = await userController.getById(userId);
-    if (!user) return [];
-    
-    // Fetch permissions by querying role permissions for user's roles
-    const { prisma } = await import('@/lib/db');
-    const roleIds = user.userRoles.map(ur => ur.role_id);
-    
-    const rolePermissions = await prisma.rolePermission.findMany({
-      where: {
-        role_id: {
-          in: roleIds
-        }
-      },
-      include: {
-        permission: true
-      }
-    });
-    
-    const permissions = rolePermissions.map(rp => rp.permission.name);
-    return [...new Set(permissions)]; // Remove duplicates
+    return await userController.getUserPermissions(userId);
   }
 }
 

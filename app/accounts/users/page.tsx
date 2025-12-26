@@ -145,7 +145,6 @@ const initialUsersState: UsersState = {
 };
 
 export default function UsersPage() {
-  const { user, isLoading: authLoading } = useAuth();
   const { roles } = useRoleAccess();
   const [state, dispatch] = useReducer(usersReducer, initialUsersState);
 

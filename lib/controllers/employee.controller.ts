@@ -190,6 +190,13 @@ export class EmployeeController {
       },
     });
   }
+
+  // Simple repository methods for internal use
+  async findByDepartmentId(departmentId: string) {
+    return await prisma.employee.findMany({
+      where: { department_id: departmentId }
+    });
+  }
 }
 
 export const employeeController = new EmployeeController();

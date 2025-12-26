@@ -10,13 +10,11 @@ export class LeaveRequestService {
   }
 
   async getByEmployeeId(employeeId: string): Promise<LeaveRequest[]> {
-    const result = await leaveRequestController.getAll();
-    return result.filter(lr => lr.employee_id === employeeId);
+    return await leaveRequestController.getAll(employeeId);
   }
 
   async getByStatus(status: string): Promise<LeaveRequest[]> {
-    const result = await leaveRequestController.getAll();
-    return result.filter(lr => lr.status === status);
+    return await leaveRequestController.getAll(undefined, status);
   }
 
   async getAll(options?: PaginationOptions): Promise<PaginatedResponse<LeaveRequest>> {

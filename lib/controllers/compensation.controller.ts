@@ -14,6 +14,12 @@ export class CompensationController {
     });
   }
 
+  async findByEmployeeId(employeeId: string) {
+    return await prisma.compensation.findMany({
+      where: { employee_id: employeeId }
+    });
+  }
+
   async create(data: CreateCompensation) {
     return await prisma.compensation.create({
       data: { id: generateULID(), ...data }

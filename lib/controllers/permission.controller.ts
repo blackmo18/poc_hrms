@@ -36,7 +36,12 @@ export class PermissionController {
                       select: {
                         id: true,
                         email: true,
-                        name: true
+                        employee: {
+                          select: {
+                            first_name: true,
+                            last_name: true,
+                          },
+                        },
                       }
                     }
                   }
@@ -103,7 +108,12 @@ export class PermissionController {
                       select: {
                         id: true,
                         email: true,
-                        name: true
+                        employee: {
+                          select: {
+                            first_name: true,
+                            last_name: true,
+                          },
+                        },
                       }
                     }
                   }
@@ -224,6 +234,47 @@ export class PermissionController {
           }
         }
       }
+    });
+  }
+
+  // Simple repository methods for internal use
+  async findByName(name: string) {
+    return await prisma.permission.findUnique({
+      where: { name }
+    });
+  }
+
+  async findByIdWithRelations(id: string) {
+    return await prisma.permission.findUnique({
+      where: { id },
+      include: {
+        organization: true,
+        rolePermissions: {
+          include: {
+            role: {
+              include: {
+                organization: true,
+                userRoles: {
+                  include: {
+                    user: {
+                      select: {
+                        id: true,
+                        email: true,
+                        employee: {
+                          select: {
+                            first_name: true,
+                            last_name: true,
+                          },
+                        },
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
     });
   }
 }

@@ -50,7 +50,11 @@ export function useOrganizationFilter(options: UseOrganizationFilterOptions): Us
 
   // Use ref to store the latest onDataFetch callback
   const onDataFetchRef = useRef(onDataFetch);
-  onDataFetchRef.current = onDataFetch;
+  
+  // Update ref when onDataFetch changes
+  useEffect(() => {
+    onDataFetchRef.current = onDataFetch;
+  }, [onDataFetch]);
 
   const isSuperAdmin = useMemo(() =>
     roles.includes('SUPER_ADMIN'),
@@ -92,29 +96,17 @@ export function useOrganizationFilter(options: UseOrganizationFilterOptions): Us
     setSelectedOrganization(orgId);
     setCurrentPage(1); // Reset to first page when changing organization
     setIsOrganizationFilterLoading(true);
-
-    // Call the data fetch callback if provided
-    if (onDataFetchRef.current) {
-      onDataFetchRef.current(orgId || undefined, 1).finally(() => {
-        setIsOrganizationFilterLoading(false);
-      });
-    }
+    
+    // The data fetch will be handled by the effect below
+    // We'll set a timeout to clear the loading state in case the effect doesn't trigger
+    setTimeout(() => {
+      setIsOrganizationFilterLoading(false);
+    }, 100);
   }, []);
 
   // Initial data fetch and organization fetching
   useEffect(() => {
     if (authLoading || !enabled) return;
-
-    // For non-super admin, always filter by their organization
-    if (!isSuperAdmin && user?.organization_id) {
-      if (onDataFetchRef.current) {
-        onDataFetchRef.current(user.organization_id, currentPage);
-      }
-    } else {
-      if (onDataFetchRef.current) {
-        onDataFetchRef.current(selectedOrganization || undefined, currentPage);
-      }
-    }
 
     // Only fetch organizations for super admin
     if (isSuperAdmin && organizations.length === 0) {
@@ -124,12 +116,24 @@ export function useOrganizationFilter(options: UseOrganizationFilterOptions): Us
     authLoading,
     enabled,
     isSuperAdmin,
-    user?.organization_id,
-    selectedOrganization,
-    currentPage,
     organizations.length,
     fetchOrganizations
   ]);
+
+  // Handle data fetch for organization and page changes
+  useEffect(() => {
+    if (authLoading || !enabled) return;
+
+    if (onDataFetchRef.current) {
+      const orgId = !isSuperAdmin && user?.organization_id 
+        ? user.organization_id 
+        : selectedOrganization || undefined;
+      
+      if (orgId !== undefined || isSuperAdmin) {
+        onDataFetchRef.current(orgId, currentPage);
+      }
+    }
+  }, [currentPage, selectedOrganization, authLoading, enabled, isSuperAdmin, user?.organization_id]);
 
   return {
     // State

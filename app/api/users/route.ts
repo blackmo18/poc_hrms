@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { userController } from '@/lib/controllers/user.controller';
+import { getUserService } from '@/lib/service/user.service';
 import { requiresPermissions } from '@/lib/auth/middleware';
 import { CreateUserSchema } from '@/lib/models/user';
 import { getPasswordResetSessionService } from '@/lib/service/password-reset-session.service';
@@ -28,16 +28,17 @@ export async function GET(request: NextRequest) {
     const isAdmin = user.roles.includes('ADMIN');
 
     let result;
+    const userService = getUserService();
 
     if (isSuperAdmin) {
       // Super Admin can see all users across all organizations
-      result = await userController.getAll(
+      result = await userService.getAll(
         organizationId ? organizationId : undefined,
         { page, limit }
       );
     } else if (isAdmin) {
       // Admin can see users in their organization only
-      result = await userController.getAll(user.organization_id, { page, limit });
+      result = await userService.getAll(user.organization_id, { page, limit });
     } else {
       // Regular employees might have limited access or no access
       return NextResponse.json(
@@ -81,7 +82,8 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      const createdUser = await userController.create(validatedData);
+      const userService = getUserService();
+      const createdUser = await userService.create(validatedData);
 
       // Create password reset session for the new user
       const passwordResetService = getPasswordResetSessionService();

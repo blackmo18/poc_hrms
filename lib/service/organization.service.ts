@@ -22,8 +22,7 @@ export class OrganizationService {
   }
 
   async getByName(name: string): Promise<Organization | null> {
-    const result = await organizationController.getAll();
-    return result.data.find(o => o.name === name) || null;
+    return await organizationController.findByName(name);
   }
 
   async getAll(options?: PaginationOptions): Promise<PaginatedResponse<Organization>> {

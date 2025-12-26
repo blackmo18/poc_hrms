@@ -25,7 +25,12 @@ export class RoleController {
               select: {
                 id: true,
                 email: true,
-                name: true
+                employee: {
+                  select: {
+                    first_name: true,
+                    last_name: true,
+                  },
+                },
               }
             }
           }
@@ -63,7 +68,12 @@ export class RoleController {
               select: {
                 id: true,
                 email: true,
-                name: true
+                employee: {
+                  select: {
+                    first_name: true,
+                    last_name: true,
+                  },
+                },
               }
             }
           }
@@ -175,7 +185,12 @@ export class RoleController {
               select: {
                 id: true,
                 email: true,
-                name: true,
+                employee: {
+                  select: {
+                    first_name: true,
+                    last_name: true,
+                  },
+                },
                 status: true,
                 organization_id: true
               }
@@ -190,6 +205,45 @@ export class RoleController {
     }
 
     return role.userRoles.map(ur => ur.user);
+  }
+
+  // Simple repository methods for internal use
+  async findByName(name: string) {
+    return await prisma.role.findUnique({
+      where: { name }
+    });
+  }
+
+  async findByOrganizationId(organizationId: string) {
+    return await prisma.role.findMany({
+      where: { organization_id: organizationId }
+    });
+  }
+
+  async getPermissionsByRoleIds(roleIds: string[]) {
+    const roles = await prisma.role.findMany({
+      where: { id: { in: roleIds } },
+      select: {
+        rolePermissions: {
+          select: {
+            permission: {
+              select: {
+                name: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    const permissions = new Set<string>();
+    roles.forEach(role => {
+      role.rolePermissions.forEach(rolePermission => {
+        permissions.add(rolePermission.permission.name);
+      });
+    });
+
+    return Array.from(permissions);
   }
 }
 

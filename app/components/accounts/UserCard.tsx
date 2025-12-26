@@ -5,9 +5,14 @@ import Badge, { BadgeColor } from "@/app/components/ui/badge/Badge";
 
 interface User {
   id: string;
-  name: string;
   email: string;
   status: string;
+  employee_id: string;
+  employee: {
+    id: string;
+    first_name: string
+    last_name: string
+  };
   organization: {
     id: string;
     name: string;
@@ -49,7 +54,7 @@ export default function UserCard({ user, isExpanded, onToggle, getStatusColor, o
             <div className="flex-1 min-w-0 space-y-2">
               <div>
                 <h3 className="font-semibold text-gray-900 dark:text-white text-lg">
-                  {user.name || 'N/A'}
+                  {`${user.employee.last_name}, ${user.employee.first_name}` || 'N/A'}
                 </h3>
               </div>
 

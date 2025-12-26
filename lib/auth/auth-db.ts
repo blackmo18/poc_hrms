@@ -3,25 +3,39 @@
 // update all calls referecing this file
 import bcrypt from 'bcryptjs';
 import { User, UserWithRole, Role, Permission, RoleWithPermissions } from '@/models/auth';
-import { getUserRepository, getUserRoleRepository, getRoleRepository, getRolePermissionRepository, getPermissionRepository } from '@/lib/repository';
 import { getUserService } from '@/lib/service';
 import { getRoleService } from '@/lib/service';
-import { generateULID } from '@/lib/utils/ulid.service';
+import { getPermissionService } from '@/lib/service';
+import { getUserRoleService } from '@/lib/service';
+import { getRolePermissionService } from '@/lib/service';
 
 /* ------------------------------------------------------------ */
 /* User Queries                                                  */
 /* ------------------------------------------------------------ */
 
 export const findUserByEmail = async (email: string): Promise<User | null> => {
-  const userRepository = getUserRepository();
-  const user = await userRepository.findByEmail(email);
+  const userService = getUserService();
+  const user = await userService.getByEmail(email);
 
   if (!user || user.status !== 'ACTIVE') return null;
+
+  // Get employee name if available
+  let userName = '';
+  if (user.employee_id) {
+    const { prisma } = await import('@/lib/db');
+    const employee = await prisma.employee.findUnique({
+      where: { id: user.employee_id },
+      select: { first_name: true, last_name: true }
+    });
+    if (employee) {
+      userName = `${employee.first_name} ${employee.last_name}`;
+    }
+  }
 
   return {
     id: user.id,  // Return CUID string ID
     email: user.email,
-    name: user.name || '',
+    name: userName,
     passwordHash: user.password_hash || '',
     enabled: user.status === 'ACTIVE',
     organization_id: user.organization_id,
@@ -31,15 +45,28 @@ export const findUserByEmail = async (email: string): Promise<User | null> => {
 };
 
 export const findUserById = async (userId: string): Promise<User | null> => {
-  const userRepository = getUserRepository();
-  const user = await userRepository.findById(userId);
+  const userService = getUserService();
+  const user = await userService.getById(userId);
 
   if (!user || user.status !== 'ACTIVE') return null;
+
+  // Get employee name if available
+  let userName = '';
+  if (user.employee_id) {
+    const { prisma } = await import('@/lib/db');
+    const employee = await prisma.employee.findUnique({
+      where: { id: user.employee_id },
+      select: { first_name: true, last_name: true }
+    });
+    if (employee) {
+      userName = `${employee.first_name} ${employee.last_name}`;
+    }
+  }
 
   return {
     id: user.id,  // Return CUID string ID
     email: user.email,
-    name: user.name || '',
+    name: userName,
     passwordHash: user.password_hash || '',
     enabled: user.status === 'ACTIVE',
     organization_id: user.organization_id,
@@ -49,17 +76,16 @@ export const findUserById = async (userId: string): Promise<User | null> => {
 };
 
 export const getUserRoles = async (userId: string): Promise<Role[]> => {
-  const userRoleRepository = getUserRoleRepository();
-  const userRoles = await userRoleRepository.findByUserId(userId);
+  const userRoleService = getUserRoleService();
+  const userRoles = await userRoleService.getByUserId(userId);
 
-  // Get role details for each user role
-  const roleRepository = getRoleRepository();
+  const roleService = getRoleService();
   const roles = await Promise.all(
     userRoles.map(async (userRole) => {
-      const role = await roleRepository.findById(userRole.role_id);
+      const role = await roleService.getById(userRole.role_id);
       if (!role) return null;
       return {
-        id: role.id,  // Return CUID string ID
+        id: role.id,
         name: role.name,
         description: role.description || '',
         organization_id: role.organization_id,
@@ -100,33 +126,30 @@ export const createUser = async (
 ): Promise<string> => {  // Changed return type from number to string
   const hash = await bcrypt.hash(password, 12);
 
-  const userRepository = getUserRepository();
-  const user = await userRepository.create({
-    id: generateULID(),
-    organization_id: organizationId,
+  const userService = getUserService();
+  const user = await userService.create({
     email,
-    password_hash: hash,
+    organization_id: organizationId,
     status: 'ACTIVE',
-    name,
-    emailVerified: null,
-    image: null,
-    employee_id: null
+    employee_id: null, // Will be set later when employee is created
+    role_ids: [], // Will be assigned separately
+    generated_password: hash
   });
 
   return user.id;  // Return CUID string ID instead of internal_id
 };
 
 export const assignRoleToUser = async (userId: string, roleId: string): Promise<void> => {
-  const userRoleRepository = getUserRoleRepository();
-  await userRoleRepository.create({
+  const userRoleService = getUserRoleService();
+  await userRoleService.create({
     user_id: userId,
     role_id: roleId
   });
 };
 
 export const removeRoleFromUser = async (userId: string, roleId: string): Promise<void> => {
-  const userRoleRepository = getUserRoleRepository();
-  await userRoleRepository.deleteByUserAndRole(userId, roleId);
+  const userRoleService = getUserRoleService();
+  await userRoleService.deleteByUserAndRole(userId, roleId);
 };
 
 export const updateUserPassword = async (
@@ -134,8 +157,8 @@ export const updateUserPassword = async (
   newPassword: string
 ): Promise<void> => {
   const hash = await bcrypt.hash(newPassword, 12);
-  const userRepository = getUserRepository();
-  await userRepository.update(userId, { password_hash: hash });
+  const userService = getUserService();
+  await userService.update(userId, { password_hash: hash });
 };
 
 export const updateUser = async (
@@ -149,8 +172,8 @@ export const updateUser = async (
 
   if (Object.keys(data).length === 0) return;
 
-  const userRepository = getUserRepository();
-  await userRepository.update(userId, data);
+  const userService = getUserService();
+  await userService.update(userId, data);
 };
 
 /* ------------------------------------------------------------ */
@@ -158,8 +181,8 @@ export const updateUser = async (
 /* ------------------------------------------------------------ */
 
 export const listUsers = async (organizationId: string): Promise<UserWithRole[]> => {
-  const userRepository = getUserRepository();
-  const users = await userRepository.findByOrganizationId(organizationId);
+  const userService = getUserService();
+  const users = await userService.getByOrganizationId(organizationId);
 
   // For each user, get their roles
   const usersWithRoles = await Promise.all(
@@ -168,7 +191,7 @@ export const listUsers = async (organizationId: string): Promise<UserWithRole[]>
       return {
         id: user.id,  // Return CUID string ID
         email: user.email,
-        name: user.name || '',
+        name: '', // Name is now derived from employee, will be set separately if needed
         passwordHash: user.password_hash || '',
         enabled: user.status === 'ACTIVE',
         organization_id: user.organization_id,
@@ -187,8 +210,8 @@ export const listUsers = async (organizationId: string): Promise<UserWithRole[]>
 /* ------------------------------------------------------------ */
 
 export const getRoleById = async (roleId: string): Promise<Role | null> => {
-  const roleRepository = getRoleRepository();
-  const role = await roleRepository.findById(roleId);
+  const roleService = getRoleService();
+  const role = await roleService.getById(roleId);
 
   if (!role) return null;
 
@@ -203,8 +226,8 @@ export const getRoleById = async (roleId: string): Promise<Role | null> => {
 };
 
 export const getRoleByName = async (name: string, organizationId: string): Promise<Role | null> => {
-  const roleRepository = getRoleRepository();
-  const role = await roleRepository.findByName(name);
+  const roleService = getRoleService();
+  const role = await roleService.getByName(name);
 
   if (!role || role.organization_id !== organizationId) return null;
 
@@ -219,8 +242,8 @@ export const getRoleByName = async (name: string, organizationId: string): Promi
 };
 
 export const getAllRoles = async (organizationId: string): Promise<Role[]> => {
-  const roleRepository = getRoleRepository();
-  const roles = await roleRepository.findByOrganizationId(organizationId);
+  const roleService = getRoleService();
+  const roles = await roleService.getByOrganizationId(organizationId);
 
   return roles.map(role => ({
     id: role.id,  // Return CUID string ID
@@ -233,14 +256,13 @@ export const getAllRoles = async (organizationId: string): Promise<Role[]> => {
 };
 
 export const getRolePermissions = async (roleId: string): Promise<Permission[]> => {
-  const rolePermissionRepository = getRolePermissionRepository();
-  const rolePermissions = await rolePermissionRepository.findByRoleId(roleId);
+  const rolePermissionService = getRolePermissionService();
+  const rolePermissions = await rolePermissionService.getByRoleId(roleId);
 
-  // Get permission details for each role permission
-  const permissionRepository = getPermissionRepository();
+  const permissionService = getPermissionService();
   const permissions = await Promise.all(
     rolePermissions.map(async (rolePermission) => {
-      const permission = await permissionRepository.findById(rolePermission.permission_id);
+      const permission = await permissionService.getById(rolePermission.permission_id);
       if (!permission) return null;
       return {
         id: permission.id,  // Return CUID string ID
@@ -284,8 +306,8 @@ export const getPermissionsByRoleIds = async (roleIds: string[]): Promise<string
 };
 
 export const getAllPermissions = async (): Promise<Permission[]> => {
-  const permissionRepository = getPermissionRepository();
-  const permissions = await permissionRepository.findAll();
+  const permissionService = getPermissionService();
+  const permissions = await permissionService.getAll();
 
   return permissions.map(permission => ({
     id: permission.id,  // Return CUID string ID
@@ -297,14 +319,14 @@ export const getAllPermissions = async (): Promise<Permission[]> => {
 };
 
 export const assignPermissionToRole = async (roleId: string, permId: string): Promise<void> => {
-  const rolePermissionRepository = getRolePermissionRepository();
-  await rolePermissionRepository.create({
+  const rolePermissionService = getRolePermissionService();
+  await rolePermissionService.create({
     role_id: roleId,
     permission_id: permId
   });
 };
 
 export const removePermissionFromRole = async (roleId: string, permId: string): Promise<void> => {
-  const rolePermissionRepository = getRolePermissionRepository();
-  await rolePermissionRepository.deleteByRoleAndPermission(roleId, permId);
+  const rolePermissionService = getRolePermissionService();
+  await rolePermissionService.deleteByRoleAndPermission(roleId, permId);
 };

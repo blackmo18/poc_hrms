@@ -291,6 +291,13 @@ export class DepartmentController {
       where: { id },
     });
   }
+
+  // Simple repository method for internal use
+  async findByOrganizationId(organizationId: string) {
+    return await prisma.department.findMany({
+      where: { organization_id: organizationId }
+    });
+  }
 }
 
 export const departmentController = new DepartmentController();

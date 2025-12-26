@@ -82,6 +82,13 @@ export class OrganizationController {
       where: { id },
     });
   }
+
+  // Simple repository method for internal use
+  async findByName(name: string) {
+    return await prisma.organization.findFirst({
+      where: { name }
+    });
+  }
 }
 
 export const organizationController = new OrganizationController();
