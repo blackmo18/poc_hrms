@@ -153,12 +153,10 @@ export default function RolesPage() {
   // Use the reusable organization filter hook
   const {
     selectedOrganization,
-    organizations,
     isOrganizationFilterLoading,
     currentPage: orgFilterCurrentPage,
     handleOrganizationChange,
     setCurrentPage: setOrgFilterCurrentPage,
-    isSuperAdmin,
     organizationOptions,
   } = useOrganizationFilter({
     apiEndpoint: '/api/roles',
@@ -167,12 +165,6 @@ export default function RolesPage() {
       await fetchRoles(orgId, page);
     },
   });
-
-  // Memoize super admin check for consistency
-  const isSuperAdminMemo = useMemo(() =>
-    roles.includes('SUPER_ADMIN'),
-    [roles]
-  );
 
   const fetchRoles = async (orgId?: string, page: number = 1) => {
     try {
@@ -319,7 +311,7 @@ export default function RolesPage() {
           {/* Desktop Table View */}
           <RolesTable
             roles={state.roles}
-            loading={isOrganizationFilterLoading}
+            loading={state.initialLoading || state.loading || isOrganizationFilterLoading}
             currentPage={state.pagination?.page}
             limit={state.pagination?.limit}
             onDeleteRole={handleDeleteRole}

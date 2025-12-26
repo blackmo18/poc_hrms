@@ -170,12 +170,10 @@ export default function JobTitlesPage() {
   // Use the reusable organization filter hook
   const {
     selectedOrganization,
-    organizations,
     isOrganizationFilterLoading,
     currentPage: orgFilterCurrentPage,
     handleOrganizationChange,
     setCurrentPage: setOrgFilterCurrentPage,
-    isSuperAdmin,
     organizationOptions,
   } = useOrganizationFilter({
     apiEndpoint: '/api/job-titles',
@@ -256,15 +254,6 @@ export default function JobTitlesPage() {
     }
   };
 
-  const fetchOrganizations = async () => {
-    // This is now handled by the useOrganizationFilter hook
-  };
-
-  useEffect(() => {
-    // Organization filtering is now handled by the useOrganizationFilter hook
-    // This effect is no longer needed as the hook handles all data fetching
-  }, []);
-
   const handleConfirmDelete = async () => {
     if (!state.jobTitleToDelete) return;
 
@@ -280,11 +269,7 @@ export default function JobTitlesPage() {
         // Refresh the list after a short delay to show success state
         setTimeout(() => {
           dispatch({ type: 'FINISH_DELETE' });
-          if (!isSuperAdminMemo && user?.organization_id) {
-            fetchJobTitles(user.organization_id, orgFilterCurrentPage);
-          } else {
-            fetchJobTitles(selectedOrganization, orgFilterCurrentPage);
-          }
+          fetchJobTitles(selectedOrganization, orgFilterCurrentPage);
         }, 1500);
       } else {
         const errorData = await response.json();
@@ -379,7 +364,7 @@ export default function JobTitlesPage() {
           </div>
 
           {/* Desktop Table View */}
-          <JobTitleTable jobTitles={state.jobTitles} onDelete={handleDeleteClick} loading={isOrganizationFilterLoading} currentPage={state.pagination?.page} limit={state.pagination?.limit} />
+          <JobTitleTable jobTitles={state.jobTitles} onDelete={handleDeleteClick} loading={state.initialLoading || state.loading || isOrganizationFilterLoading} currentPage={state.pagination?.page} limit={state.pagination?.limit} />
 
           {/* Mobile Card View */}
           <JobTitleCardList jobTitles={state.jobTitles} onDelete={handleDeleteClick} />
