@@ -144,12 +144,10 @@ export default function PermissionsPage() {
   // Use the reusable organization filter hook
   const {
     selectedOrganization,
-    organizations,
     isOrganizationFilterLoading,
     currentPage: orgFilterCurrentPage,
     handleOrganizationChange,
     setCurrentPage: setOrgFilterCurrentPage,
-    isSuperAdmin,
     organizationOptions,
   } = useOrganizationFilter({
     apiEndpoint: '/api/permissions',
@@ -158,12 +156,6 @@ export default function PermissionsPage() {
       await fetchPermissions(orgId, page);
     },
   });
-
-  // Memoize super admin check for consistency
-  const isSuperAdminMemo = useMemo(() =>
-    roles.includes('SUPER_ADMIN'),
-    [roles]
-  );
 
   const fetchPermissions = async (orgId?: string, page: number = 1) => {
     try {
@@ -310,7 +302,7 @@ export default function PermissionsPage() {
           {/* Desktop Table View */}
           <PermissionsTable
             permissions={state.permissions}
-            loading={isOrganizationFilterLoading}
+            loading={state.initialLoading || state.loading || isOrganizationFilterLoading}
             currentPage={state.pagination?.page}
             limit={state.pagination?.limit}
             onDeletePermission={handleDeletePermission}

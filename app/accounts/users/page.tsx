@@ -16,11 +16,6 @@ import { useOrganizationFilter } from "@/hooks/useOrganizationFilter";
 import { BadgeColor } from "@/app/components/ui/badge/Badge";
 import { UserWithRelations } from "@/lib/models/user";
 
-interface Organization {
-  id: string;
-  name: string;
-}
-
 interface ApiResponse {
   data: UserWithRelations[];
   pagination: {
@@ -131,12 +126,10 @@ export default function UsersPage() {
   // Use the reusable organization filter hook
   const {
     selectedOrganization,
-    organizations,
     isOrganizationFilterLoading,
     currentPage: orgFilterCurrentPage,
     handleOrganizationChange,
     setCurrentPage: setOrgFilterCurrentPage,
-    isSuperAdmin,
     organizationOptions,
   } = useOrganizationFilter({
     apiEndpoint: '/api/users',
@@ -145,12 +138,6 @@ export default function UsersPage() {
       await fetchUsers(orgId, page);
     },
   });
-
-  // Memoize super admin check for consistency
-  const isSuperAdminMemo = useMemo(() =>
-    roles.includes('SUPER_ADMIN'),
-    [roles]
-  );
 
   // Fetch users with optional organization filter and pagination
   const fetchUsers = useCallback(async (orgId?: string, page: number = 1) => {
@@ -313,7 +300,7 @@ export default function UsersPage() {
           </div>
 
           {/* Desktop Table View */}
-          <UsersTable users={state.users} getStatusColor={getStatusColor} loading={isOrganizationFilterLoading} onDelete={handleDeleteUser} currentPage={state.pagination?.page} limit={state.pagination?.limit} />
+          <UsersTable users={state.users} getStatusColor={getStatusColor} loading={state.initialLoading || state.loading || isOrganizationFilterLoading} onDelete={handleDeleteUser} currentPage={state.pagination?.page} limit={state.pagination?.limit} />
 
           {/* Mobile Card View */}
           <div className="lg:hidden space-y-4">

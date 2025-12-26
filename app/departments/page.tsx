@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useReducer } from 'react';
 import Link from 'next/link';
 import { PlusIcon, Building2Icon } from '@/app/icons';
 import ComponentCard from '@/app/components/common/ComponentCard';
@@ -14,7 +14,6 @@ import DepartmentCardList from '@/app/components/departments/DepartmentCardList'
 import RoleComponentWrapper from '@/app/components/common/RoleComponentWrapper';
 import { useAuth } from '@/app/components/providers/auth-provider';
 import { useRoleAccess } from '@/app/components/providers/role-access-provider';
-import Select from '@/app/components/form/Select';
 import OrganizationFilter from '@/app/components/common/OrganizationFilter';
 import { useOrganizationFilter } from '@/hooks/useOrganizationFilter';
 
@@ -50,33 +49,127 @@ interface ApiResponse {
   };
 }
 
+interface DepartmentsState {
+  // Data states
+  departments: Department[];
+  pagination: ApiResponse['pagination'] | null;
+
+  // Loading states
+  loading: boolean;
+  initialLoading: boolean;
+
+  // UI states
+  showDeleteModal: boolean;
+  showErrorModal: boolean;
+  departmentToDelete: { id: number; name: string } | null;
+  isDeleting: boolean;
+  deleteSuccess: boolean;
+  errorMessage: string;
+
+  // Error states
+  error: string | null;
+}
+
+type DepartmentsAction =
+  // Data actions
+  | { type: 'SET_DEPARTMENTS'; payload: Department[] }
+  | { type: 'SET_PAGINATION'; payload: ApiResponse['pagination'] | null }
+
+  // Loading actions
+  | { type: 'SET_LOADING'; payload: boolean }
+  | { type: 'SET_INITIAL_LOADING'; payload: boolean }
+
+  // UI actions
+  | { type: 'SET_SHOW_DELETE_MODAL'; payload: boolean }
+  | { type: 'SET_SHOW_ERROR_MODAL'; payload: boolean }
+  | { type: 'SET_DEPARTMENT_TO_DELETE'; payload: { id: number; name: string } | null }
+  | { type: 'SET_IS_DELETING'; payload: boolean }
+  | { type: 'SET_DELETE_SUCCESS'; payload: boolean }
+  | { type: 'SET_ERROR_MESSAGE'; payload: string }
+
+  // Error actions
+  | { type: 'SET_ERROR'; payload: string | null }
+
+  // Combined actions
+  | { type: 'START_LOADING' }
+  | { type: 'FINISH_LOADING' };
+
+function departmentsReducer(state: DepartmentsState, action: DepartmentsAction): DepartmentsState {
+  switch (action.type) {
+    // Data actions
+    case 'SET_DEPARTMENTS':
+      return { ...state, departments: action.payload };
+    case 'SET_PAGINATION':
+      return { ...state, pagination: action.payload };
+
+    // Loading actions
+    case 'SET_LOADING':
+      return { ...state, loading: action.payload };
+    case 'SET_INITIAL_LOADING':
+      return { ...state, initialLoading: action.payload };
+
+    // UI actions
+    case 'SET_SHOW_DELETE_MODAL':
+      return { ...state, showDeleteModal: action.payload };
+    case 'SET_SHOW_ERROR_MODAL':
+      return { ...state, showErrorModal: action.payload };
+    case 'SET_DEPARTMENT_TO_DELETE':
+      return { ...state, departmentToDelete: action.payload };
+    case 'SET_IS_DELETING':
+      return { ...state, isDeleting: action.payload };
+    case 'SET_DELETE_SUCCESS':
+      return { ...state, deleteSuccess: action.payload };
+    case 'SET_ERROR_MESSAGE':
+      return { ...state, errorMessage: action.payload };
+
+    // Error actions
+    case 'SET_ERROR':
+      return { ...state, error: action.payload };
+
+    // Combined actions
+    case 'START_LOADING':
+      return { ...state, loading: true, error: null };
+    case 'FINISH_LOADING':
+      return { ...state, loading: false, initialLoading: false };
+
+    default:
+      return state;
+  }
+}
+
+const initialDepartmentsState: DepartmentsState = {
+  // Data states
+  departments: [],
+  pagination: null,
+
+  // Loading states
+  loading: true,
+  initialLoading: true,
+
+  // UI states
+  showDeleteModal: false,
+  showErrorModal: false,
+  departmentToDelete: null,
+  isDeleting: false,
+  deleteSuccess: false,
+  errorMessage: '',
+
+  // Error states
+  error: null,
+};
+
 export default function DepartmentsPage() {
   const { user, isLoading: authLoading } = useAuth();
   const { roles } = useRoleAccess();
-  const [departments, setDepartments] = useState<Department[]>([]);
-  const [pagination, setPagination] = useState<ApiResponse['pagination'] | null>(null);
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [showErrorModal, setShowErrorModal] = useState(false);
-  const [errorMessage, setErrorMessage] = useState('');
-  const [departmentToDelete, setDepartmentToDelete] = useState<{ id: number; name: string } | null>(null);
-  const [isDeleting, setIsDeleting] = useState(false);
-  const [deleteSuccess, setDeleteSuccess] = useState(false);
-
-  // Loading states
-  const [initialLoading, setInitialLoading] = useState(true);
-
-  // Error state
-  const [error, setError] = useState<string | null>(null);
+  const [state, dispatch] = useReducer(departmentsReducer, initialDepartmentsState);
 
   // Use the reusable organization filter hook
   const {
     selectedOrganization,
-    organizations,
     isOrganizationFilterLoading,
     currentPage: orgFilterCurrentPage,
     handleOrganizationChange,
     setCurrentPage: setOrgFilterCurrentPage,
-    isSuperAdmin,
     organizationOptions,
   } = useOrganizationFilter({
     apiEndpoint: '/api/departments',
@@ -91,18 +184,14 @@ export default function DepartmentsPage() {
     [roles]
   );
 
-  const fetchOrganizations = async () => {
-    // This is now handled by the useOrganizationFilter hook
-  };
-
   const fetchDepartments = async (orgId?: string, page: number = 1, isOrganizationChange: boolean = false) => {
     try {
       if (isOrganizationChange) {
-        // This is now handled by the hook
+        dispatch({ type: 'SET_LOADING', payload: true });
       } else {
-        setInitialLoading(true);
+        dispatch({ type: 'SET_INITIAL_LOADING', payload: true });
       }
-      setError(null);
+      dispatch({ type: 'SET_ERROR', payload: null });
 
       const params = new URLSearchParams();
       if (orgId) params.set('organizationId', orgId.toString());
@@ -115,12 +204,12 @@ export default function DepartmentsPage() {
       });
 
       if (response.status === 401) {
-        setError('Unauthorized access. Please log in.');
+        dispatch({ type: 'SET_ERROR', payload: 'Unauthorized access. Please log in.' });
         return;
       }
 
       if (response.status === 403) {
-        setError('Access denied. Insufficient permissions.');
+        dispatch({ type: 'SET_ERROR', payload: 'Access denied. Insufficient permissions.' });
         return;
       }
 
@@ -129,38 +218,30 @@ export default function DepartmentsPage() {
       }
 
       const result = await response.json();
-      setDepartments(result.data || []);
-      setPagination(result.pagination);
+      dispatch({ type: 'SET_DEPARTMENTS', payload: result.data || [] });
+      dispatch({ type: 'SET_PAGINATION', payload: result.pagination });
     } catch (error) {
       console.error('Error fetching departments:', error);
-      setError('Failed to load departments. Please try again.');
+      dispatch({ type: 'SET_ERROR', payload: 'Failed to load departments. Please try again.' });
     } finally {
-      if (!isOrganizationChange) {
-        setInitialLoading(false);
+      if (isOrganizationChange) {
+        dispatch({ type: 'SET_LOADING', payload: false });
+      } else {
+        dispatch({ type: 'SET_INITIAL_LOADING', payload: false });
       }
     }
   };
 
-  useEffect(() => {
-    // Organization filtering is now handled by the useOrganizationFilter hook
-    // This effect is no longer needed as the hook handles all data fetching
-  }, []);
-
-  // Separate effect for organization changes to trigger loading overlay
-  useEffect(() => {
-    // Organization filtering is now handled by the useOrganizationFilter hook
-    // This effect is no longer needed as the hook handles all data fetching
-  }, []);
-
+  
   const handleDeleteClick = useCallback((departmentId: number, departmentName: string) => {
-    setDepartmentToDelete({ id: departmentId, name: departmentName });
-    setDeleteSuccess(false);
-    setShowDeleteModal(true);
+    dispatch({ type: 'SET_DEPARTMENT_TO_DELETE', payload: { id: departmentId, name: departmentName } });
+    dispatch({ type: 'SET_DELETE_SUCCESS', payload: false });
+    dispatch({ type: 'SET_SHOW_DELETE_MODAL', payload: true });
   }, []);
 
   // Memoize the empty state component to prevent unnecessary re-renders
   const emptyStateComponent = useMemo(() => (
-    departments.length === 0 && (
+    state.departments.length === 0 && (
       <div className="text-center py-12">
         <Building2Icon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
         <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No departments found</h3>
@@ -176,25 +257,25 @@ export default function DepartmentsPage() {
         </Link>
       </div>
     )
-  ), [departments.length]);
+  ), [state.departments.length]);
 
   const handleConfirmDelete = async () => {
-    if (!departmentToDelete) return;
+    if (!state.departmentToDelete) return;
 
-    setIsDeleting(true);
+    dispatch({ type: 'SET_IS_DELETING', payload: true });
     try {
-      const response = await fetch(`/api/departments/${departmentToDelete.id}`, {
+      const response = await fetch(`/api/departments/${state.departmentToDelete.id}`, {
         method: 'DELETE',
         credentials: 'include',
       });
 
       if (response.ok) {
-        setDeleteSuccess(true);
+        dispatch({ type: 'SET_DELETE_SUCCESS', payload: true });
         // Refresh the list after a short delay to show success state
         setTimeout(() => {
-          setShowDeleteModal(false);
-          setDepartmentToDelete(null);
-          setDeleteSuccess(false);
+          dispatch({ type: 'SET_SHOW_DELETE_MODAL', payload: false });
+          dispatch({ type: 'SET_DEPARTMENT_TO_DELETE', payload: null });
+          dispatch({ type: 'SET_DELETE_SUCCESS', payload: false });
           // Refresh with current organization filter
           if (!isSuperAdminMemo && user?.organization_id) {
             fetchDepartments(user.organization_id.toString(), orgFilterCurrentPage);
@@ -204,21 +285,21 @@ export default function DepartmentsPage() {
         }, 1500);
       } else {
         const errorData = await response.json();
-        setShowDeleteModal(false);
-        setErrorMessage(errorData.error || 'Failed to delete department');
-        setShowErrorModal(true);
+        dispatch({ type: 'SET_SHOW_DELETE_MODAL', payload: false });
+        dispatch({ type: 'SET_ERROR_MESSAGE', payload: errorData.error || 'Failed to delete department' });
+        dispatch({ type: 'SET_SHOW_ERROR_MODAL', payload: true });
       }
     } catch (error) {
       console.error('Error deleting department:', error);
-      setShowDeleteModal(false);
-      setErrorMessage('An error occurred while deleting the department');
-      setShowErrorModal(true);
+      dispatch({ type: 'SET_SHOW_DELETE_MODAL', payload: false });
+      dispatch({ type: 'SET_ERROR_MESSAGE', payload: 'An error occurred while deleting the department' });
+      dispatch({ type: 'SET_SHOW_ERROR_MODAL', payload: true });
     } finally {
-      setIsDeleting(false);
+      dispatch({ type: 'SET_IS_DELETING', payload: false });
     }
   };
 
-  if (initialLoading) { // display this only on first page load
+  if (state.initialLoading) { // display this only on first page load
     return (
       <div className="space-y-6">
         <div className="flex items-center justify-between">
@@ -238,7 +319,7 @@ export default function DepartmentsPage() {
     );
   }
 
-  if (error) {
+  if (state.error) {
     return (
       <div className="space-y-6">
         <div className="flex items-center justify-between">
@@ -254,7 +335,7 @@ export default function DepartmentsPage() {
         <div className="flex items-center justify-center h-64">
           <div className="text-center">
             <div className="text-red-600 dark:text-red-400 text-lg mb-2">Error</div>
-            <div className="text-gray-600 dark:text-gray-300">{error}</div>
+            <div className="text-gray-600 dark:text-gray-300">{state.error}</div>
           </div>
         </div>
       </div>
@@ -297,15 +378,15 @@ export default function DepartmentsPage() {
           </div>
 
           {/* Desktop Table View */}
-          <DepartmentTable departments={departments} onDelete={handleDeleteClick} currentPage={pagination?.page} limit={pagination?.limit} loading={isOrganizationFilterLoading} />
+          <DepartmentTable departments={state.departments} onDelete={handleDeleteClick} currentPage={state.pagination?.page} limit={state.pagination?.limit} loading={state.initialLoading || state.loading || isOrganizationFilterLoading} />
 
           {/* Mobile Card View */}
           <div className={isOrganizationFilterLoading ? 'opacity-50 pointer-events-none' : ''}>
-            <DepartmentCardList departments={departments} onDelete={handleDeleteClick} />
+            <DepartmentCardList departments={state.departments} onDelete={handleDeleteClick} />
           </div>
 
           {/* Empty State */}
-          {!isOrganizationFilterLoading && departments.length === 0 && (
+          {!isOrganizationFilterLoading && state.departments.length === 0 && (
             <div className="text-center py-12">
               <Building2Icon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
               <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No departments found</h3>
@@ -330,7 +411,7 @@ export default function DepartmentsPage() {
       {/* Pagination */}
       <div className={isOrganizationFilterLoading ? 'opacity-50 pointer-events-none' : ''}>
         <Pagination
-          pagination={pagination}
+          pagination={state.pagination}
           currentPage={orgFilterCurrentPage}
           onPageChange={(page) => setOrgFilterCurrentPage(page)}
           itemName="departments"
@@ -340,30 +421,30 @@ export default function DepartmentsPage() {
       {/* Delete Confirmation Modal */}
       <ConfirmationModal
         size='wider'
-        isOpen={showDeleteModal}
+        isOpen={state.showDeleteModal}
         onClose={() => {
-          if (!deleteSuccess) {
-            setShowDeleteModal(false);
-            setDepartmentToDelete(null);
+          if (!state.deleteSuccess) {
+            dispatch({ type: 'SET_SHOW_DELETE_MODAL', payload: false });
+            dispatch({ type: 'SET_DEPARTMENT_TO_DELETE', payload: null });
           }
         }}
         onConfirm={handleConfirmDelete}
-        title={deleteSuccess ? "Deleted Successfully" : "Delete Department"}
-        message={deleteSuccess
-          ? `The department "${departmentToDelete?.name}" has been deleted successfully.`
-          : `Are you sure you want to delete the department "${departmentToDelete?.name}"? This action cannot be undone.`
+        title={state.deleteSuccess ? "Deleted Successfully" : "Delete Department"}
+        message={state.deleteSuccess
+          ? `The department "${state.departmentToDelete?.name}" has been deleted successfully.`
+          : `Are you sure you want to delete the department "${state.departmentToDelete?.name}"? This action cannot be undone.`
         }
-        variant={deleteSuccess ? "success" : "warning"}
-        confirmText={deleteSuccess ? "Done" : "Delete"}
+        variant={state.deleteSuccess ? "success" : "warning"}
+        confirmText={state.deleteSuccess ? "Done" : "Delete"}
         cancelText="Cancel"
-        isLoading={isDeleting}
+        isLoading={state.isDeleting}
       />
 
       {/* Error Modal */}
       <ErrorModal
-        isOpen={showErrorModal}
-        onClose={() => setShowErrorModal(false)}
-        errorMessage={errorMessage}
+        isOpen={state.showErrorModal}
+        onClose={() => dispatch({ type: 'SET_SHOW_ERROR_MODAL', payload: false })}
+        errorMessage={state.errorMessage}
       />
     </div>
   );

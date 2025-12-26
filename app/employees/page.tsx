@@ -193,19 +193,7 @@ export default function EmployeesPage() {
     }
   };
 
-  const fetchOrganizations = async () => {
-    // This is now handled by the useOrganizationFilter hook
-  };
-
-  useEffect(() => {
-    // Organization filtering is now handled by the useOrganizationFilter hook
-    // This effect is no longer needed as the hook handles all data fetching
-  }, []);
-
-  // Memoize expensive calculations to prevent unnecessary re-renders
-
-  // Memoize event handlers to prevent unnecessary re-renders
-
+  
   const getStatusColor = (status: string): BadgeColor => {
     switch (status) {
       case 'ACTIVE':
@@ -322,7 +310,7 @@ export default function EmployeesPage() {
           </div>
 
           {/* Desktop Table View */}
-          <EmployeeTable employees={state.employees} getStatusColor={getStatusColor} loading={isOrganizationFilterLoading} currentPage={state.pagination?.page} limit={state.pagination?.limit} />
+          <EmployeeTable employees={state.employees} getStatusColor={getStatusColor} loading={state.initialLoading || state.loading || isOrganizationFilterLoading} currentPage={state.pagination?.page} limit={state.pagination?.limit} />
 
           {/* Mobile Card View */}
           <div className="lg:hidden space-y-4">
