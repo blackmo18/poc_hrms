@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/app/components/providers/auth-provider";
 import { useRoleAccess } from "@/app/components/providers/role-access-provider";
 import Button from "@/app/components/ui/button/Button";
-import Input from "@/app/components/ui/input/Input";
+import Input from "@/app/components/form/input/InputField";
 import Select from "@/app/components/form/Select";
 
 interface Organization {
@@ -169,7 +169,6 @@ export default function CreatePermissionPage() {
                 Organization (Optional)
               </label>
               <Select
-                label=""
                 value={formData.organization_id || ""}
                 onChange={(value) => handleInputChange('organization_id', value)}
                 options={[
@@ -213,14 +212,13 @@ export default function CreatePermissionPage() {
         {/* Actions */}
         <div className="flex justify-end space-x-4">
           <Button
-            type="button"
             variant="outline"
             onClick={() => router.back()}
             disabled={loading}
           >
             Cancel
           </Button>
-          <Button type="submit" disabled={loading}>
+          <Button disabled={loading}>
             {loading ? 'Creating...' : 'Create Permission'}
           </Button>
         </div>

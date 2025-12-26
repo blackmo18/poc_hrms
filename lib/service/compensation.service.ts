@@ -1,32 +1,32 @@
-import { getCompensationRepository } from '@/lib/repository';
-import { generateULID } from '@/lib/utils/ulid.service';
+import { compensationController } from '@/lib/controllers/compensation.controller';
+import { CreateCompensation, UpdateCompensation } from '../models/compensation';
 import { Compensation } from '@prisma/client';
+import { generateULID } from '@/lib/utils/ulid.service';
 
 export class CompensationService {
-  private compensationRepository = getCompensationRepository();
-
   async getById(id: string): Promise<Compensation | null> {
-    return await this.compensationRepository.findById(id);
+    return await compensationController.getById(id);
   }
 
   async getByEmployeeId(employeeId: string): Promise<Compensation[]> {
-    return await this.compensationRepository.findByEmployeeId(employeeId);
+    const result = await compensationController.getAll();
+    return result.filter(c => c.employee_id === employeeId);
   }
 
   async getAll(): Promise<Compensation[]> {
-    return await this.compensationRepository.findAll();
+    return await compensationController.getAll();
   }
 
-  async create(data: Omit<Compensation, 'internal_id' | 'id' | 'created_at'>): Promise<Compensation> {
-    return await this.compensationRepository.create(data);
+  async create(data: CreateCompensation): Promise<Compensation> {
+    return await compensationController.create(data);
   }
 
-  async update(id: string, data: Partial<Compensation>): Promise<Compensation> {
-    return await this.compensationRepository.update(id, data);
+  async update(id: string, data: UpdateCompensation): Promise<Compensation> {
+    return await compensationController.update(id, data);
   }
 
   async delete(id: string): Promise<Compensation> {
-    return await this.compensationRepository.delete(id);
+    return await compensationController.delete(id);
   }
 }
 

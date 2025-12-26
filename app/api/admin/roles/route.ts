@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
 
       // Check if role already exists in the organization
       const existingRole = await roleController.getAll(authRequest.user!.organization_id);
-      const roleExists = existingRole.some(role => role.name.toLowerCase() === name.toLowerCase());
+      const roleExists = existingRole.data.some(role => role.name.toLowerCase() === name.toLowerCase());
 
       if (roleExists) {
         return NextResponse.json(

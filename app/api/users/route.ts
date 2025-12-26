@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { userController } from '@/lib/controllers/user.controller';
 import { requiresPermissions } from '@/lib/auth/middleware';
 import { CreateUserSchema } from '@/lib/models/user';
+import { getPasswordResetSessionService } from '@/lib/service/password-reset-session.service';
 
 export async function GET(request: NextRequest) {
   return requiresPermissions(request, ['users.read'], async (authRequest) => {
@@ -81,9 +82,38 @@ export async function POST(request: NextRequest) {
       }
 
       const createdUser = await userController.create(validatedData);
-      return NextResponse.json(createdUser, { status: 201 });
-    } catch (error) {
+
+      // Create password reset session for the new user
+      const passwordResetService = getPasswordResetSessionService();
+      const resetSession = await passwordResetService.createPasswordResetSession(
+        createdUser.id,
+        user.id
+      );
+
+      return NextResponse.json({
+        ...createdUser,
+        passwordResetToken: resetSession.token,
+        passwordResetExpires: resetSession.expired_on,
+      }, { status: 201 });
+    } catch (error: any) {
       console.error('Error creating user:', error);
+      
+      // Handle specific database errors
+      if (error.code === 'P2002' && error.meta?.target?.includes('email')) {
+        return NextResponse.json(
+          { error: 'A user with this email already exists' },
+          { status: 409 }
+        );
+      }
+      
+      // Handle string error messages from controller
+      if (error.message === 'A user with this email already exists') {
+        return NextResponse.json(
+          { error: error.message },
+          { status: 409 }
+        );
+      }
+      
       return NextResponse.json(
         { error: 'Failed to create user' },
         { status: 500 }

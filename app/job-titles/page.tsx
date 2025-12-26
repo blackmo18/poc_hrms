@@ -417,7 +417,7 @@ export default function JobTitlesPage() {
         variant={state.deleteSuccess ? "success" : "warning"}
         confirmText={state.deleteSuccess ? "Done" : "Delete"}
         cancelText="Cancel"
-        isLoading={state.isDeleting}
+        isLoading={state.loading}
       />
 
       {/* Error Modal */}

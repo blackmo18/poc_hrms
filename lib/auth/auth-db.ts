@@ -109,7 +109,8 @@ export const createUser = async (
     status: 'ACTIVE',
     name,
     emailVerified: null,
-    image: null
+    image: null,
+    employee_id: null
   });
 
   return user.id;  // Return CUID string ID instead of internal_id

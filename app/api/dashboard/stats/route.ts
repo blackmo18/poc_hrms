@@ -1,8 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { auth } from '@/lib/auth';
 import { getEmployeeService, getDepartmentService, getPayrollService, getLeaveRequestService } from '@/lib/service';
 
 export async function GET(request: NextRequest) {
   try {
+    // Get authenticated session
+    const session = await auth.api.getSession({ headers: request.headers });
+
+    if (!session?.user?.id) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
     const employeeService = getEmployeeService();
     const departmentService = getDepartmentService();
     const payrollService = getPayrollService();
@@ -15,7 +26,7 @@ export async function GET(request: NextRequest) {
       allLeaveRequests
     ] = await Promise.all([
       employeeService.getAll(),
-      departmentService.getAll(),
+      departmentService.getAll(session, {}),
       payrollService.getAll(),
       leaveRequestService.getAll()
     ]);

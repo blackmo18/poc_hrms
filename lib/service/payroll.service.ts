@@ -1,35 +1,29 @@
-import { getPayrollRepository } from '@/lib/repository';
-import { generateULID } from '@/lib/utils/ulid.service';
+import { payrollController } from '@/lib/controllers/payroll.controller';
+import { CreatePayroll, UpdatePayroll } from '@/lib/models/payroll';
 import { Payroll } from '@prisma/client';
 import { PaginationOptions, PaginatedResponse } from './organization.service';
+import { generateULID } from '@/lib/utils/ulid.service';
 
 export class PayrollService {
-  private payrollRepository = getPayrollRepository();
-
   async getById(id: string): Promise<Payroll | null> {
-    return await this.payrollRepository.findById(id);
+    return await payrollController.getById(id);
   }
 
   async getByEmployeeId(employeeId: string): Promise<Payroll[]> {
-    return await this.payrollRepository.findByEmployeeId(employeeId);
+    const result = await payrollController.getAll();
+    return result.filter(p => p.employee_id === employeeId);
   }
 
   async getAll(options?: PaginationOptions): Promise<PaginatedResponse<Payroll>> {
+    const result = await payrollController.getAll();
     const page = options?.page || 1;
     const limit = options?.limit || 10;
-    const skip = (page - 1) * limit;
-
-    const [payrolls, total] = await Promise.all([
-      this.payrollRepository.findAll().then(results =>
-        results.slice(skip, skip + limit)
-      ),
-      this.payrollRepository.findAll().then(results => results.length)
-    ]);
-
+    const start = (page - 1) * limit;
+    const paginated = result.slice(start, start + limit);
+    const total = result.length;
     const totalPages = Math.ceil(total / limit);
-
     return {
-      data: payrolls,
+      data: paginated,
       total,
       page,
       limit,
@@ -37,17 +31,16 @@ export class PayrollService {
     };
   }
 
-  async create(data: Omit<Payroll, 'id' | 'created_at' | 'updated_at'>): Promise<Payroll> {
-    const id = generateULID();
-    return await this.payrollRepository.create({ ...data, id });
+  async create(data: CreatePayroll): Promise<Payroll> {
+    return await payrollController.create(data);
   }
 
-  async update(id: string, data: Partial<Payroll>): Promise<Payroll> {
-    return await this.payrollRepository.update(id, data);
+  async update(id: string, data: UpdatePayroll): Promise<Payroll> {
+    return await payrollController.update(id, data);
   }
 
   async delete(id: string): Promise<Payroll> {
-    return await this.payrollRepository.delete(id);
+    return await payrollController.delete(id);
   }
 }
 

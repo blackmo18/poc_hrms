@@ -1,38 +1,38 @@
-import { getUserRepository } from '@/lib/repository';
+import { userController } from '@/lib/controllers/user.controller';
+import { CreateUser, UpdateUser } from '../models/user';
 import { User } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import { generateULID } from '@/lib/utils/ulid.service';
 
 export class UserService {
-  private userRepository = getUserRepository();
-
   async getById(id: string): Promise<User | null> {
-    return await this.userRepository.findById(id);
+    return await userController.getById(id);
   }
 
   async getByEmail(email: string): Promise<User | null> {
-    return await this.userRepository.findByEmail(email);
+    return await userController.getByEmail(email);
   }
 
   async getByOrganizationId(organizationId: string): Promise<User[]> {
-    return await this.userRepository.findByOrganizationId(organizationId);
+    const result = await userController.getAll(organizationId);
+    return result.data;
   }
 
   async getAll(): Promise<User[]> {
-    return await this.userRepository.findAll();
+    const result = await userController.getAll();
+    return result.data;
   }
 
-  async create(data: Omit<User, 'id' | 'created_at' | 'updated_at' | 'created_by' | 'updated_by'>): Promise<User> {
-    const id = generateULID();
-    return await this.userRepository.create({ ...data, id });
+  async create(data: CreateUser): Promise<User> {
+    return await userController.create(data);
   }
 
-  async update(id: string, data: Partial<User>): Promise<User> {
-    return await this.userRepository.update(id, data);
+  async update(id: string, data: UpdateUser): Promise<User> {
+    return await userController.update(id, data);
   }
 
   async delete(id: string): Promise<User> {
-    return await this.userRepository.delete(id);
+    return await userController.delete(id);
   }
 
   async verifyPassword(plainPassword: string, hashedPassword: string): Promise<boolean> {
@@ -44,7 +44,27 @@ export class UserService {
   }
 
   async getUserPermissions(userId: string): Promise<string[]> {
-    return await this.userRepository.getUserPermissions(userId);
+    // Fetch user with roles and permissions directly
+    const user = await userController.getById(userId);
+    if (!user) return [];
+    
+    // Fetch permissions by querying role permissions for user's roles
+    const { prisma } = await import('@/lib/db');
+    const roleIds = user.userRoles.map(ur => ur.role_id);
+    
+    const rolePermissions = await prisma.rolePermission.findMany({
+      where: {
+        role_id: {
+          in: roleIds
+        }
+      },
+      include: {
+        permission: true
+      }
+    });
+    
+    const permissions = rolePermissions.map(rp => rp.permission.name);
+    return [...new Set(permissions)]; // Remove duplicates
   }
 }
 

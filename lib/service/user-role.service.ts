@@ -1,36 +1,35 @@
-import { getUserRoleRepository } from '@/lib/repository';
-import { generateULID } from '@/lib/utils/ulid.service';
+import { userRoleController } from '@/lib/controllers/user-role.controller';
+import { CreateUserRole } from '@/lib/models/user-role';
 import { UserRole } from '@prisma/client';
+import { generateULID } from '@/lib/utils/ulid.service';
 
 export class UserRoleService {
-  private userRoleRepository = getUserRoleRepository();
-
   async getById(id: string): Promise<UserRole | null> {
-    return await this.userRoleRepository.findById(id);
+    return await userRoleController.getById(id);
   }
 
   async getByUserId(userId: string): Promise<UserRole[]> {
-    return await this.userRoleRepository.findByUserId(userId);
+    return await userRoleController.getByUserId(userId);
   }
 
   async getByRoleId(roleId: string): Promise<UserRole[]> {
-    return await this.userRoleRepository.findByRoleId(roleId);
+    return await userRoleController.getByRoleId(roleId);
   }
 
   async getAll(): Promise<UserRole[]> {
-    return await this.userRoleRepository.findAll();
+    return await userRoleController.getAll();
   }
 
-  async create(data: Omit<UserRole, 'internal_id' | 'id' | 'created_at'>): Promise<UserRole> {
-    return await this.userRoleRepository.create(data);
+  async create(data: CreateUserRole): Promise<UserRole> {
+    return await userRoleController.create(data);
   }
 
   async delete(id: string): Promise<UserRole> {
-    return await this.userRoleRepository.delete(id);
+    return await userRoleController.delete(id);
   }
 
   async deleteByUserAndRole(userId: string, roleId: string): Promise<number> {
-    return this.userRoleRepository.deleteByUserAndRole(userId, roleId);
+    return await userRoleController.deleteByUserAndRole(userId, roleId);
   }
 }
 

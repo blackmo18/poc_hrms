@@ -1,61 +1,50 @@
-import { getEmployeeRepository } from '@/lib/repository';
+import { employeeController } from '@/lib/controllers/employee.controller';
+import { CreateEmployee, UpdateEmployee } from '@/lib/models/employee';
 import { Employee } from '@prisma/client';
 import { PaginationOptions, PaginatedResponse } from './organization.service';
 import { generateULID } from '@/lib/utils/ulid.service';
 
 export class EmployeeService {
-  private employeeRepository = getEmployeeRepository();
-
   async getById(id: string): Promise<Employee | null> {
-    return await this.employeeRepository.findById(id);
+    return await employeeController.getById(id);
   }
 
   async getByUserId(userId: string): Promise<Employee | null> {
-    return await this.employeeRepository.findByUserId(userId);
+    return await employeeController.getByUserId(userId);
   }
 
   async getByOrganizationId(organizationId: string): Promise<Employee[]> {
-    return await this.employeeRepository.findByOrganizationId(organizationId);
+    const result = await employeeController.getAll(organizationId);
+    return result.data;
   }
 
   async getByDepartmentId(departmentId: string): Promise<Employee[]> {
-    return await this.employeeRepository.findByDepartmentId(departmentId);
+    return await employeeController.getByDepartment(departmentId);
   }
 
   async getAll(options?: PaginationOptions): Promise<PaginatedResponse<Employee>> {
     const page = options?.page || 1;
     const limit = options?.limit || 10;
-    const skip = (page - 1) * limit;
-
-    const [employees, total] = await Promise.all([
-      this.employeeRepository.findAll().then(results =>
-        results.slice(skip, skip + limit)
-      ),
-      this.employeeRepository.findAll().then(results => results.length)
-    ]);
-
-    const totalPages = Math.ceil(total / limit);
-
+    const result = await employeeController.getAll(undefined, { page, limit });
     return {
-      data: employees,
-      total,
-      page,
-      limit,
-      totalPages
+      data: result.data,
+      total: result.pagination.total,
+      page: result.pagination.page,
+      limit: result.pagination.limit,
+      totalPages: result.pagination.totalPages
     };
   }
 
-  async create(data: Omit<Employee, 'id' | 'created_at' | 'updated_at' | 'created_by' | 'updated_by'>): Promise<Employee> {
-    const id = generateULID();
-    return await this.employeeRepository.create({ ...data, id });
+  async create(data: CreateEmployee): Promise<Employee> {
+    return await employeeController.create(data);
   }
 
-  async update(id: string, data: Partial<Employee>): Promise<Employee> {
-    return await this.employeeRepository.update(id, data);
+  async update(id: string, data: UpdateEmployee): Promise<Employee> {
+    return await employeeController.update(id, data);
   }
 
   async delete(id: string): Promise<Employee> {
-    return await this.employeeRepository.delete(id);
+    return await employeeController.delete(id);
   }
 }
 

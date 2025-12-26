@@ -1,39 +1,34 @@
-import { getLeaveRequestRepository } from '@/lib/repository';
-import { generateULID } from '@/lib/utils/ulid.service';
+import { leaveRequestController } from '@/lib/controllers/leave-request.controller';
+import { CreateLeaveRequest, UpdateLeaveRequest } from '@/lib/models/leave-request';
 import { LeaveRequest } from '@prisma/client';
 import { PaginationOptions, PaginatedResponse } from './organization.service';
+import { generateULID } from '@/lib/utils/ulid.service';
 
 export class LeaveRequestService {
-  private leaveRequestRepository = getLeaveRequestRepository();
-
   async getById(id: string): Promise<LeaveRequest | null> {
-    return await this.leaveRequestRepository.findById(id);
+    return await leaveRequestController.getById(id);
   }
 
   async getByEmployeeId(employeeId: string): Promise<LeaveRequest[]> {
-    return await this.leaveRequestRepository.findByEmployeeId(employeeId);
+    const result = await leaveRequestController.getAll();
+    return result.filter(lr => lr.employee_id === employeeId);
   }
 
   async getByStatus(status: string): Promise<LeaveRequest[]> {
-    return await this.leaveRequestRepository.findByStatus(status);
+    const result = await leaveRequestController.getAll();
+    return result.filter(lr => lr.status === status);
   }
 
   async getAll(options?: PaginationOptions): Promise<PaginatedResponse<LeaveRequest>> {
+    const result = await leaveRequestController.getAll();
     const page = options?.page || 1;
     const limit = options?.limit || 10;
-    const skip = (page - 1) * limit;
-
-    const [leaveRequests, total] = await Promise.all([
-      this.leaveRequestRepository.findAll().then(results =>
-        results.slice(skip, skip + limit)
-      ),
-      this.leaveRequestRepository.findAll().then(results => results.length)
-    ]);
-
+    const start = (page - 1) * limit;
+    const paginated = result.slice(start, start + limit);
+    const total = result.length;
     const totalPages = Math.ceil(total / limit);
-
     return {
-      data: leaveRequests,
+      data: paginated,
       total,
       page,
       limit,
@@ -41,17 +36,16 @@ export class LeaveRequestService {
     };
   }
 
-  async create(data: Omit<LeaveRequest, 'id' | 'created_at' | 'updated_at'>): Promise<LeaveRequest> {
-    const id = generateULID();
-    return await this.leaveRequestRepository.create({ ...data, id });
+  async create(data: CreateLeaveRequest): Promise<LeaveRequest> {
+    return await leaveRequestController.create(data);
   }
 
-  async update(id: string, data: Partial<LeaveRequest>): Promise<LeaveRequest> {
-    return await this.leaveRequestRepository.update(id, data);
+  async update(id: string, data: UpdateLeaveRequest): Promise<LeaveRequest> {
+    return await leaveRequestController.update(id, data);
   }
 
   async delete(id: string): Promise<LeaveRequest> {
-    return await this.leaveRequestRepository.delete(id);
+    return await leaveRequestController.delete(id);
   }
 }
 

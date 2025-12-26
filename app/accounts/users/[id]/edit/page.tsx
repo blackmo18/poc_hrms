@@ -5,7 +5,7 @@ import { useRouter, useParams } from "next/navigation";
 import { useAuth } from "@/app/components/providers/auth-provider";
 import { useRoleAccess } from "@/app/components/providers/role-access-provider";
 import Button from "@/app/components/ui/button/Button";
-import Input from "@/app/components/ui/input/Input";
+import Input from "@/app/components/form/input/InputField";
 import Select from "@/app/components/form/Select";
 import MultiSelect from "@/app/components/form/MultiSelect";
 
@@ -266,7 +266,6 @@ export default function EditUserPage() {
               Organization *
             </label>
             <Select
-              label=""
               value={formData.organization_id}
               onChange={(value) => handleInputChange('organization_id', value)}
               options={organizations.map(org => ({
@@ -288,7 +287,6 @@ export default function EditUserPage() {
               Status
             </label>
             <Select
-              label=""
               value={formData.status}
               onChange={(value) => handleInputChange('status', value)}
               options={[
@@ -306,10 +304,10 @@ export default function EditUserPage() {
               Roles *
             </label>
             <MultiSelect
-              label=""
+              label="Roles"
               value={formData.role_ids}
               onChange={(values) => handleInputChange('role_ids', values)}
-              options={roleOptions}
+              options={roleOptions.map(role => ({ value: role.value, text: `${role.label}${role.description ? ` - ${role.description}` : ''}` }))}
               placeholder="Select roles"
             />
             {errors.role_ids && (
@@ -329,17 +327,15 @@ export default function EditUserPage() {
           </div>
         )}
 
-        {/* Actions */}
         <div className="flex justify-end space-x-4">
           <Button
-            type="button"
             variant="outline"
             onClick={() => router.back()}
             disabled={loading}
           >
             Cancel
           </Button>
-          <Button type="submit" disabled={loading}>
+          <Button disabled={loading}>
             {loading ? 'Updating...' : 'Update User'}
           </Button>
         </div>

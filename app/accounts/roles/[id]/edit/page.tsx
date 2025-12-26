@@ -2,9 +2,10 @@
 
 import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
+import Link from "next/link";
 import { useAuth } from "@/app/components/providers/auth-provider";
 import Button from "@/app/components/ui/button/Button";
-import Input from "@/app/components/ui/input/Input";
+import Input from "@/app/components/form/input/InputField";
 import Select from "@/app/components/form/Select";
 import MultiSelect from "@/app/components/form/MultiSelect";
 
@@ -182,6 +183,14 @@ export default function EditRolePage() {
     description: permission.description,
   }));
 
+  const handleUpdateClick = () => {
+    const form = document.querySelector('form') as HTMLFormElement;
+    if (form) {
+      const event = new Event('submit', { bubbles: true, cancelable: true });
+      form.dispatchEvent(event);
+    }
+  };
+
   if (fetchLoading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -230,7 +239,6 @@ export default function EditRolePage() {
               Organization *
             </label>
             <Select
-              label=""
               value={formData.organization_id}
               onChange={(value) => handleInputChange('organization_id', value)}
               options={organizations.map(org => ({
@@ -265,10 +273,10 @@ export default function EditRolePage() {
               Permissions
             </label>
             <MultiSelect
-              label=""
+              label="Permissions"
               value={formData.permission_ids}
               onChange={(values) => handleInputChange('permission_ids', values)}
-              options={permissionOptions}
+              options={permissionOptions.map(permission => ({ value: permission.value, text: `${permission.label}${permission.description ? ` - ${permission.description}` : ''}` }))}
               placeholder="Select permissions for this role"
             />
             <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
@@ -286,21 +294,29 @@ export default function EditRolePage() {
           </div>
         )}
 
-        {/* Actions */}
-        <div className="flex justify-end space-x-4">
+      </form>
+
+      {/* Actions */}
+      <div className="flex items-center gap-3 pt-6 border-t border-gray-200 dark:border-gray-700">
+        <Link href="/accounts/roles">
           <Button
-            type="button"
             variant="outline"
-            onClick={() => router.back()}
+            size="md"
             disabled={loading}
           >
             Cancel
           </Button>
-          <Button type="submit" disabled={loading}>
-            {loading ? 'Updating...' : 'Update Role'}
-          </Button>
-        </div>
-      </form>
+        </Link>
+        <Button
+          variant="primary"
+          size="md"
+          onClick={handleUpdateClick}
+          disabled={loading}
+          className="bg-blue-600 hover:bg-blue-700 text-white"
+        >
+          {loading ? 'Updating...' : 'Update Role'}
+        </Button>
+      </div>
     </div>
   );
 }

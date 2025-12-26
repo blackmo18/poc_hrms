@@ -53,15 +53,20 @@ export class JWTUtils {
    */
   static async authenticateUser(email: string, password: string): Promise<{ user: any; accessToken: string; refreshToken: string } | null> {
     try {
+      console.log('JWT authenticateUser called with email:', email);
       // Find user by email
       const user = await findUserByEmail(email);
+      console.log('User found:', !!user);
       if (!user || !user.enabled) {
+        console.log('User not found or not enabled');
         return null;
       }
 
       // Verify password
       const isValidPassword = await verifyPassword(password, user.passwordHash);
+      console.log('Password valid:', isValidPassword);
       if (!isValidPassword) {
+        console.log('Password invalid');
         return null;
       }
 

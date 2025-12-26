@@ -1,53 +1,42 @@
-import { getDepartmentRepository } from '@/lib/repository';
+import { departmentController } from '@/lib/controllers/department.controller';
+import { CreateDepartment, UpdateDepartment } from '@/lib/models/department';
 import { Department } from '@prisma/client';
 import { PaginationOptions, PaginatedResponse } from './organization.service';
 import { generateULID } from '@/lib/utils/ulid.service';
 
 export class DepartmentService {
-  private departmentRepository = getDepartmentRepository();
-
-  async getById(id: string): Promise<Department | null> {
-    return await this.departmentRepository.findById(id);
+  async getById(session: any, id: string): Promise<Department | null> {
+    return await departmentController.getById(session, id);
   }
 
-  async getByOrganizationId(organizationId: string): Promise<Department[]> {
-    return await this.departmentRepository.findByOrganizationId(organizationId);
+  async getByOrganizationId(session: any, organizationId: string): Promise<Department[]> {
+    const result = await departmentController.getAll(session, organizationId);
+    return result.data;
   }
 
-  async getAll(options?: PaginationOptions): Promise<PaginatedResponse<Department>> {
+  async getAll(session: any, options?: PaginationOptions): Promise<PaginatedResponse<Department>> {
     const page = options?.page || 1;
     const limit = options?.limit || 10;
-    const skip = (page - 1) * limit;
-
-    const [departments, total] = await Promise.all([
-      this.departmentRepository.findAll().then(results =>
-        results.slice(skip, skip + limit)
-      ),
-      this.departmentRepository.findAll().then(results => results.length)
-    ]);
-
-    const totalPages = Math.ceil(total / limit);
-
+    const result = await departmentController.getAll(session, undefined, page, limit);
     return {
-      data: departments,
-      total,
-      page,
-      limit,
-      totalPages
+      data: result.data,
+      total: result.pagination.total,
+      page: result.pagination.page,
+      limit: result.pagination.limit,
+      totalPages: result.pagination.totalPages
     };
   }
 
-  async create(data: Omit<Department, 'id' | 'created_at' | 'updated_at'>): Promise<Department> {
-    const id = generateULID();
-    return await this.departmentRepository.create({ ...data, id });
+  async create(session: any, data: CreateDepartment): Promise<Department> {
+    return await departmentController.create(session, data);
   }
 
-  async update(id: string, data: Partial<Department>): Promise<Department> {
-    return await this.departmentRepository.update(id, data);
+  async update(session: any, id: string, data: UpdateDepartment): Promise<Department> {
+    return await departmentController.update(session, id, data);
   }
 
-  async delete(id: string): Promise<Department> {
-    return await this.departmentRepository.delete(id);
+  async delete(session: any, id: string): Promise<Department> {
+    return await departmentController.delete(session, id);
   }
 }
 

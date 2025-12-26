@@ -4,11 +4,12 @@ import { getUserService } from '@/lib/service';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   return requiresRoles(request, ['SUPER_ADMIN'], async (authRequest: AuthenticatedRequest) => {
     try {
-      const userId = params.id;
+      const { id } = await params;
+      const userId = id;
 
       const user = await getUserService().getById(userId);
 
@@ -45,11 +46,12 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   return requiresRoles(request, ['SUPER_ADMIN'], async (authRequest: AuthenticatedRequest) => {
     try {
-      const userId = params.id;
+      const { id } = await params;
+      const userId = id;
       const body = await request.json();
       const { email, organization_id, status } = body;
 
@@ -92,7 +94,6 @@ export async function PUT(
         email,
         organization_id,
         status: status || existingUser.status,
-        updated_by: authRequest.user!.id,
       });
 
       // Transform response
@@ -121,11 +122,12 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   return requiresRoles(request, ['SUPER_ADMIN'], async (authRequest: AuthenticatedRequest) => {
     try {
-      const userId = params.id;
+      const { id } = await params;
+      const userId = id;
 
       // Check if user exists
       const user = await getUserService().getById(userId);

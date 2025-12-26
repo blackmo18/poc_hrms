@@ -1,36 +1,35 @@
-import { getRolePermissionRepository } from '@/lib/repository';
-import { generateULID } from '@/lib/utils/ulid.service';
+import { rolePermissionController } from '@/lib/controllers/role-permission.controller';
+import { CreateRolePermission } from '@/lib/models/role-permission';
 import { RolePermission } from '@prisma/client';
+import { generateULID } from '@/lib/utils/ulid.service';
 
 export class RolePermissionService {
-  private rolePermissionRepository = getRolePermissionRepository();
-
   async getById(id: string): Promise<RolePermission | null> {
-    return await this.rolePermissionRepository.findById(id);
+    return await rolePermissionController.getById(id);
   }
 
   async getByRoleId(roleId: string): Promise<RolePermission[]> {
-    return await this.rolePermissionRepository.findByRoleId(roleId);
+    return await rolePermissionController.getByRoleId(roleId);
   }
 
   async getByPermissionId(permissionId: string): Promise<RolePermission[]> {
-    return await this.rolePermissionRepository.findByPermissionId(permissionId);
+    return await rolePermissionController.getByPermissionId(permissionId);
   }
 
   async getAll(): Promise<RolePermission[]> {
-    return await this.rolePermissionRepository.findAll();
+    return await rolePermissionController.getAll();
   }
 
-  async create(data: Omit<RolePermission, 'internal_id' | 'id' | 'created_at'>): Promise<RolePermission> {
-    return await this.rolePermissionRepository.create(data);
+  async create(data: CreateRolePermission): Promise<RolePermission> {
+    return await rolePermissionController.create(data);
   }
 
   async delete(id: string): Promise<RolePermission> {
-    return await this.rolePermissionRepository.delete(id);
+    return await rolePermissionController.delete(id);
   }
 
   async deleteByRoleAndPermission(roleId: string, permissionId: string): Promise<number> {
-    return this.rolePermissionRepository.deleteByRoleAndPermission(roleId, permissionId);
+    return await rolePermissionController.deleteByRoleAndPermission(roleId, permissionId);
   }
 }
 

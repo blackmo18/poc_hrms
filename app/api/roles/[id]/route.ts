@@ -3,10 +3,11 @@ import { requiresRoles, AuthenticatedRequest } from '@/lib/auth/middleware';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   return requiresRoles(request, ['SUPER_ADMIN'], async (authRequest: AuthenticatedRequest) => {
     try {
+      const { id } = await params;
       // Placeholder: Return empty role for now
       // TODO: Implement role fetching with proper service layer
       return NextResponse.json({
@@ -25,10 +26,11 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   return requiresRoles(request, ['SUPER_ADMIN'], async (authRequest: AuthenticatedRequest) => {
     try {
+      const { id } = await params;
       // Placeholder: Return not implemented
       // TODO: Implement role update with proper service layer
       return NextResponse.json(
@@ -47,10 +49,11 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   return requiresRoles(request, ['SUPER_ADMIN'], async (authRequest: AuthenticatedRequest) => {
     try {
+      const { id } = await params;
       // Placeholder: Return not implemented
       // TODO: Implement role deletion with proper service layer
       return NextResponse.json(

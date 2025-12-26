@@ -10,7 +10,7 @@ interface DatePickerProps {
   defaultYearOffset?: number;
 }
 
-export default function DatePicker({
+export default function DatePickerX({
   value,
   onChange,
   placeholder = 'Select date',

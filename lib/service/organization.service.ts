@@ -1,4 +1,5 @@
-import { getOrganizationRepository } from '@/lib/repository';
+import { organizationController } from '@/lib/controllers/organization.controller';
+import { CreateOrganization, UpdateOrganization } from '@/lib/models/organization';
 import { Organization } from '@prisma/client';
 import { generateULID } from '@/lib/utils/ulid.service';
 
@@ -16,50 +17,38 @@ export interface PaginatedResponse<T> {
 }
 
 export class OrganizationService {
-  private organizationRepository = getOrganizationRepository();
-
   async getById(id: string): Promise<Organization | null> {
-    return await this.organizationRepository.findById(id);
+    return await organizationController.getById(id);
   }
 
   async getByName(name: string): Promise<Organization | null> {
-    return await this.organizationRepository.findByName(name);
+    const result = await organizationController.getAll();
+    return result.data.find(o => o.name === name) || null;
   }
 
   async getAll(options?: PaginationOptions): Promise<PaginatedResponse<Organization>> {
     const page = options?.page || 1;
     const limit = options?.limit || 10;
-    const skip = (page - 1) * limit;
-
-    const [organizations, total] = await Promise.all([
-      this.organizationRepository.findAll().then(results =>
-        results.slice(skip, skip + limit)
-      ),
-      this.organizationRepository.findAll().then(results => results.length)
-    ]);
-
-    const totalPages = Math.ceil(total / limit);
-
+    const result = await organizationController.getAll({ page, limit });
     return {
-      data: organizations,
-      total,
-      page,
-      limit,
-      totalPages
+      data: result.data,
+      total: result.pagination.total,
+      page: result.pagination.page,
+      limit: result.pagination.limit,
+      totalPages: result.pagination.totalPages
     };
   }
 
-  async create(data: Omit<Organization, 'id' | 'created_at' | 'updated_at'>): Promise<Organization> {
-    const id = generateULID();
-    return await this.organizationRepository.create({ ...data, id });
+  async create(data: CreateOrganization): Promise<Organization> {
+    return await organizationController.create(data);
   }
 
-  async update(id: string, data: Partial<Organization>): Promise<Organization> {
-    return await this.organizationRepository.update(id, data);
+  async update(id: string, data: UpdateOrganization): Promise<Organization> {
+    return await organizationController.update(id, data);
   }
 
   async delete(id: string): Promise<Organization> {
-    return await this.organizationRepository.delete(id);
+    return await organizationController.delete(id);
   }
 }
 

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo, useCallback, useReducer } from "react";
 import Link from "next/link";
-import { PencilIcon, PlusIcon, TrashIcon, EyeIcon, LockIcon } from "@/app/icons";
+import { PencilIcon, PlusIcon, TrashBinIcon, EyeIcon, LockIcon } from "@/app/icons";
 import Button from "@/app/components/ui/button/Button";
 import ComponentCard from '@/app/components/common/ComponentCard';
 import PageMeta from '@/app/components/common/PageMeta';

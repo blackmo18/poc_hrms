@@ -47,6 +47,12 @@ const testUsers: TestUser[] = [
     password: 'password123',
     role: 'Non-existent User',
     expected: false
+  },
+  {
+    email: 'superadmin@hrsystem.com',
+    password: 'superadmin123',
+    role: 'Super Admin',
+    expected: true
   }
 ];
 

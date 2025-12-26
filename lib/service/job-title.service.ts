@@ -1,33 +1,33 @@
-import { getJobTitleRepository } from '@/lib/repository';
-import { generateULID } from '@/lib/utils/ulid.service';
+import { jobTitleController } from '@/lib/controllers/job-title.controller';
+import { CreateJobTitle, UpdateJobTitle } from '@/lib/models/job-title';
 import { JobTitle } from '@prisma/client';
+import { generateULID } from '@/lib/utils/ulid.service';
 
 export class JobTitleService {
-  private jobTitleRepository = getJobTitleRepository();
-
   async getById(id: string): Promise<JobTitle | null> {
-    return await this.jobTitleRepository.findById(id);
+    return await jobTitleController.getById(id);
   }
 
   async getByOrganizationId(organizationId: string): Promise<JobTitle[]> {
-    return this.jobTitleRepository.findByOrganizationId(organizationId);
+    const result = await jobTitleController.getAll(organizationId);
+    return result.data;
   }
 
   async getAll(): Promise<JobTitle[]> {
-    return this.jobTitleRepository.findAll()
+    const result = await jobTitleController.getAll();
+    return result.data;
   }
 
-  async create(data: Omit<JobTitle, 'id' | 'created_at' | 'updated_at' | 'created_by' | 'updated_by'>): Promise<JobTitle> {
-    const id = generateULID();
-    return await this.jobTitleRepository.create({ ...data, id });
+  async create(data: CreateJobTitle): Promise<JobTitle> {
+    return await jobTitleController.create(data);
   }
 
-  async update(id: string, data: Partial<JobTitle>): Promise<JobTitle> {
-    return await this.jobTitleRepository.update(id, data);
+  async update(id: string, data: UpdateJobTitle): Promise<JobTitle> {
+    return await jobTitleController.update(id, data);
   }
 
   async delete(id: string): Promise<JobTitle> {
-    return await this.jobTitleRepository.delete(id);
+    return await jobTitleController.delete(id);
   }
 }
 

@@ -4,7 +4,7 @@ import { getUserContext, hasRole } from '@/lib/auth/context';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const userContext = getUserContext(request);
@@ -12,7 +12,8 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const permissionId = params.id;
+    const { id } = await params;
+    const permissionId = id;
 
     const permission = await prisma.permission.findUnique({
       where: { id: permissionId },
@@ -66,7 +67,7 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const userContext = getUserContext(request);
@@ -79,7 +80,8 @@ export async function PUT(
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    const permissionId = params.id;
+    const { id } = await params;
+    const permissionId = id;
     const body = await request.json();
     const { name, description, organization_id } = body;
 
@@ -161,7 +163,7 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const userContext = getUserContext(request);
@@ -174,7 +176,8 @@ export async function DELETE(
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    const permissionId = params.id;
+    const { id } = await params;
+    const permissionId = id;
 
     // Check if permission exists and is assigned to any roles
     const permission = await prisma.permission.findUnique({

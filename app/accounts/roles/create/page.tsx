@@ -4,9 +4,10 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/app/components/providers/auth-provider";
 import Button from "@/app/components/ui/button/Button";
-import Input from "@/app/components/ui/input/Input";
+import Input from "@/app/components/form/input/InputField";
 import Select from "@/app/components/form/Select";
 import MultiSelect from "@/app/components/form/MultiSelect";
+import Link from "next/link";
 
 interface Organization {
   id: string;
@@ -145,6 +146,14 @@ export default function CreateRolePage() {
     description: permission.description,
   }));
 
+  const handleCreateClick = () => {
+    const form = document.querySelector('form') as HTMLFormElement;
+    if (form) {
+      const event = new Event('submit', { bubbles: true, cancelable: true });
+      form.dispatchEvent(event);
+    }
+  };
+
   return (
     <div>
       {/* Header */}
@@ -185,7 +194,6 @@ export default function CreateRolePage() {
               Organization *
             </label>
             <Select
-              label=""
               value={formData.organization_id}
               onChange={(value) => handleInputChange('organization_id', value)}
               options={organizations.map(org => ({
@@ -220,10 +228,10 @@ export default function CreateRolePage() {
               Permissions
             </label>
             <MultiSelect
-              label=""
+              label="Permissions"
               value={formData.permission_ids}
               onChange={(values) => handleInputChange('permission_ids', values)}
-              options={permissionOptions}
+              options={permissionOptions.map(permission => ({ value: permission.value, text: `${permission.label}${permission.description ? ` - ${permission.description}` : ''}` }))}
               placeholder="Select permissions for this role"
             />
             <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
@@ -241,21 +249,29 @@ export default function CreateRolePage() {
           </div>
         )}
 
-        {/* Actions */}
-        <div className="flex justify-end space-x-4">
+      </form>
+
+      {/* Actions */}
+      <div className="flex items-center gap-3 pt-6 border-t border-gray-200 dark:border-gray-700">
+        <Link href="/accounts/roles">
           <Button
-            type="button"
             variant="outline"
-            onClick={() => router.back()}
+            size="md"
             disabled={loading}
           >
             Cancel
           </Button>
-          <Button type="submit" disabled={loading}>
-            {loading ? 'Creating...' : 'Create Role'}
-          </Button>
-        </div>
-      </form>
+        </Link>
+        <Button
+          variant="primary"
+          size="md"
+          onClick={handleCreateClick}
+          disabled={loading}
+          className="bg-blue-600 hover:bg-blue-700 text-white"
+        >
+          {loading ? 'Creating...' : 'Create Role'}
+        </Button>
+      </div>
     </div>
   );
 }

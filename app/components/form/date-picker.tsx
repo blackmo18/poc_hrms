@@ -13,6 +13,7 @@ type PropsType = {
   defaultDate?: DateOption;
   label?: string;
   placeholder?: string;
+  dateOffset?: number;
 };
 
 export default function DatePicker({
@@ -22,23 +23,52 @@ export default function DatePicker({
   label,
   defaultDate,
   placeholder,
+  dateOffset,
 }: PropsType) {
+  // Calculate default date with offset if provided
+  const calculateDefaultDate = () => {
+    if (defaultDate) {
+      return defaultDate;
+    }
+    
+    if (dateOffset !== undefined && dateOffset !== 0) {
+      const date = new Date();
+      date.setFullYear(date.getFullYear() + dateOffset);
+      return date.toISOString().split('T')[0];
+    }
+    
+    return defaultDate;
+  };
+
+  const finalDefaultDate = calculateDefaultDate();
   useEffect(() => {
     const flatPickr = flatpickr(`#${id}`, {
       mode: mode || "single",
       static: true,
       monthSelectorType: "static",
       dateFormat: "Y-m-d",
-      defaultDate,
+      defaultDate: finalDefaultDate,
       onChange,
+      // Set the initial view to show the correct month/year for offset dates
+      ...(dateOffset !== undefined && dateOffset !== 0 && {
+        defaultDate: finalDefaultDate,
+      }),
     });
+
+    // If we have an offset date, set the calendar to show that month/year
+    if (dateOffset !== undefined && dateOffset !== 0 && finalDefaultDate) {
+      const targetDate = new Date(finalDefaultDate);
+      if (!Array.isArray(flatPickr)) {
+        flatPickr.jumpToDate(targetDate);
+      }
+    }
 
     return () => {
       if (!Array.isArray(flatPickr)) {
         flatPickr.destroy();
       }
     };
-  }, [mode, onChange, id, defaultDate]);
+  }, [mode, onChange, id, finalDefaultDate, dateOffset]);
 
   return (
     <div>

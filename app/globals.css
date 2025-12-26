@@ -211,6 +211,28 @@
     -webkit-appearance: none;
   }
 
+  input[readonly] {
+    border-color: var(--color-gray-200) !important;
+    border-width: 1px !important;
+    outline: none !important;
+    box-shadow: none !important;
+    cursor: default !important;
+  }
+  
+  .dark input[readonly] {
+    border-color: var(--color-gray-700) !important;
+  }
+
+  input[readonly]:focus {
+    border-color: var(--color-gray-200) !important;
+    outline: none !important;
+    box-shadow: none !important;
+  }
+  
+  .dark input[readonly]:focus {
+    border-color: var(--color-gray-700) !important;
+  }
+
   .btn-disabled {
     @apply opacity-50 cursor-not-allowed pointer-events-none;
   }

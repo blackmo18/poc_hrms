@@ -52,11 +52,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ message: 'Admin role not found for organization' }, { status: 500 });
     }
 
-    const departments = await departmentService.getByOrganizationId(organization.id);
+    const departments = await departmentService.getByOrganizationId(session, organization.id);
     let hrDept = departments.find(d => d.name === 'Human Resources');
 
     if (!hrDept) {
-      hrDept = await departmentService.create({
+      hrDept = await departmentService.create(session, {
         organization_id: organization.id,
         name: 'Human Resources',
         description: 'HR and people operations',
@@ -80,9 +80,6 @@ export async function POST(request: NextRequest) {
       email: work_email,
       password_hash: hashedPassword,
       status: 'ACTIVE',
-      name: `${first_name} ${last_name}`,
-      emailVerified: null,
-      image: null,
     });
 
     await userRoleService.create({

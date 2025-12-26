@@ -25,27 +25,23 @@ export class UserController {
             name: true,
           },
         },
+        userRoles: {
+          include: {
+            role: {
+              include: {
+                rolePermissions: false
+              },
+            },
+          },
+        },
         employee: {
           select: {
             id: true,
             first_name: true,
             last_name: true,
-            custom_id: true,
-          },
-        },
-        userRoles: {
-          include: {
-            role: {
-              include: {
-                rolePermissions: {
-                  include: {
-                    permission: true,
-                  },
-                },
-              },
-            },
-          },
-        },
+            custom_id: true
+          }
+        }
       },
       orderBy: {
         created_at: 'desc'
@@ -69,17 +65,25 @@ export class UserController {
     return await prisma.user.findUnique({
       where: { id },
       include: {
-        organization: true,
-        employee: true,
+        organization: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+        employee: {
+          select: {
+            id: true,
+            first_name: true,
+            last_name: true,
+            custom_id: true,
+          },
+        },
         userRoles: {
           include: {
             role: {
               include: {
-                rolePermissions: {
-                  include: {
-                    permission: true,
-                  },
-                },
+                rolePermissions: false
               },
             },
           },
@@ -89,39 +93,137 @@ export class UserController {
   }
 
   async create(data: CreateUser) {
-    const hashedPassword = await bcrypt.hash(data.password_hash, 10);
+    // Hash the generated password
+    const hashedPassword = await bcrypt.hash(data.generated_password || 'defaultPassword123', 10);
     
-    return await prisma.user.create({
-      data: {
-        id: generateULID(),
-        ...data,
-        password_hash: hashedPassword,
-      },
-      include: {
-        organization: true,
-        employee: true,
-        userRoles: {
-          include: {
-            role: true,
+    // Get employee to determine organization
+    const employee = await prisma.employee.findUnique({
+      where: { id: data.employee_id },
+      include: { organization: true }
+    });
+
+    if (!employee) {
+      throw new Error('Employee not found');
+    }
+
+    // Create user with employee's organization
+    const userData = {
+      id: generateULID(),
+      email: data.email,
+      password_hash: hashedPassword,
+      organization_id: employee.organization_id,
+      employee_id: data.employee_id,
+      status: data.status || 'ACTIVE',
+    };
+
+    let user;
+    try {
+      user = await prisma.user.create({
+        data: userData,
+        include: {
+          organization: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+          employee: {
+            select: {
+              id: true,
+              first_name: true,
+              last_name: true,
+              custom_id: true,
+            },
+          },
+          userRoles: {
+            include: {
+              role: true,
+            },
           },
         },
-      },
-    });
+      });
+    } catch (error: any) {
+      // Re-throw duplicate email errors to be handled by the API route
+      if (error.code === 'P2002' && error.meta?.target?.includes('email')) {
+        throw new Error('A user with this email already exists');
+      }
+      throw error;
+    }
+
+    // Assign roles to user
+    if (data.role_ids && data.role_ids.length > 0) {
+      await prisma.userRole.createMany({
+        data: data.role_ids.map(roleId => ({
+          id: generateULID(),
+          user_id: user.id,
+          role_id: roleId,
+        }))
+      });
+
+      // Refetch user with roles
+      return await prisma.user.findUnique({
+        where: { id: user.id },
+        include: {
+          organization: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+          employee: {
+            select: {
+              id: true,
+              first_name: true,
+              last_name: true,
+              custom_id: true,
+            },
+          },
+          userRoles: {
+            include: {
+              role: true,
+            },
+          },
+        },
+      });
+    }
+
+    return user;
   }
 
   async update(id: string, data: UpdateUser) {
-    let updateData = { ...data };
+    let updateData: any = { ...data };
     
-    if (data.password_hash) {
+    // Handle password updates
+    if (data.generated_password) {
+      updateData.password_hash = await bcrypt.hash(data.generated_password, 10);
+      delete updateData.generated_password; // Remove this field as it's not in the schema
+    } else if (data.password_hash) {
       updateData.password_hash = await bcrypt.hash(data.password_hash, 10);
     }
     
-    return await prisma.user.update({
+    // Remove role_ids from direct update as it needs separate handling
+    const roleIds = data.role_ids;
+    delete updateData.role_ids;
+    
+    // Update user
+    const user = await prisma.user.update({
       where: { id },
       data: updateData,
       include: {
-        organization: true,
-        employee: true,
+        organization: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+        employee: {
+          select: {
+            id: true,
+            first_name: true,
+            last_name: true,
+            custom_id: true,
+          },
+        },
         userRoles: {
           include: {
             role: true,
@@ -129,6 +231,53 @@ export class UserController {
         },
       },
     });
+
+    // Update roles if provided
+    if (roleIds !== undefined) {
+      // Delete existing roles
+      await prisma.userRole.deleteMany({
+        where: { user_id: id }
+      });
+
+      // Add new roles
+      if (roleIds.length > 0) {
+        await prisma.userRole.createMany({
+          data: roleIds.map(roleId => ({
+            id: generateULID(),
+            user_id: id,
+            role_id: roleId,
+          }))
+        });
+      }
+
+      // Refetch user with updated roles
+      return await prisma.user.findUnique({
+        where: { id },
+        include: {
+          organization: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+          employee: {
+            select: {
+              id: true,
+              first_name: true,
+              last_name: true,
+              custom_id: true,
+            },
+          },
+          userRoles: {
+            include: {
+              role: true,
+            },
+          },
+        },
+      });
+    }
+
+    return user;
   }
 
   async delete(id: string) {
@@ -141,8 +290,20 @@ export class UserController {
     return await prisma.user.findUnique({
       where: { email },
       include: {
-        organization: true,
-        employee: true,
+        organization: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+        employee: {
+          select: {
+            id: true,
+            first_name: true,
+            last_name: true,
+            custom_id: true,
+          },
+        },
         userRoles: {
           include: {
             role: {

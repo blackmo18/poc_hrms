@@ -1,38 +1,13 @@
 import Button from '../button/Button';
 import { Modal } from './index';
-
-type ModalSize = 'small' | 'default' | 'wide' | 'wider' | 'extra-wide';
-type DisplayStyle = 'separated' | 'plain';
-
-interface DetailItem {
-  label: string;
-  value: string | number | React.ReactNode;
-}
-
-interface DetailSection {
-  title?: string;
-  items: DetailItem[];
-}
-
-interface GroupedItem {
-  name: string;
-  fields: DetailItem[];
-}
-
-interface DetailsConfirmationModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onConfirm: () => void;
-  title: string;
-  description?: string;
-  details?: DetailItem[];
-  groupedDetails?: GroupedItem[];
-  size?: ModalSize;
-  displayStyle?: DisplayStyle;
-  confirmText?: string;
-  cancelText?: string;
-  isLoading?: boolean;
-}
+import { 
+  ModalSize, 
+  DisplayStyle, 
+  DetailItem, 
+  DetailSection, 
+  GroupedItem, 
+  DetailsConfirmationModalProps 
+} from '@/lib/models/modal';
 
 const sizeClasses: Record<ModalSize, string> = {
   small: 'max-w-[350px]',

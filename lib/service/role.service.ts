@@ -1,41 +1,47 @@
-import { getRoleRepository } from '@/lib/repository';
-import { generateULID } from '@/lib/utils/ulid.service';
+import { roleController } from '@/lib/controllers/role.controller';
+import { CreateRole, UpdateRole } from '@/lib/models/role';
 import { Role } from '@prisma/client';
+import { generateULID } from '@/lib/utils/ulid.service';
 
 export class RoleService {
-  private roleRepository = getRoleRepository();
-
   async getById(id: string): Promise<Role | null> {
-    return await this.roleRepository.findById(id);
+    return await roleController.getById(id);
   }
 
   async getByName(name: string): Promise<Role | null> {
-    return await this.roleRepository.findByName(name);
+    const result = await roleController.getAll();
+    return result.data.find(r => r.name === name) || null;
   }
 
   async getByOrganizationId(organizationId: string): Promise<Role[]> {
-    return await this.roleRepository.findByOrganizationId(organizationId);
+    const result = await roleController.getAll(organizationId);
+    return result.data;
   }
 
   async getAll(): Promise<Role[]> {
-    return await this.roleRepository.findAll();
+    const result = await roleController.getAll();
+    return result.data;
   }
 
-  async create(data: Omit<Role, 'id' | 'created_at' | 'updated_at'>): Promise<Role> {
-    const id = generateULID();
-    return await this.roleRepository.create({ ...data, id });
+  async create(data: CreateRole): Promise<Role> {
+    return await roleController.create(data);
   }
 
-  async update(id: string, data: Partial<Role>): Promise<Role> {
-    return await this.roleRepository.update(id, data);
+  async update(id: string, data: UpdateRole): Promise<Role> {
+    return await roleController.update(id, data);
   }
 
   async delete(id: string): Promise<Role> {
-    return await this.roleRepository.delete(id);
+    return await roleController.delete(id);
   }
 
   async getPermissionsByRoleIds(roleIds: string[]): Promise<string[]> {
-    return await this.roleRepository.getPermissionsByRoleIds(roleIds);
+    const permissions = [];
+    for (const roleId of roleIds) {
+      const perms = await roleController.getRolePermissions(roleId);
+      permissions.push(...perms.map(p => p.name));
+    }
+    return [...new Set(permissions)]; // Remove duplicates
   }
 }
 

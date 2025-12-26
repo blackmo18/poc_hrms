@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 export const CompensationSchema = z.object({
   id: z.number().optional(),
-  employee_id: z.number().min(1, 'Employee ID is required'),
+  employee_id: z.string().min(1, 'Employee ID is required'),
   base_salary: z.number().min(0, 'Base salary must be positive'),
   pay_frequency: z.enum(['HOURLY', 'WEEKLY', 'BIWEEKLY', 'MONTHLY', 'YEARLY']),
   effective_date: z.date(),

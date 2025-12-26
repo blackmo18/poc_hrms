@@ -202,51 +202,64 @@ async function seedDatabase() {
     }
   }
 
-  // Create roles using upsert to handle existing data
+  // Create roles using findFirst and create pattern to handle organization-specific roles
   console.log('👥 Creating roles...');
-  const adminRole = await prisma.role.upsert({
-    where: { name: 'ADMIN' },
-    update: {},
-    create: {
-      id: generateULID(),
-      name: 'ADMIN',
-      description: 'System administrator with full access',
-      organization_id: organization.id,
-    },
+  
+  let adminRole = await prisma.role.findFirst({
+    where: { name: 'ADMIN', organization_id: organization.id }
   });
+  if (!adminRole) {
+    adminRole = await prisma.role.create({
+      data: {
+        id: generateULID(),
+        name: 'ADMIN',
+        description: 'System administrator with full access',
+        organization_id: organization.id,
+      },
+    });
+  }
 
-  const hrRole = await prisma.role.upsert({
-    where: { name: 'HR_MANAGER' },
-    update: {},
-    create: {
-      id: generateULID(),
-      name: 'HR_MANAGER',
-      description: 'Human Resources manager with employee management access',
-      organization_id: organization.id,
-    },
+  let hrRole = await prisma.role.findFirst({
+    where: { name: 'HR_MANAGER', organization_id: organization.id }
   });
+  if (!hrRole) {
+    hrRole = await prisma.role.create({
+      data: {
+        id: generateULID(),
+        name: 'HR_MANAGER',
+        description: 'Human Resources manager with employee management access',
+        organization_id: organization.id,
+      },
+    });
+  }
 
-  const employeeRole = await prisma.role.upsert({
-    where: { name: 'EMPLOYEE' },
-    update: {},
-    create: {
-      id: generateULID(),
-      name: 'EMPLOYEE',
-      description: 'Regular employee with self-service access',
-      organization_id: organization.id,
-    },
+  let employeeRole = await prisma.role.findFirst({
+    where: { name: 'EMPLOYEE', organization_id: organization.id }
   });
+  if (!employeeRole) {
+    employeeRole = await prisma.role.create({
+      data: {
+        id: generateULID(),
+        name: 'EMPLOYEE',
+        description: 'Regular employee with self-service access',
+        organization_id: organization.id,
+      },
+    });
+  }
 
-  const superAdminRole = await prisma.role.upsert({
-    where: { name: 'SUPER_ADMIN' },
-    update: {},
-    create: {
-      id: generateULID(),
-      name: 'SUPER_ADMIN',
-      description: 'System super administrator with full system access',
-      organization_id: systemOrg!.id,
-    },
+  let superAdminRole = await prisma.role.findFirst({
+    where: { name: 'SUPER_ADMIN', organization_id: systemOrg!.id }
   });
+  if (!superAdminRole) {
+    superAdminRole = await prisma.role.create({
+      data: {
+        id: generateULID(),
+        name: 'SUPER_ADMIN',
+        description: 'System super administrator with full system access',
+        organization_id: systemOrg!.id,
+      },
+    });
+  }
 
   console.log('✅ Created roles');
 
@@ -467,7 +480,36 @@ async function seedDatabase() {
 
   console.log('✅ Created job titles for additional organizations');
 
-  // Create admin user
+  // Create admin employee record first
+  let adminEmployee = await prisma.employee.findFirst({
+    where: { email: 'admin@techcorp.com', organization_id: organization.id }
+  });
+
+  if (!adminEmployee) {
+    adminEmployee = await prisma.employee.create({
+      data: {
+        id: generateULID(),
+        organization_id: organization.id,
+        department_id: hrDept.id,
+        job_title_id: hrManager.id,
+        custom_id: 'ADMIN-001',
+        first_name: 'Admin',
+        last_name: 'User',
+        email: 'admin@techcorp.com',
+        work_email: 'admin.work@techcorp.com',
+        work_contact: '+1-555-0001',
+        personal_address: '100 Corporate Blvd, Tech City, TC 12345',
+        personal_contact_number: '+1-555-0002',
+        personal_email: 'admin.personal@techcorp.com',
+        date_of_birth: new Date('1985-01-01'),
+        gender: 'Other',
+        employment_status: 'ACTIVE',
+        hire_date: new Date('2023-01-01'),
+      },
+    });
+  }
+
+  // Create admin user and link to employee
   const hashedPassword = await bcrypt.hash('admin123', 10);
   const adminUser = await prisma.user.upsert({
     where: { email: 'admin@techcorp.com' },
@@ -478,6 +520,7 @@ async function seedDatabase() {
       email: 'admin@techcorp.com',
       password_hash: hashedPassword,
       status: 'ACTIVE',
+      employee_id: adminEmployee.id,
     },
   });
 
@@ -494,34 +537,6 @@ async function seedDatabase() {
       id: generateULID(),
       user_id: adminUser.id,
       role_id: adminRole.id,
-    },
-  });
-
-  // Create admin employee record
-  const adminEmployee = await prisma.employee.upsert({
-    where: { user_id: adminUser.id },
-    update: {},
-    create: {
-      id: generateULID(),
-      organization_id: organization.id,
-      user_id: adminUser.id,
-      department_id: hrDept.id,
-      job_title_id: hrManager.id,
-      custom_id: 'ADMIN-001', // Organization-specific custom employee ID
-      first_name: 'Admin',
-      last_name: 'User',
-      email: 'admin@techcorp.com',
-      // Work details
-      work_email: 'admin.work@techcorp.com',
-      work_contact: '+1-555-0001',
-      // Personal details
-      personal_address: '100 Corporate Blvd, Tech City, TC 12345',
-      personal_contact_number: '+1-555-0002',
-      personal_email: 'admin.personal@techcorp.com',
-      date_of_birth: new Date('1985-01-01'),
-      gender: 'Other',
-      employment_status: 'ACTIVE',
-      hire_date: new Date('2023-01-01'),
     },
   });
 
@@ -577,31 +592,38 @@ async function seedDatabase() {
   });
 
   // Create super admin employee record
-  const superAdminEmployee = await prisma.employee.upsert({
-    where: { user_id: superAdminUser.id },
-    update: {},
-    create: {
-      id: generateULID(),
-      organization_id: systemOrg!.id,
-      user_id: superAdminUser.id,
-      department_id: systemDept.id,
-      job_title_id: systemJobTitle.id,
-      custom_id: 'SYS-001', // Organization-specific custom employee ID
-      first_name: 'Super',
-      last_name: 'Admin',
-      email: 'superadmin@hrsystem.com',
-      // Work details
-      work_email: 'superadmin@hrsystem.com',
-      work_contact: '+1-555-0000',
-      // Personal details
-      personal_address: 'System Administration',
-      personal_contact_number: '+1-555-0000',
-      personal_email: 'superadmin@hrsystem.com',
-      date_of_birth: new Date('1980-01-01'),
-      gender: 'Other',
-      employment_status: 'ACTIVE',
-      hire_date: new Date('2023-01-01'),
-    },
+  let superAdminEmployee = await prisma.employee.findFirst({
+    where: { email: 'superadmin@hrsystem.com', organization_id: systemOrg!.id }
+  });
+
+  if (!superAdminEmployee) {
+    superAdminEmployee = await prisma.employee.create({
+      data: {
+        id: generateULID(),
+        organization_id: systemOrg!.id,
+        department_id: systemDept.id,
+        job_title_id: systemJobTitle.id,
+        custom_id: 'SYS-001',
+        first_name: 'Super',
+        last_name: 'Admin',
+        email: 'superadmin@hrsystem.com',
+        work_email: 'superadmin@hrsystem.com',
+        work_contact: '+1-555-0000',
+        personal_address: 'System Administration',
+        personal_contact_number: '+1-555-0000',
+        personal_email: 'superadmin@hrsystem.com',
+        date_of_birth: new Date('1980-01-01'),
+        gender: 'Other',
+        employment_status: 'ACTIVE',
+        hire_date: new Date('2023-01-01'),
+      },
+    });
+  }
+
+  // Link super admin user to employee
+  await prisma.user.update({
+    where: { id: superAdminUser.id },
+    data: { employee_id: superAdminEmployee.id },
   });
 
   console.log('✅ Created super admin user and employee');
@@ -610,6 +632,35 @@ async function seedDatabase() {
   const employees = await Promise.all([
     // Engineer
     (async () => {
+      let employee = await prisma.employee.findFirst({
+        where: { email: 'john.doe@techcorp.com', organization_id: organization.id }
+      });
+
+      if (!employee) {
+        employee = await prisma.employee.create({
+          data: {
+            id: generateULID(),
+            organization_id: organization.id,
+            department_id: engineeringDept.id,
+            job_title_id: seniorEngineer.id,
+            manager_id: adminEmployee.id,
+            custom_id: 'ENG-001',
+            first_name: 'John',
+            last_name: 'Doe',
+            email: 'john.doe@techcorp.com',
+            work_email: 'john.doe.work@techcorp.com',
+            work_contact: '+1-555-0123',
+            personal_address: '123 Main Street, Springfield, IL 62701',
+            personal_contact_number: '+1-555-0456',
+            personal_email: 'john.doe.personal@gmail.com',
+            date_of_birth: new Date('1990-05-15'),
+            gender: 'Male',
+            employment_status: 'ACTIVE',
+            hire_date: new Date('2023-03-15'),
+          },
+        });
+      }
+
       const user = await prisma.user.upsert({
         where: { email: 'john.doe@techcorp.com' },
         update: {},
@@ -619,38 +670,43 @@ async function seedDatabase() {
           email: 'john.doe@techcorp.com',
           password_hash: await bcrypt.hash('password123', 10),
           status: 'ACTIVE',
+          employee_id: employee.id,
         },
       });
-      return await prisma.employee.upsert({
-        where: { user_id: user.id },
-        update: {},
-        create: {
-          id: generateULID(),
-          organization_id: organization.id,
-          user_id: user.id,
-          department_id: engineeringDept.id,
-          job_title_id: seniorEngineer.id,
-          manager_id: adminEmployee.id,
-          custom_id: 'ENG-001', // Organization-specific custom employee ID
-          first_name: 'John',
-          last_name: 'Doe',
-          email: 'john.doe@techcorp.com',
-          // Work details
-          work_email: 'john.doe.work@techcorp.com',
-          work_contact: '+1-555-0123',
-          // Personal details
-          personal_address: '123 Main Street, Springfield, IL 62701',
-          personal_contact_number: '+1-555-0456',
-          personal_email: 'john.doe.personal@gmail.com',
-          date_of_birth: new Date('1990-05-15'),
-          gender: 'Male',
-          employment_status: 'ACTIVE',
-          hire_date: new Date('2023-03-15'),
-        },
-      });
+
+      return { ...employee, userId: user.id };
     })(),
     // HR Staff
     (async () => {
+      let employee = await prisma.employee.findFirst({
+        where: { email: 'jane.smith@techcorp.com', organization_id: organization.id }
+      });
+
+      if (!employee) {
+        employee = await prisma.employee.create({
+          data: {
+            id: generateULID(),
+            organization_id: organization.id,
+            department_id: hrDept.id,
+            job_title_id: hrManager.id,
+            manager_id: adminEmployee.id,
+            custom_id: 'HR-001',
+            first_name: 'Jane',
+            last_name: 'Smith',
+            email: 'jane.smith@techcorp.com',
+            work_email: 'jane.smith.work@techcorp.com',
+            work_contact: '+1-555-0124',
+            personal_address: '456 Oak Avenue, Chicago, IL 60601',
+            personal_contact_number: '+1-555-0457',
+            personal_email: 'jane.smith.personal@gmail.com',
+            date_of_birth: new Date('1988-09-22'),
+            gender: 'Female',
+            employment_status: 'ACTIVE',
+            hire_date: new Date('2023-02-01'),
+          },
+        });
+      }
+
       const user = await prisma.user.upsert({
         where: { email: 'jane.smith@techcorp.com' },
         update: {},
@@ -660,38 +716,43 @@ async function seedDatabase() {
           email: 'jane.smith@techcorp.com',
           password_hash: await bcrypt.hash('password123', 10),
           status: 'ACTIVE',
+          employee_id: employee.id,
         },
       });
-      return await prisma.employee.upsert({
-        where: { user_id: user.id },
-        update: {},
-        create: {
-          id: generateULID(),
-          organization_id: organization.id,
-          user_id: user.id,
-          department_id: hrDept.id,
-          job_title_id: hrManager.id,
-          manager_id: adminEmployee.id,
-          custom_id: 'HR-001', // Organization-specific custom employee ID
-          first_name: 'Jane',
-          last_name: 'Smith',
-          email: 'jane.smith@techcorp.com',
-          // Work details
-          work_email: 'jane.smith.work@techcorp.com',
-          work_contact: '+1-555-0124',
-          // Personal details
-          personal_address: '456 Oak Avenue, Chicago, IL 60601',
-          personal_contact_number: '+1-555-0457',
-          personal_email: 'jane.smith.personal@gmail.com',
-          date_of_birth: new Date('1988-09-22'),
-          gender: 'Female',
-          employment_status: 'ACTIVE',
-          hire_date: new Date('2023-02-01'),
-        },
-      });
+
+      return { ...employee, userId: user.id };
     })(),
     // Sales Rep
     (async () => {
+      let employee = await prisma.employee.findFirst({
+        where: { email: 'mike.johnson@techcorp.com', organization_id: organization.id }
+      });
+
+      if (!employee) {
+        employee = await prisma.employee.create({
+          data: {
+            id: generateULID(),
+            organization_id: organization.id,
+            department_id: salesDept.id,
+            job_title_id: salesRep.id,
+            manager_id: adminEmployee.id,
+            custom_id: 'SALES-001',
+            first_name: 'Mike',
+            last_name: 'Johnson',
+            email: 'mike.johnson@techcorp.com',
+            work_email: 'mike.johnson.work@techcorp.com',
+            work_contact: '+1-555-0125',
+            personal_address: '789 Pine Road, Austin, TX 78701',
+            personal_contact_number: '+1-555-0458',
+            personal_email: 'mike.johnson.personal@gmail.com',
+            date_of_birth: new Date('1992-12-08'),
+            gender: 'Male',
+            employment_status: 'ACTIVE',
+            hire_date: new Date('2023-04-10'),
+          },
+        });
+      }
+
       const user = await prisma.user.upsert({
         where: { email: 'mike.johnson@techcorp.com' },
         update: {},
@@ -701,58 +762,35 @@ async function seedDatabase() {
           email: 'mike.johnson@techcorp.com',
           password_hash: await bcrypt.hash('password123', 10),
           status: 'ACTIVE',
+          employee_id: employee.id,
         },
       });
-      return await prisma.employee.upsert({
-        where: { user_id: user.id },
-        update: {},
-        create: {
-          id: generateULID(),
-          organization_id: organization.id,
-          user_id: user.id,
-          department_id: salesDept.id,
-          job_title_id: salesRep.id,
-          manager_id: adminEmployee.id,
-          custom_id: 'SALES-001', // Organization-specific custom employee ID
-          first_name: 'Mike',
-          last_name: 'Johnson',
-          email: 'mike.johnson@techcorp.com',
-          // Work details
-          work_email: 'mike.johnson.work@techcorp.com',
-          work_contact: '+1-555-0125',
-          // Personal details
-          personal_address: '789 Pine Road, Austin, TX 78701',
-          personal_contact_number: '+1-555-0458',
-          personal_email: 'mike.johnson.personal@gmail.com',
-          date_of_birth: new Date('1992-12-08'),
-          gender: 'Male',
-          employment_status: 'ACTIVE',
-          hire_date: new Date('2023-04-10'),
-        },
-      });
+
+      return { ...employee, userId: user.id };
     })(),
   ]);
 
   console.log('✅ Created sample employees');
 
-  // Assign employee role to sample employees
+  // Assign roles to sample employees
   await Promise.all(
-    employees.map(employee =>
-      prisma.userRole.upsert({
+    employees.map((employee, index) => {
+      const roleId = index === 1 ? hrRole.id : employeeRole.id;
+      return prisma.userRole.upsert({
         where: {
           user_id_role_id: {
-            user_id: employee.user_id!,
-            role_id: employeeRole.id,
+            user_id: employee.userId,
+            role_id: roleId,
           },
         },
         update: {},
         create: {
           id: generateULID(),
-          user_id: employee.user_id!,
-          role_id: employeeRole.id,
+          user_id: employee.userId,
+          role_id: roleId,
         },
-      })
-    )
+      });
+    })
   );
 
   // Create sample leave requests

@@ -83,10 +83,11 @@ model User {
   created_by      String?
   updated_by      String?
   organization_id String
+  employee_id     String?  @unique
 
   // Relations
+  employee       Employee? @relation(fields: [employee_id], references: [id])
   organization Organization @relation(fields: [organization_id], references: [id], onDelete: Cascade)
-  employee     Employee?
   userRoles    UserRole[]
   auditLogs    AuditLog[]
 
@@ -100,7 +101,6 @@ model User {
 model Employee {
   id                String  @id 
   organization_id   String
-  user_id           String?  @unique
   department_id     String
   job_title_id      String
   manager_id        String?
@@ -126,11 +126,11 @@ model Employee {
   updated_by      String?
 
   organization               Organization                @relation(fields: [organization_id], references: [id], onDelete: Cascade)
-  user                       User?                       @relation(fields: [user_id], references: [id], onDelete: Cascade)
   department                 Department                  @relation(fields: [department_id], references: [id])
   jobTitle                   JobTitle                    @relation(fields: [job_title_id], references: [id])
   manager                    Employee?                   @relation("EmployeeReportsTo", fields: [manager_id], references: [id])
   directReports              Employee[]                  @relation("EmployeeReportsTo")
+  user                       User?
   compensations              Compensation[]
   employeeBenefits           EmployeeBenefit[]
   employeeDocuments          EmployeeDocument[]
@@ -565,4 +565,26 @@ model VerificationToken {
 
   @@unique([identifier, token])
   @@map("verification_tokens")
+}
+
+model PasswordResetSession {
+  id           String   @id 
+  user_id      String
+  token        String   @unique
+  requested_by String
+  created_at   DateTime @default(now()) @db.Timestamp(3)
+  expired_on   DateTime @db.Timestamp(3)
+  validated    DateTime?
+
+  @@map("password_reset_sessions")
+}
+
+model UserPasswordResetLog {
+  id           String  @id 
+  user_id      String
+  requested_by String
+  created_at   DateTime @default(now()) @db.Timestamp(3)
+  action       String
+
+  @@map("user_password_reset_logs")
 }

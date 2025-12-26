@@ -24,7 +24,6 @@ export class EmployeeController {
             name: true,
           },
         },
-        user: false,
         department: {
           select: {
             id: true,
@@ -61,7 +60,6 @@ export class EmployeeController {
       where: { id },
       include: {
         organization: true,
-        user: true,
         department: true,
         jobTitle: true,
         manager: true,
@@ -88,7 +86,6 @@ export class EmployeeController {
       data: {id: generateULID(), ...data},
       include: {
         organization: true,
-        user: true,
         department: true,
         jobTitle: true,
         manager: true,
@@ -103,7 +100,6 @@ export class EmployeeController {
       data,
       include: {
         organization: true,
-        user: true,
         department: true,
         jobTitle: true,
         manager: true,
@@ -155,6 +151,43 @@ export class EmployeeController {
         jobTitle: true,
       },
       take: limit,
+    });
+  }
+
+  async getByUserId(userId: string) {
+    // First get the user to find their employee_id
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { employee_id: true },
+    });
+
+    if (!user || !user.employee_id) {
+      return null;
+    }
+
+    // Then fetch the employee using the employee_id
+    return await prisma.employee.findUnique({
+      where: { id: user.employee_id },
+      include: {
+        organization: true,
+        department: true,
+        jobTitle: true,
+        manager: true,
+        directReports: true,
+        compensations: true,
+        employeeBenefits: {
+          include: {
+            benefit: true,
+          },
+        },
+        timesheets: true,
+        leaveRequests: true,
+        payrolls: {
+          include: {
+            deductions: true,
+          },
+        },
+      },
     });
   }
 }

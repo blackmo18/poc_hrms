@@ -8,13 +8,12 @@ import { useRoleAccess } from "@/app/components/providers/role-access-provider";
 import PageBreadcrumb from "@/app/components/common/PageBreadCrumb";
 import PageMeta from "@/app/components/common/PageMeta";
 import Button from "@/app/components/ui/button/Button";
-import Input from "@/app/components/form/input/InputField";
-import Select from "@/app/components/form/Select";
-import MultiSelect from "@/app/components/form/MultiSelect";
-import Label from "@/app/components/form/Label";
 import DetailsConfirmationModal from "@/app/components/ui/modal/DetailsConfirmationModal";
+import ConfirmationModal from "@/app/components/ui/modal/ConfirmationModal";
 import ErrorModal from "@/app/components/ui/modal/ErrorModal";
-import SearchableSelect from "@/app/components/form/SearchableSelect";
+import EmployeeSearchModal from "@/app/components/employees/EmployeeSearchModal";
+import CreateUserForm from "@/app/components/users/CreateUserForm";
+import { DetailItem, GroupedItem } from "@/lib/models/modal";
 
 interface Organization {
   id: string;
@@ -39,6 +38,11 @@ interface UserFormData {
   email: string;
   organization_id: string;
   role_ids: string[];
+  generated_password?: string;
+}
+
+interface ValidationError {
+  [key: string]: string;
 }
 
 export default function CreateUserPage() {
@@ -51,109 +55,109 @@ export default function CreateUserPage() {
     email: "",
     organization_id: "",
     role_ids: [],
+    generated_password: "",
   });
 
-  const [organizations, setOrganizations] = useState<Organization[]>([]);
-  const [availableRoles, setAvailableRoles] = useState<Role[]>([]);
+  const [errors, setErrors] = useState<ValidationError>({});
   const [loading, setLoading] = useState(false);
-  const [errors, setErrors] = useState<Record<string, string>>({});
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [showErrorModal, setShowErrorModal] = useState(false);
-  const [errorMessage, setErrorMessage] = useState('');
-  const [selectedEmployeeName, setSelectedEmployeeName] = useState('');
+  const [errorMessage, setErrorMessage] = useState("");
+  const [showEmployeeModal, setShowEmployeeModal] = useState(false);
+  const [selectedEmployeeName, setSelectedEmployeeName] = useState("");
+  const [organizations, setOrganizations] = useState<Organization[]>([]);
+  const [availableRoles, setAvailableRoles] = useState<Role[]>([]);
+  const [passwordResetLink, setPasswordResetLink] = useState("");
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
 
-  const isSuperAdmin = roles.includes('SUPER_ADMIN');
-
-  // Fetch organizations and roles
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        // Fetch organizations
-        const orgResponse = await fetch('/api/organizations', {
-          credentials: 'include',
-        });
-
-        if (orgResponse.ok) {
-          const orgResult = await orgResponse.json();
-          setOrganizations(orgResult.data || []);
-        }
-
-        // Fetch roles
-        const rolesResponse = await fetch('/api/roles', {
-          credentials: 'include',
-        });
-
-        if (rolesResponse.ok) {
-          const rolesResult = await rolesResponse.json();
-          setAvailableRoles(rolesResult.data || []);
-        }
-      } catch (error) {
-        console.error('Error fetching data:', error);
-      }
-    };
-
-    fetchData();
+    fetchOrganizations();
+    fetchRoles();
   }, []);
 
-  // Fetch employees when organization is selected (for email auto-populate)
-  useEffect(() => {
-    const fetchEmployeeDetails = async () => {
-      if (!formData.employee_id) {
-        setSelectedEmployeeName('');
-        return;
-      }
-
-      try {
-        const response = await fetch(`/api/employees/${formData.employee_id}`, {
-          credentials: 'include',
-        });
-
-        if (response.ok) {
-          const result = await response.json();
-          setSelectedEmployeeName(`${result.first_name} ${result.last_name}`);
-          if (result.custom_id) {
-            setFormData(prev => ({
-              ...prev,
-              email: result.custom_id
-            }));
-          }
+  const fetchOrganizations = async () => {
+    try {
+      const response = await fetch("/api/organizations", {
+        credentials: "include",
+      });
+      if (response.ok) {
+        const data = await response.json();
+        console.log('Organizations data:', data);
+        console.log('Type of data:', typeof data);
+        console.log('Is array?', Array.isArray(data));
+        
+        // Handle paginated API response { data: organizations, pagination: {...} }
+        if (data && data.data && Array.isArray(data.data)) {
+          setOrganizations(data.data);
+        } else if (Array.isArray(data)) {
+          // Handle direct array response
+          setOrganizations(data);
+        } else if (data && typeof data === 'object' && data.organizations && Array.isArray(data.organizations)) {
+          // Handle case where API returns { organizations: [...] }
+          setOrganizations(data.organizations);
+        } else {
+          console.warn('Unexpected organizations data format:', data);
+          setOrganizations([]);
         }
-      } catch (error) {
-        console.error('Error fetching employee details:', error);
-        setSelectedEmployeeName('');
+      } else {
+        console.error('Failed to fetch organizations:', response.status);
+        setOrganizations([]);
       }
-    };
+    } catch (error) {
+      console.error("Error fetching organizations:", error);
+      setOrganizations([]);
+    }
+  };
 
-    fetchEmployeeDetails();
-  }, [formData.employee_id]);
-
-  const handleInputChange = (field: keyof UserFormData, value: string | string[]) => {
-    setFormData(prev => {
-      const newData = {
-        ...prev,
-        [field]: value
-      };
-
-      // Clear employee selection when organization changes
-      if (field === 'organization_id') {
-        newData.employee_id = '';
-        newData.email = '';
+  const fetchRoles = async () => {
+    try {
+      const response = await fetch("/api/roles", {
+        credentials: "include",
+      });
+      if (response.ok) {
+        const data = await response.json();
+        console.log('Roles data:', data);
+        
+        // Handle paginated API response { data: roles, pagination: {...} }
+        if (data && data.data && Array.isArray(data.data)) {
+          setAvailableRoles(data.data);
+        } else if (Array.isArray(data)) {
+          // Handle direct array response
+          setAvailableRoles(data);
+        } else if (data && typeof data === 'object' && data.roles && Array.isArray(data.roles)) {
+          // Handle case where API returns { roles: [...] }
+          setAvailableRoles(data.roles);
+        } else {
+          console.warn('Unexpected roles data format:', data);
+          setAvailableRoles([]);
+        }
+      } else {
+        console.error('Failed to fetch roles:', response.status);
+        setAvailableRoles([]);
       }
+    } catch (error) {
+      console.error("Error fetching roles:", error);
+      setAvailableRoles([]);
+    }
+  };
 
-      return newData;
-    });
-
+  const handleInputChange = (field: keyof UserFormData, value: any) => {
+    setFormData(prev => ({
+      ...prev,
+      [field]: value,
+    }));
+    
     // Clear error for this field
     if (errors[field]) {
       setErrors(prev => ({
         ...prev,
-        [field]: ""
+        [field]: "",
       }));
     }
   };
 
-  const validateForm = (): boolean => {
-    const newErrors: Record<string, string> = {};
+  const validateForm = () => {
+    const newErrors: ValidationError = {};
 
     if (!formData.employee_id) {
       newErrors.employee_id = "Employee is required";
@@ -204,12 +208,20 @@ export default function CreateUserPage() {
         body: JSON.stringify({
           employee_id: formData.employee_id,
           email: formData.email,
+          organization_id: formData.organization_id,
           role_ids: formData.role_ids,
+          generated_password: formData.generated_password,
         }),
       });
 
       if (response.ok) {
-        router.push('/accounts/users');
+        const result = await response.json();
+        
+        // Generate password reset link
+        const resetLink = `${window.location.origin}/auth/reset-password?token=${result.passwordResetToken}`;
+        setPasswordResetLink(resetLink);
+        
+        setShowSuccessModal(true);
       } else {
         const errorData = await response.json();
         setErrorMessage(errorData.message || 'Failed to create user');
@@ -224,32 +236,77 @@ export default function CreateUserPage() {
     }
   };
 
-  const onSearch = useCallback(async (query: string) => {
-    if (!formData.organization_id) return [];
-
-    const response = await fetch(`/api/employees/search?q=${encodeURIComponent(query)}&organizationId=${formData.organization_id}`, {
-      credentials: 'include',
-    });
-
-    if (!response.ok) return [];
-
-    const result = await response.json();
-    return result.data.map((emp: any) => ({
-      value: emp.id.toString(),
-      label: `${emp.last_name}, ${emp.first_name} (${emp.custom_id})-${emp.job_title}`,
+  const handleSelectEmployee = (employee: any) => {
+    setFormData(prev => ({
+      ...prev,
+      employee_id: employee.id,
+      email: employee.email
     }));
-  }, [formData.organization_id]);
+    setSelectedEmployeeName(`${employee.first_name} ${employee.last_name}`);
+  };
 
-  const roleOptions = availableRoles.map(role => ({
+  const handleGeneratePassword = (e?: React.MouseEvent) => {
+    if (e) {
+      e.preventDefault();
+    }
+    
+    if (!selectedEmployeeName) {
+      setErrorMessage('Please select an employee first');
+      setShowErrorModal(true);
+      return;
+    }
+
+    // Parse the employee name to get first and last name
+    const nameParts = selectedEmployeeName.trim().split(' ');
+    const firstName = nameParts[0]?.toLowerCase() || '';
+    const lastName = nameParts[nameParts.length - 1]?.toLowerCase() || '';
+
+    // Get current date
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+
+    // Generate base password in format [lastname.firstname.yyyy.mm.dd]
+    const basePassword = `${lastName}.${firstName}.${year}.${month}.${day}`;
+
+    // Generate random alphanumeric string (7 characters)
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    let randomAlphanumeric = '';
+    for (let i = 0; i < 7; i++) {
+      randomAlphanumeric += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+
+    // Final password format: [password]-[random alphanumeric 7]
+    const generatedPassword = `${basePassword}-${randomAlphanumeric}`;
+
+    setFormData(prev => ({
+      ...prev,
+      generated_password: generatedPassword
+    }));
+  };
+
+  const roleOptions = Array.isArray(availableRoles) ? availableRoles.map(role => ({
     value: role.id,
-    text: `${role.name}${role.description ? ` - ${role.description}` : ''}`,
-  }));
+    text: `${role.name.split('_').join(' ')}`,
+  })) : [];
 
-  const confirmationDetails = [
-    { label: 'Organization', value: organizations.find(org => org.id === formData.organization_id)?.name || 'Unknown' },
+  const confirmationDetails: GroupedItem[] = [
+    {
+      name: 'User Details',
+      fields: [
+    { label: 'Organization', value: Array.isArray(organizations) ? organizations.find(org => org.id === formData.organization_id)?.name || 'Unknown' : 'Unknown' },
     { label: 'Employee', value: selectedEmployeeName || 'Unknown' },
     { label: 'Login Email', value: formData.email },
-    { label: 'Roles', value: formData.role_ids.length > 0 ? availableRoles.filter(role => formData.role_ids.includes(role.id)).map(role => role.name).join(', ') : 'None' },
+      ]
+    },
+    {
+      name: 'Access Details',
+      fields: [
+        { label: 'Roles', value: formData.role_ids.length > 0 && Array.isArray(availableRoles) ? availableRoles.filter(role => formData.role_ids.includes(role.id)).map(role => role.name).join(', ') : 'None' },
+        {label: 'Password', value: formData.generated_password ? formData.generated_password : 'Not generated'},
+      ]
+    },
   ];
 
   return (
@@ -263,118 +320,56 @@ export default function CreateUserPage() {
         ]}
       />
 
-      <div className='rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03] lg:p-6'>
-        <div className='mb-6'>
-          <h3 className='text-lg font-semibold text-gray-800 dark:text-white/90'>
-            Create New User
-          </h3>
-          <p className='text-sm text-gray-500 dark:text-gray-400 mt-1'>
-            Add a new user account with role assignments
-          </p>
-        </div>
-
-        <form className='space-y-6 mb-7'>
-          <div className='grid grid-cols-1 gap-6'>
-            {/* Organization */}
-            <div>
-              <Label>Organization *</Label>
-              <Select
-                value={formData.organization_id}
-                onChange={(value) => handleInputChange('organization_id', value)}
-                options={organizations.map(org => ({
-                  value: org.id,
-                  label: org.name
-                }))}
-                placeholder="Select organization"
-              />
-              {errors.organization_id && (
-                <p className="mt-1 text-sm text-red-600 dark:text-red-400">
-                  {errors.organization_id}
-                </p>
-              )}
-            </div>
-
-            {/* Employee */}
-            <div>
-              <Label>Employee *</Label>
-              <SearchableSelect
-                value={formData.employee_id}
-                onChange={(value) => handleInputChange('employee_id', value)}
-                placeholder="Search employees"
-                disabled={!formData.organization_id}
-                onSearch={onSearch}
-              />
-              {errors.employee_id && (
-                <p className="mt-1 text-sm text-red-600 dark:text-red-400">
-                  {errors.employee_id}
-                </p>
-              )}
-            </div>
-
-            {/* Email */}
-            <div>
-              <Label htmlFor="email">Login Email *</Label>
-              <Input
-                id="email"
-                type="email"
-                value={formData.email}
-                onChange={(e) => handleInputChange('email', e.target.value)}
-                placeholder="Employee ID will be used as email"
-                error={!!errors.email}
-                disabled={!!formData.employee_id} // Disable when employee is selected
-              />
-              {formData.employee_id && (
-                <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                  Email is auto-populated from employee ID
-                </p>
-              )}
-              {errors.email && (
-                <p className="mt-1 text-sm text-red-600 dark:text-red-400">
-                  {errors.email}
-                </p>
-              )}
-            </div>
-
-            {/* Roles */}
-            <div>
-              <Label>Roles *</Label>
-              <MultiSelect
-                label="Roles"
-                value={formData.role_ids}
-                onChange={(values) => handleInputChange('role_ids', values)}
-                options={roleOptions}
-                placeholder="Select roles"
-              />
-              {errors.role_ids && (
-                <p className="mt-1 text-sm text-red-600 dark:text-red-400">
-                  {errors.role_ids}
-                </p>
-              )}
-            </div>
-          </div>
-        </form>
-
-        <div className='flex items-center gap-3 pt-6 border-t border-gray-200 dark:border-gray-700'>
-          <Link href="/accounts/users">
-            <Button
-              variant='outline'
-              size='md'
-              disabled={loading}
-            >
-              Cancel
-            </Button>
-          </Link>
-          <Button
-            variant='primary'
-            size='md'
-            onClick={handleCreateClick}
-            disabled={loading}
-            className='bg-blue-600 hover:bg-blue-700 text-white'
-          >
-            {loading ? 'Creating...' : 'Create User'}
-          </Button>
-        </div>
+    <div className='rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03] lg:p-6'>
+      <div className='mb-6'>
+        <h3 className='text-lg font-semibold text-gray-800 dark:text-white/90'>
+          New User Details
+        </h3>
+        <p className='text-sm text-gray-500 dark:text-gray-400 mt-1'>
+          Add a new user account with role assignments
+        </p>
       </div>
+      <CreateUserForm
+        formData={formData}
+        errors={errors}
+        organizations={organizations}
+        roleOptions={roleOptions}
+        selectedEmployeeName={selectedEmployeeName}
+        onChange={handleInputChange}
+        onEmployeeSelect={() => setShowEmployeeModal(true)}
+        onGeneratePassword={handleGeneratePassword}
+        loading={loading}
+      />
+      <div className='flex justify-end pt-4 gap-3'>
+        <Link href="/accounts/users">
+          <Button
+            variant='outline'
+            size='md'
+            disabled={loading}
+          >
+            Cancel
+          </Button>
+        </Link>
+        <Button
+          variant='primary'
+          disabled={loading}
+          className='bg-blue-600 hover:bg-blue-700 text-white'
+          onClick={handleCreateClick}
+        >
+          {loading ? 'Creating...' : 'Create User'}
+        </Button>
+      </div>
+    </div>
+
+      {/* Employee Search Modal */}
+      <EmployeeSearchModal
+        height='sm'
+        width='xx-wide'
+        isOpen={showEmployeeModal}
+        onClose={() => setShowEmployeeModal(false)}
+        onSelectEmployee={handleSelectEmployee}
+        organizationId={formData.organization_id}
+      />
 
       {/* Confirmation Modal */}
       <DetailsConfirmationModal
@@ -385,7 +380,7 @@ export default function CreateUserPage() {
         onConfirm={handleConfirmCreate}
         title="Confirm User Creation"
         description="Please review the user details before creating."
-        details={confirmationDetails}
+        groupedDetails={confirmationDetails}
         confirmText={loading ? 'Creating...' : 'Create User'}
         cancelText="Cancel"
         isLoading={loading}
@@ -396,6 +391,36 @@ export default function CreateUserPage() {
         isOpen={showErrorModal}
         onClose={() => setShowErrorModal(false)}
         errorMessage={errorMessage}
+      />
+
+      {/* Success Modal */}
+      <ConfirmationModal
+        isOpen={showSuccessModal}
+        onClose={() => {
+          setShowSuccessModal(false);
+          router.push('/accounts/users');
+        }}
+        onConfirm={() => {
+          setShowSuccessModal(false);
+          router.push('/accounts/users');
+        }}
+        displayStyle='plain'
+        title="User Created Successfully"
+        message="User account has been created successfully. Share this password reset link with the user:"
+        details={[
+          {
+            label: "Password Reset Link",
+            value: passwordResetLink
+          },
+          {
+            label: "Expiration",
+            value: "1 hour"
+          }
+        ]}
+        variant="success"
+        size="wider"
+        confirmText="Close"
+        isLoading={false}
       />
     </>
   );

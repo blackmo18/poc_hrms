@@ -287,7 +287,7 @@ export default function EmployeeForm({
             <DatePicker
               id="date_of_birth"
               mode="single"
-              defaultDate={formData.date_of_birth}
+              dateOffset={-18}
               onChange={(dates) => {
                 if (dates && dates.length > 0) {
                   const dateStr = dates[0].toISOString().split('T')[0];
