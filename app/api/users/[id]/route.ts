@@ -11,7 +11,7 @@ export async function GET(
       const { id } = await params;
       const userId = id;
 
-      const user = await getUserService().getById(userId);
+      const user = await getUserService().findByIdWithDetails(userId);
 
       if (!user) {
         return NextResponse.json(
@@ -20,20 +20,23 @@ export async function GET(
         );
       }
 
-      // Transform user data for frontend (exclude sensitive fields)
+      // Transform user data for frontend with full details
       const transformedUser = {
         id: user.id,
         email: user.email,
         organization_id: user.organization_id,
+        organization: user.organization,
+        employee: user.employee,
+        roles: user.userRoles.map(userRole => ({
+          id: userRole.role.id,
+          name: userRole.role.name
+        })),
         status: user.status,
         created_at: user.created_at.toISOString(),
         updated_at: user.updated_at.toISOString(),
       };
 
-      return NextResponse.json({
-        data: transformedUser,
-        success: true,
-      });
+      return NextResponse.json(transformedUser);
     } catch (error) {
       console.error('Error fetching user:', error);
       return NextResponse.json(

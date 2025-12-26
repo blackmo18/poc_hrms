@@ -1,15 +1,11 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo, useReducer } from "react";
+import { useEffect, useCallback, useMemo, useReducer } from "react";
 import Link from "next/link";
-import { useAuth } from "@/app/components/providers/auth-provider";
 import { useRoleAccess } from "@/app/components/providers/role-access-provider";
-import { PencilIcon, PlusIcon, TrashBinIcon, UserIcon } from "@/app/icons";
-import Button from "@/app/components/ui/button/Button";
-import Badge, { BadgeColor } from "@/app/components/ui/badge/Badge";
+import {  PlusIcon, UserIcon } from "@/app/icons";
 import UserCard from "@/app/components/accounts/UserCard";
 import UsersTable from "@/app/components/accounts/UsersTable";
-import UsersEmptyState from "@/app/components/accounts/UsersEmptyState";
 import Pagination from "@/app/components/ui/pagination/Pagination";
 import ComponentCard from "@/app/components/common/ComponentCard";
 import PageMeta from "@/app/components/common/PageMeta";
@@ -17,24 +13,8 @@ import PageBreadcrumb from "@/app/components/common/PageBreadCrumb";
 import RoleComponentWrapper from "@/app/components/common/RoleComponentWrapper";
 import OrganizationFilter from "@/app/components/common/OrganizationFilter";
 import { useOrganizationFilter } from "@/hooks/useOrganizationFilter";
-
-interface User {
-  id: string;
-  name: string;
-  email: string;
-  status: string;
-  organization: {
-    id: string;
-    name: string;
-  };
-  userRoles: {
-    role: {
-      id: string;
-      name: string;
-    };
-  }[];
-  created_at: string;
-}
+import { BadgeColor } from "@/app/components/ui/badge/Badge";
+import { UserWithRelations } from "@/lib/models/user";
 
 interface Organization {
   id: string;
@@ -42,7 +22,7 @@ interface Organization {
 }
 
 interface ApiResponse {
-  data: User[];
+  data: UserWithRelations[];
   pagination: {
     page: number;
     limit: number;
@@ -55,7 +35,7 @@ interface ApiResponse {
 
 interface UsersState {
   // Data states
-  users: User[];
+  users: UserWithRelations[];
   pagination: ApiResponse['pagination'] | null;
 
   // Loading states
@@ -71,7 +51,7 @@ interface UsersState {
 
 type UsersAction =
   // Data actions
-  | { type: 'SET_USERS'; payload: User[] }
+  | { type: 'SET_USERS'; payload: UserWithRelations[] }
   | { type: 'SET_PAGINATION'; payload: ApiResponse['pagination'] | null }
 
   // Loading actions

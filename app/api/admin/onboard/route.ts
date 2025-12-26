@@ -78,13 +78,10 @@ export async function POST(request: NextRequest) {
     const newUser = await userService.create({
       organization_id: organization.id,
       email: work_email,
-      password_hash: hashedPassword,
+      employee_id: '', // Temporary, will update after creating employee
+      role_ids: [adminRole.id],
       status: 'ACTIVE',
-    });
-
-    await userRoleService.create({
-      user_id: newUser.id,
-      role_id: adminRole.id,
+      generated_password: 'admin123',
     });
 
     const employee = await employeeService.create({
@@ -106,6 +103,11 @@ export async function POST(request: NextRequest) {
       employment_status: 'ACTIVE',
       hire_date: new Date(),
       exit_date: null,
+    });
+
+    // Update user with employee_id
+    await userService.update(newUser.id, {
+      employee_id: employee.id,
     });
 
     return NextResponse.json({

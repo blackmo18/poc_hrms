@@ -42,3 +42,29 @@ export const LoginSchema = z.object({
 });
 
 export type Login = z.infer<typeof LoginSchema>;
+
+// Consolidated User interface for frontend components
+export interface UserWithRelations {
+  id: string;
+  email: string;
+  status: string;
+  employee_id?: string; // Optional, used in some contexts
+  name?: string; // Optional, legacy field - use employee name instead
+  employee?: {
+    id: string;
+    first_name: string;
+    last_name: string;
+    custom_id?: string;
+  };
+  organization: {
+    id: string;
+    name: string;
+  };
+  userRoles: {
+    role: {
+      id: string;
+      name: string;
+    };
+  }[];
+  created_at: string;
+}

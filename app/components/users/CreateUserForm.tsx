@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import React, { useState } from "react";
 import Label from "@/app/components/form/Label";
 import Input from "@/app/components/form/input/InputField";
 import Select from "@/app/components/form/Select";
@@ -134,47 +134,6 @@ export default function CreateUserForm({
             {errors.role_ids && (
               <p className="mt-1 text-sm text-red-600 dark:text-red-400">
                 {errors.role_ids}
-              </p>
-            )}
-          </div>
-
-          {/* Separator */}
-          <div className="border-t border-gray-200 dark:border-gray-700 pt-6">
-            <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-4">
-              Password Generation
-            </h4>
-          </div>
-
-          {/* Generated Password */}
-          <div>
-            <Label htmlFor="generated_password">Generated Password</Label>
-            <div className="flex gap-2">
-              <Input
-                id="generated_password"
-                type="text"
-                value={formData.generated_password || ''}
-                onChange={(e) => onChange('generated_password', e.target.value)}
-                placeholder="Click generate to create password"
-                error={!!errors.generated_password}
-                className="flex-1"
-                readOnly
-              />
-              <Button
-                variant="outline"
-                size="md"
-                onClick={handleGenerateClick}
-                disabled={loading || !selectedEmployeeName}
-                className="whitespace-nowrap"
-              >
-                Generate
-              </Button>
-            </div>
-            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-              Format: [lastname.firstname.yyyy.mm.dd]-[random alphanumeric 7] - Click generate to create password based on employee name, current date, and random suffix
-            </p>
-            {errors.generated_password && (
-              <p className="mt-1 text-sm text-red-600 dark:text-red-400">
-                {errors.generated_password}
               </p>
             )}
           </div>

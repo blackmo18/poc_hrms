@@ -5,33 +5,10 @@ import { Table, TableBody, TableCell, TableHeader, TableRow } from "@/app/compon
 import Badge, { BadgeColor } from "@/app/components/ui/badge/Badge";
 import LoadingSkeleton from "@/app/components/ui/LoadingSkeleton";
 import UserCard from "@/app/components/accounts/UserCard";
-
-interface User {
-  id: string;
-  name: string;
-  email: string;
-  employee?: {
-    id: string;
-    first_name: string;
-    last_name: string;
-    custom_id?: string;
-  };
-  status: string;
-  organization: {
-    id: string;
-    name: string;
-  };
-  userRoles: {
-    role: {
-      id: string;
-      name: string;
-    };
-  }[];
-  created_at: string;
-}
+import { UserWithRelations } from "@/lib/models/user";
 
 interface UsersTableBodyProps {
-  users: User[];
+  users: UserWithRelations[];
   getStatusColor: (status: string) => BadgeColor;
   currentPage?: number;
   limit?: number;
@@ -92,7 +69,7 @@ const UsersTableBody = memo(function UsersTableBody({ users, getStatusColor, cur
 });
 
 interface UsersTableProps {
-  users: User[];
+  users: UserWithRelations[];
   loading?: boolean;
   onDelete: (userId: string) => void;
   getStatusColor: (status: string) => BadgeColor;

@@ -17,6 +17,7 @@ export class PasswordResetSessionService {
       user_id: userId,
       token,
       requested_by: requestedBy,
+      expired_on: new Date(Date.now() + 60 * 60 * 1000), // 1 hour from now
     };
 
     return await passwordResetSessionController.create(createData);

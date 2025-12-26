@@ -46,6 +46,10 @@ export class UserService {
   async getUserPermissions(userId: string): Promise<string[]> {
     return await userController.getUserPermissions(userId);
   }
+
+  async findByIdWithDetails(id: string) {
+    return await userController.getById(id);
+  }
 }
 
 let userService: UserService;

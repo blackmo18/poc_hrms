@@ -13,6 +13,7 @@ import ConfirmationModal from "@/app/components/ui/modal/ConfirmationModal";
 import ErrorModal from "@/app/components/ui/modal/ErrorModal";
 import EmployeeSearchModal from "@/app/components/employees/EmployeeSearchModal";
 import CreateUserForm from "@/app/components/users/CreateUserForm";
+import PasswordPanel from "@/app/components/users/PasswordPanel";
 import { DetailItem, GroupedItem } from "@/lib/models/modal";
 
 interface Organization {
@@ -85,7 +86,7 @@ export default function CreateUserPage() {
         console.log('Organizations data:', data);
         console.log('Type of data:', typeof data);
         console.log('Is array?', Array.isArray(data));
-        
+
         // Handle paginated API response { data: organizations, pagination: {...} }
         if (data && data.data && Array.isArray(data.data)) {
           setOrganizations(data.data);
@@ -117,7 +118,7 @@ export default function CreateUserPage() {
       if (response.ok) {
         const data = await response.json();
         console.log('Roles data:', data);
-        
+
         // Handle paginated API response { data: roles, pagination: {...} }
         if (data && data.data && Array.isArray(data.data)) {
           setAvailableRoles(data.data);
@@ -146,7 +147,7 @@ export default function CreateUserPage() {
       ...prev,
       [field]: value,
     }));
-    
+
     // Clear error for this field
     if (errors[field]) {
       setErrors(prev => ({
@@ -216,11 +217,11 @@ export default function CreateUserPage() {
 
       if (response.ok) {
         const result = await response.json();
-        
+
         // Generate password reset link
         const resetLink = `${window.location.origin}/auth/reset-password?token=${result.passwordResetToken}`;
         setPasswordResetLink(resetLink);
-        
+
         setShowSuccessModal(true);
       } else {
         const errorData = await response.json();
@@ -249,7 +250,7 @@ export default function CreateUserPage() {
     if (e) {
       e.preventDefault();
     }
-    
+
     if (!selectedEmployeeName) {
       setErrorMessage('Please select an employee first');
       setShowErrorModal(true);
@@ -295,16 +296,16 @@ export default function CreateUserPage() {
     {
       name: 'User Details',
       fields: [
-    { label: 'Organization', value: Array.isArray(organizations) ? organizations.find(org => org.id === formData.organization_id)?.name || 'Unknown' : 'Unknown' },
-    { label: 'Employee', value: selectedEmployeeName || 'Unknown' },
-    { label: 'Login Email', value: formData.email },
+        { label: 'Organization', value: Array.isArray(organizations) ? organizations.find(org => org.id === formData.organization_id)?.name || 'Unknown' : 'Unknown' },
+        { label: 'Employee', value: selectedEmployeeName || 'Unknown' },
+        { label: 'Login Email', value: formData.email },
       ]
     },
     {
       name: 'Access Details',
       fields: [
         { label: 'Roles', value: formData.role_ids.length > 0 && Array.isArray(availableRoles) ? availableRoles.filter(role => formData.role_ids.includes(role.id)).map(role => role.name).join(', ') : 'None' },
-        {label: 'Password', value: formData.generated_password ? formData.generated_password : 'Not generated'},
+        { label: 'Password', value: formData.generated_password ? formData.generated_password : 'Not generated' },
       ]
     },
   ];
@@ -320,47 +321,56 @@ export default function CreateUserPage() {
         ]}
       />
 
-    <div className='rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03] lg:p-6'>
-      <div className='mb-6'>
-        <h3 className='text-lg font-semibold text-gray-800 dark:text-white/90'>
-          New User Details
-        </h3>
-        <p className='text-sm text-gray-500 dark:text-gray-400 mt-1'>
-          Add a new user account with role assignments
-        </p>
-      </div>
-      <CreateUserForm
-        formData={formData}
-        errors={errors}
-        organizations={organizations}
-        roleOptions={roleOptions}
-        selectedEmployeeName={selectedEmployeeName}
-        onChange={handleInputChange}
-        onEmployeeSelect={() => setShowEmployeeModal(true)}
-        onGeneratePassword={handleGeneratePassword}
-        loading={loading}
-      />
-      <div className='flex justify-end pt-4 gap-3'>
-        <Link href="/accounts/users">
+      <div className='rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03] lg:p-6'>
+        <div className='mb-6'>
+          <h3 className='text-lg font-semibold text-gray-800 dark:text-white/90'>
+            New User Details
+          </h3>
+          <p className='text-sm text-gray-500 dark:text-gray-400 mt-1'>
+            Add a new user account with role assignments
+          </p>
+        </div>
+        <CreateUserForm
+          formData={formData}
+          errors={errors}
+          organizations={organizations}
+          roleOptions={roleOptions}
+          selectedEmployeeName={selectedEmployeeName}
+          onChange={handleInputChange}
+          onEmployeeSelect={() => setShowEmployeeModal(true)}
+          onGeneratePassword={handleGeneratePassword}
+          loading={loading}
+        />
+        <div className='space-y-6 mb-7' />
+        <PasswordPanel
+          password={formData.generated_password || ''}
+          onPasswordChange={(value) => handleInputChange('generated_password', value)}
+          onGeneratePassword={handleGeneratePassword}
+          resetLink={passwordResetLink}
+          disabled={!selectedEmployeeName}
+          loading={loading}
+          error={errors.generated_password}
+        />
+        <div className='flex justify-end pt-4 gap-3'>
+          <Link href="/accounts/users">
+            <Button
+              variant='outline'
+              size='md'
+              disabled={loading}
+            >
+              Cancel
+            </Button>
+          </Link>
           <Button
-            variant='outline'
-            size='md'
+            variant='primary'
             disabled={loading}
+            className='bg-blue-600 hover:bg-blue-700 text-white'
+            onClick={handleCreateClick}
           >
-            Cancel
+            {loading ? 'Creating...' : 'Create User'}
           </Button>
-        </Link>
-        <Button
-          variant='primary'
-          disabled={loading}
-          className='bg-blue-600 hover:bg-blue-700 text-white'
-          onClick={handleCreateClick}
-        >
-          {loading ? 'Creating...' : 'Create User'}
-        </Button>
+        </div>
       </div>
-    </div>
-
       {/* Employee Search Modal */}
       <EmployeeSearchModal
         height='sm'
@@ -406,17 +416,7 @@ export default function CreateUserPage() {
         }}
         displayStyle='plain'
         title="User Created Successfully"
-        message="User account has been created successfully. Share this password reset link with the user:"
-        details={[
-          {
-            label: "Password Reset Link",
-            value: passwordResetLink
-          },
-          {
-            label: "Expiration",
-            value: "1 hour"
-          }
-        ]}
+        message="User account has been created successfully. The password reset link is available in the Password Management panel below."
         variant="success"
         size="wider"
         confirmText="Close"

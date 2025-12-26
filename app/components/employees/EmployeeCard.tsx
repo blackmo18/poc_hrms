@@ -21,11 +21,11 @@ const EmployeeCard: React.FC<EmployeeCardProps> = ({
   return (
     <Card className="mb-4 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
       <CardHeader
-        className="pb-3 cursor-pointer"
+        className="pb-3 cursor-pointer relative"
         onClick={() => onToggle(employee.id)}
       >
-        <div className="flex items-start justify-between">
-          <div className="flex items-start space-x-4 flex-1">
+        <div className="grid grid-cols-[1fr,auto] gap-4 items-start pr-6">
+          <div className="flex items-start space-x-4 min-w-0">
             {/* Avatar */}
             <div className="flex-shrink-0 mt-1">
               <div className="w-12 h-12 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center">
@@ -59,16 +59,17 @@ const EmployeeCard: React.FC<EmployeeCardProps> = ({
                 </p>
               </div>
 
-              <div className="flex items-center space-x-1">
-                <OrganizationIcon className="w-4 h-4 text-gray-400" />
-                <p className="text-sm text-gray-600 dark:text-gray-400">
+              <div className="flex items-center space-x-1 min-w-0">
+                <OrganizationIcon className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                <p className="text-sm text-gray-600 dark:text-gray-400 truncate">
                   {employee.organization.name}
                 </p>
               </div>
             </div>
           </div>
 
-          <div className="flex items-center ml-4">
+          {/* Arrow Icon - absolutely positioned */}
+          <div className="absolute top-3 right-3 flex items-center">
             {isExpanded ? (
               <ChevronUpIcon className="w-5 h-5 text-gray-400" />
             ) : (

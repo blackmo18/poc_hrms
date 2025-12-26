@@ -4,7 +4,7 @@ import { getPasswordResetSessionService } from '@/lib/service/password-reset-ses
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { userId: string } }
+  { params }: { params: Promise<{ userId: string }> }
 ) {
   try {
     const session = await auth.api.getSession({ headers: request.headers });
@@ -16,7 +16,7 @@ export async function GET(
       );
     }
 
-    const { userId } = params;
+    const { userId } = await params;
     const passwordResetService = getPasswordResetSessionService();
 
     // Get user's password reset sessions

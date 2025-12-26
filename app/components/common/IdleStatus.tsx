@@ -39,7 +39,7 @@ export default function IdleStatus() {
   };
 
   return (
-    <div className="hidden lg:fixed bottom-4 right-4 bg-black/80 text-white p-3 rounded-lg text-xs font-mono z-50 border border-gray-600">
+    <div suppressHydrationWarning className="hidden lg:fixed bottom-4 right-4 bg-black/80 text-white p-3 rounded-lg text-xs font-mono z-50 border border-gray-600">
       <div className="flex items-center gap-2 mb-2">
         <div className={`w-2 h-2 rounded-full ${updateTrigger % 2 === 0 ? 'bg-green-400' : 'bg-blue-400'} transition-colors duration-100`}></div>
         <div>Idle Status (Live)</div>

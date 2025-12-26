@@ -33,11 +33,11 @@ const OrganizationCard: React.FC<OrganizationCardProps> = ({
   return (
     <Card className="mb-4 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
       <CardHeader
-        className="pb-3 cursor-pointer"
+        className="pb-3 cursor-pointer relative"
         onClick={() => onToggle(org.id)}
       >
-        <div className="flex items-start justify-between">
-          <div className="flex items-start space-x-4 flex-1">
+        <div className="grid grid-cols-[1fr,auto] gap-4 items-start pr-6">
+          <div className="flex items-start space-x-4 min-w-0">
             {/* Logo */}
             <div className="flex-shrink-0 mt-1">
               {org.logo ? (
@@ -94,7 +94,8 @@ const OrganizationCard: React.FC<OrganizationCardProps> = ({
             </div>
           </div>
 
-          <div className="flex items-center ml-4">
+          {/* Arrow Icon - absolutely positioned */}
+          <div className="absolute top-3 right-3 flex items-center">
             {isExpanded ? (
               <ChevronUpIcon className="w-5 h-5 text-gray-400" />
             ) : (
