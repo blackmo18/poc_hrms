@@ -3,19 +3,19 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import PageBreadcrumb from '@/app/components/common/PageBreadCrumb';
-import PageMeta from '@/app/components/common/PageMeta';
-import Button from '@/app/components/ui/button/Button';
-import Input from '@/app/components/form/input/InputField';
-import TextArea from '@/app/components/form/input/TextArea';
-import Label from '@/app/components/form/Label';
-import Select from '@/app/components/form/Select';
-import { useAuth } from '@/app/components/providers/auth-provider';
-import { useRoleAccess } from '@/app/components/providers/role-access-provider';
-import DetailsConfirmationModal from '@/app/components/ui/modal/DetailsConfirmationModal';
-import ErrorModal from '@/app/components/ui/modal/ErrorModal';
-import RoleComponentWrapper from '@/app/components/common/RoleComponentWrapper';
-import JobTitleForm from '@/app/components/job-titles/JobTitleForm';
+import PageBreadcrumb from '@/components/common/PageBreadCrumb';
+import PageMeta from '@/components/common/PageMeta';
+import Button from '@/components/ui/button/Button';
+import Input from '@/components/form/input/InputField';
+import TextArea from '@/components/form/input/TextArea';
+import Label from '@/components/form/Label';
+import Select from '@/components/form/Select';
+import { useAuth } from '@/components/providers/auth-provider';
+import { useRoleAccess } from '@/components/providers/role-access-provider';
+import DetailsConfirmationModal from '@/components/ui/modal/DetailsConfirmationModal';
+import ErrorModal from '@/components/ui/modal/ErrorModal';
+import RoleComponentWrapper from '@/components/common/RoleComponentWrapper';
+import JobTitleForm from '@/components/job-titles/JobTitleForm';
 
 interface Organization {
   id: number;

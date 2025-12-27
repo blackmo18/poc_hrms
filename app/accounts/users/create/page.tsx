@@ -3,18 +3,18 @@
 import { useState, useEffect, useCallback, useReducer } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { useAuth } from "@/app/components/providers/auth-provider";
-import { useRoleAccess } from "@/app/components/providers/role-access-provider";
-import PageBreadcrumb from "@/app/components/common/PageBreadCrumb";
-import PageMeta from "@/app/components/common/PageMeta";
-import Button from "@/app/components/ui/button/Button";
-import DetailsConfirmationModal from "@/app/components/ui/modal/DetailsConfirmationModal";
-import ConfirmationModal from "@/app/components/ui/modal/ConfirmationModal";
-import ErrorModal from "@/app/components/ui/modal/ErrorModal";
-import EmployeeSearchModal from "@/app/components/employees/EmployeeSearchModal";
-import CreateUserForm from "@/app/components/users/CreateUserForm";
-import PasswordPanel from "@/app/components/users/PasswordPanel";
-import InitialLoadingScreen from '@/app/components/common/InitialLoadingScreen';
+import { useAuth } from "@/components/providers/auth-provider";
+import { useRoleAccess } from "@/components/providers/role-access-provider";
+import PageBreadcrumb from "@/components/common/PageBreadCrumb";
+import PageMeta from "@/components/common/PageMeta";
+import Button from "@/components/ui/button/Button";
+import DetailsConfirmationModal from "@/components/ui/modal/DetailsConfirmationModal";
+import ConfirmationModal from "@/components/ui/modal/ConfirmationModal";
+import ErrorModal from "@/components/ui/modal/ErrorModal";
+import EmployeeSearchModal from "@/components/employees/EmployeeSearchModal";
+import CreateUserForm from "@/components/users/CreateUserForm";
+import PasswordPanel from "@/components/users/PasswordPanel";
+import InitialLoadingScreen from '@/components/common/InitialLoadingScreen';
 import { DetailItem, GroupedItem } from "@/lib/models/modal";
 
 interface Organization {

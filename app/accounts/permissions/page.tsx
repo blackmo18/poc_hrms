@@ -2,20 +2,20 @@
 
 import { useState, useEffect, useMemo, useCallback, useReducer } from "react";
 import Link from "next/link";
-import { PencilIcon, PlusIcon, TrashBinIcon, EyeIcon, LockIcon } from "@/app/icons";
-import Button from "@/app/components/ui/button/Button";
-import ComponentCard from '@/app/components/common/ComponentCard';
-import PageMeta from '@/app/components/common/PageMeta';
-import PageBreadcrumb from '@/app/components/common/PageBreadCrumb';
-import Pagination from '@/app/components/ui/pagination';
-import RoleComponentWrapper from '@/app/components/common/RoleComponentWrapper';
-import OrganizationFilter from '@/app/components/common/OrganizationFilter';
+import { PencilIcon, PlusIcon, TrashBinIcon, EyeIcon, LockIcon } from "@/icons";
+import Button from "@/components/ui/button/Button";
+import ComponentCard from '@/components/common/ComponentCard';
+import PageMeta from '@/components/common/PageMeta';
+import PageBreadcrumb from '@/components/common/PageBreadCrumb';
+import Pagination from '@/components/ui/pagination';
+import RoleComponentWrapper from '@/components/common/RoleComponentWrapper';
+import OrganizationFilter from '@/components/common/OrganizationFilter';
 import { useOrganizationFilter } from '@/hooks/useOrganizationFilter';
-import { useAuth } from '@/app/components/providers/auth-provider';
-import { useRoleAccess } from '@/app/components/providers/role-access-provider';
-import PermissionsTable from '@/app/components/accounts/PermissionsTable';
-import PermissionCard from '@/app/components/accounts/PermissionCard';
-import InitialLoadingScreen from '@/app/components/common/InitialLoadingScreen';
+import { useAuth } from '@/components/providers/auth-provider';
+import { useRoleAccess } from '@/components/providers/role-access-provider';
+import PermissionsTable from '@/components/accounts/PermissionsTable';
+import PermissionCard from '@/components/accounts/PermissionCard';
+import InitialLoadingScreen from '@/components/common/InitialLoadingScreen';
 
 interface Permission {
   id: string;

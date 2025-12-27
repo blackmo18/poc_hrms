@@ -8,16 +8,16 @@ import {
   TableCell,
   TableHeader,
   TableRow,
-} from '../../components/ui/table';
-import Badge, { BadgeColor } from '../../components/ui/badge/Badge';
-import { PencilIcon } from '../../icons';
-import RoleComponentWrapper from '@/app/components/common/RoleComponentWrapper';
-import ComponentCard from '@/app/components/common/ComponentCard';
-import PageMeta from '@/app/components/common/PageMeta';
-import PageBreadcrumb from '@/app/components/common/PageBreadCrumb';
-import OrganizationCard from '../../components/organizations/OrganizationCard';
-import OrganizationTable from '../../components/organizations/OrganizationTable';
-import Pagination from '../../components/ui/pagination';
+} from '../../../components/ui/table';
+import Badge, { BadgeColor } from '../../../components/ui/badge/Badge';
+import { PencilIcon } from '../../../icons';
+import RoleComponentWrapper from '@/components/common/RoleComponentWrapper';
+import ComponentCard from '@/components/common/ComponentCard';
+import PageMeta from '@/components/common/PageMeta';
+import PageBreadcrumb from '@/components/common/PageBreadCrumb';
+import OrganizationCard from '../../../components/organizations/OrganizationCard';
+import OrganizationTable from '../../../components/organizations/OrganizationTable';
+import Pagination from '../../../components/ui/pagination';
 
 interface Organization {
   id: number;

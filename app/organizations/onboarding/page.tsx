@@ -3,11 +3,11 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import PageBreadcrumb from '@/app/components/common/PageBreadCrumb';
-import PageMeta from '@/app/components/common/PageMeta';
-import Button from '@/app/components/ui/button/Button';
-import OrganizationConfirmModal from '@/app/components/organizations/OrganizationConfirmModal';
-import OrganizationForm from '@/app/components/organizations/OrganizationForm';
+import PageBreadcrumb from '@/components/common/PageBreadCrumb';
+import PageMeta from '@/components/common/PageMeta';
+import Button from '@/components/ui/button/Button';
+import OrganizationConfirmModal from '@/components/organizations/OrganizationConfirmModal';
+import OrganizationForm from '@/components/organizations/OrganizationForm';
 
 export default function OrganizationOnboardingPage() {
   const router = useRouter();

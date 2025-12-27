@@ -3,16 +3,16 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import PageBreadcrumb from '@/app/components/common/PageBreadCrumb';
-import PageMeta from '@/app/components/common/PageMeta';
-import Button from '@/app/components/ui/button/Button';
+import PageBreadcrumb from '@/components/common/PageBreadCrumb';
+import PageMeta from '@/components/common/PageMeta';
+import Button from '@/components/ui/button/Button';
 import { validateEmployeeForm } from '@/lib/utils/employeeValidation';
 import { getEmployeeGroupedDetails } from '@/lib/utils/employeeDetails';
-import DetailsConfirmationModal from '@/app/components/ui/modal/DetailsConfirmationModal';
-import ConfirmationModal from '@/app/components/ui/modal/ConfirmationModal';
-import EmployeeForm from '@/app/components/employees/EmployeeForm';
-import { useAuth } from '@/app/components/providers/auth-provider';
-import { useRoleAccess } from '@/app/components/providers/role-access-provider';
+import DetailsConfirmationModal from '@/components/ui/modal/DetailsConfirmationModal';
+import ConfirmationModal from '@/components/ui/modal/ConfirmationModal';
+import EmployeeForm from '@/components/employees/EmployeeForm';
+import { useAuth } from '@/components/providers/auth-provider';
+import { useRoleAccess } from '@/components/providers/role-access-provider';
 
 interface Organization {
   id: number;

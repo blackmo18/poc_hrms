@@ -3,13 +3,13 @@
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
-import PageBreadcrumb from '@/app/components/common/PageBreadCrumb';
-import PageMeta from '@/app/components/common/PageMeta';
-import Button from '@/app/components/ui/button/Button';
-import { useAuth } from '@/app/components/providers/auth-provider';
-import DetailsConfirmationModal from '@/app/components/ui/modal/DetailsConfirmationModal';
-import ErrorModal from '@/app/components/ui/modal/ErrorModal';
-import DepartmentForm from '@/app/components/departments/DepartmentForm';
+import PageBreadcrumb from '@/components/common/PageBreadCrumb';
+import PageMeta from '@/components/common/PageMeta';
+import Button from '@/components/ui/button/Button';
+import { useAuth } from '@/components/providers/auth-provider';
+import DetailsConfirmationModal from '@/components/ui/modal/DetailsConfirmationModal';
+import ErrorModal from '@/components/ui/modal/ErrorModal';
+import DepartmentForm from '@/components/departments/DepartmentForm';
 
 interface Department {
   id: number;

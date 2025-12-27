@@ -2,11 +2,11 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/card';
-import Input from '@/app/components/form/input/InputField';
-import Label from '@/app/components/form/Label';
-import Select from '@/app/components/form/Select';
-import { useAuth } from '@/app/components/providers/auth-provider';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import Input from '@/components/form/input/InputField';
+import Label from '@/components/form/Label';
+import Select from '@/components/form/Select';
+import { useAuth } from '@/components/providers/auth-provider';
 
 interface Organization {
   id: number;

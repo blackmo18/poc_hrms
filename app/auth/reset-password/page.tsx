@@ -4,14 +4,14 @@ import { useState, useEffect, useReducer } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import PageMeta from '@/app/components/common/PageMeta';
-import PageBreadcrumb from '@/app/components/common/PageBreadCrumb';
-import Button from '@/app/components/ui/button/Button';
-import ErrorModal from '@/app/components/ui/modal/ErrorModal';
-import ConfirmationModal from '@/app/components/ui/modal/ConfirmationModal';
+import PageMeta from '@/components/common/PageMeta';
+import PageBreadcrumb from '@/components/common/PageBreadCrumb';
+import Button from '@/components/ui/button/Button';
+import ErrorModal from '@/components/ui/modal/ErrorModal';
+import ConfirmationModal from '@/components/ui/modal/ConfirmationModal';
 import ResetPasswordForm from '@/app/auth/components/ResetPasswordForm';
-import { useTheme } from '@/app/context/ThemeContext';
-import InitialLoadingScreen from '@/app/components/common/InitialLoadingScreen';
+import { useTheme } from '@/context/ThemeContext';
+import InitialLoadingScreen from '@/components/common/InitialLoadingScreen';
 
 interface User {
   id: string;

@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { useAuth } from '@/app/components/providers/auth-provider';
-import { useRoleAccess } from '@/app/components/providers/role-access-provider';
+import { useAuth } from '@/components/providers/auth-provider';
+import { useRoleAccess } from '@/components/providers/role-access-provider';
 
 export interface Organization {
   id: string;

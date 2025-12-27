@@ -2,21 +2,21 @@
 
 import { useState, useEffect, useMemo, useCallback, useReducer } from 'react';
 import Link from 'next/link';
-import { PlusIcon, UserIcon } from '@/app/icons';
-import ComponentCard from '@/app/components/common/ComponentCard';
-import PageMeta from '@/app/components/common/PageMeta';
-import PageBreadcrumb from '@/app/components/common/PageBreadCrumb';
-import EmployeeCard from '@/app/components/employees/EmployeeCard';
-import EmployeeTable, { Employee } from '@/app/components/employees/EmployeeTable';
-import Pagination from '@/app/components/ui/pagination';
-import RoleComponentWrapper from '@/app/components/common/RoleComponentWrapper';
-import { useAuth } from '@/app/components/providers/auth-provider';
-import { useRoleAccess } from '@/app/components/providers/role-access-provider';
-import { BadgeColor } from '../components/ui/badge/Badge';
-import Select from '../components/form/Select';
-import OrganizationFilter from '@/app/components/common/OrganizationFilter';
+import { PlusIcon, UserIcon } from '@/icons';
+import ComponentCard from '@/components/common/ComponentCard';
+import PageMeta from '@/components/common/PageMeta';
+import PageBreadcrumb from '@/components/common/PageBreadCrumb';
+import EmployeeCard from '@/components/employees/EmployeeCard';
+import EmployeeTable, { Employee } from '@/components/employees/EmployeeTable';
+import Pagination from '@/components/ui/pagination';
+import RoleComponentWrapper from '@/components/common/RoleComponentWrapper';
+import { useAuth } from '@/components/providers/auth-provider';
+import { useRoleAccess } from '@/components/providers/role-access-provider';
+import { BadgeColor } from '../../components/ui/badge/Badge';
+import Select from '../../components/form/Select';
+import OrganizationFilter from '@/components/common/OrganizationFilter';
 import { useOrganizationFilter } from '@/hooks/useOrganizationFilter';
-import InitialLoadingScreen from '@/app/components/common/InitialLoadingScreen';
+import InitialLoadingScreen from '@/components/common/InitialLoadingScreen';
 
 interface Organization {
   id: string;

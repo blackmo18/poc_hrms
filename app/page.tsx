@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from './components/providers/auth-provider';
+import { useAuth } from '../components/providers/auth-provider';
 
 export default function Home() {
   const { user, isLoading } = useAuth();

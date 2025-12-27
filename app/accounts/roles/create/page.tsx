@@ -2,11 +2,11 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useAuth } from "@/app/components/providers/auth-provider";
-import Button from "@/app/components/ui/button/Button";
-import Input from "@/app/components/form/input/InputField";
-import Select from "@/app/components/form/Select";
-import MultiSelect from "@/app/components/form/MultiSelect";
+import { useAuth } from "@/components/providers/auth-provider";
+import Button from "@/components/ui/button/Button";
+import Input from "@/components/form/input/InputField";
+import Select from "@/components/form/Select";
+import MultiSelect from "@/components/form/MultiSelect";
 import Link from "next/link";
 
 interface Organization {
