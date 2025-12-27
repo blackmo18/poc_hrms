@@ -234,7 +234,7 @@ export default function DepartmentsPage() {
     }
   };
 
-  
+
   const handleDeleteClick = useCallback((departmentId: number, departmentName: string) => {
     dispatch({ type: 'SET_DEPARTMENT_TO_DELETE', payload: { id: departmentId, name: departmentName } });
     dispatch({ type: 'SET_DELETE_SUCCESS', payload: false });
