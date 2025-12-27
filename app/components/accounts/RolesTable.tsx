@@ -23,6 +23,7 @@ export interface Role {
     permission: {
       id: string;
       name: string;
+      description?: string;
     };
   }[];
   userRoles: {
@@ -31,6 +32,10 @@ export interface Role {
       id: string;
       email: string;
       name: string;
+      employee?: {
+        first_name: string;
+        last_name: string;
+      };
     };
   }[];
   created_at: string;
@@ -41,9 +46,10 @@ interface RolesTableBodyProps {
   currentPage?: number;
   limit?: number;
   onDeleteRole: (roleId: string) => void;
+  onViewDetails: (role: Role) => void;
 }
 
-const RolesTableBody = memo(function RolesTableBody({ roles, currentPage = 1, limit = 15, onDeleteRole }: RolesTableBodyProps) {
+const RolesTableBody = memo(function RolesTableBody({ roles, currentPage = 1, limit = 15, onDeleteRole, onViewDetails }: RolesTableBodyProps) {
   return (
     <>
       {roles.map((role, index) => {
@@ -84,12 +90,12 @@ const RolesTableBody = memo(function RolesTableBody({ roles, currentPage = 1, li
             </TableCell>
             <TableCell className="px-4 py-3 text-center">
               <div className="flex items-center justify-center space-x-2">
-                <Link
-                  href={`/accounts/roles/${role.id}`}
+                <button
+                  onClick={() => onViewDetails(role)}
                   className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-800 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700 transition-colors"
                 >
                   <EyeIcon className="w-4 h-4" />
-                </Link>
+                </button>
                 <Link
                   href={`/accounts/roles/${role.id}/edit`}
                   className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-blue-100 text-blue-600 hover:bg-blue-200 hover:text-blue-800 dark:bg-blue-900 dark:text-blue-400 dark:hover:bg-blue-800 transition-colors"
@@ -118,9 +124,10 @@ interface RolesTableProps {
   currentPage?: number;
   limit?: number;
   onDeleteRole: (roleId: string) => void;
+  onViewDetails: (role: Role) => void;
 }
 
-export default function RolesTable({ roles, loading = false, fallback, currentPage = 1, limit = 15, onDeleteRole }: RolesTableProps) {
+export default function RolesTable({ roles, loading = false, fallback, currentPage = 1, limit = 15, onDeleteRole, onViewDetails }: RolesTableProps) {
   return (
     <div className="hidden lg:block overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03]">
       <div className="w-full overflow-x-auto">
@@ -178,7 +185,7 @@ export default function RolesTable({ roles, loading = false, fallback, currentPa
             {loading ? (
               fallback || <LoadingSkeleton columns={7} hasActions={true} actionButtons={3} />
             ) : (
-              <RolesTableBody roles={roles} currentPage={currentPage} limit={limit} onDeleteRole={onDeleteRole} />
+              <RolesTableBody roles={roles} currentPage={currentPage} limit={limit} onDeleteRole={onDeleteRole} onViewDetails={onViewDetails} />
             )}
           </TableBody>
         </Table>

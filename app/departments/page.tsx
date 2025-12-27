@@ -176,8 +176,8 @@ export default function DepartmentsPage() {
   } = useOrganizationFilter({
     apiEndpoint: '/api/departments',
     defaultPageSize: 15,
-    onDataFetch: async (orgId, page) => {
-      await fetchDepartments(orgId, page);
+    onDataFetch: async (orgId, page, isOrgChange = false) => {
+      await fetchDepartments(orgId, page, isOrgChange);
     },
   });
 

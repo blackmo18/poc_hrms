@@ -144,7 +144,7 @@ export default function EmployeesPage() {
   } = useOrganizationFilter({
     apiEndpoint: '/api/employees',
     defaultPageSize: 15,
-    onDataFetch: async (orgId, page) => {
+    onDataFetch: async (orgId, page, isOrgChange = false) => {
       await fetchEmployees(orgId, page);
     },
   });

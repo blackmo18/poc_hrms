@@ -15,6 +15,7 @@ import { useAuth } from '@/app/components/providers/auth-provider';
 import { useRoleAccess } from '@/app/components/providers/role-access-provider';
 import RoleCard from '@/app/components/accounts/RoleCard';
 import RolesTable from '@/app/components/accounts/RolesTable';
+import RoleDetailsModal from '@/app/components/accounts/RoleDetailsModal';
 import InitialLoadingScreen from '@/app/components/common/InitialLoadingScreen';
 
 interface Role {
@@ -30,6 +31,7 @@ interface Role {
     permission: {
       id: string;
       name: string;
+      description?: string;
     };
   }[];
   userRoles: {
@@ -38,6 +40,10 @@ interface Role {
       id: string;
       email: string;
       name: string;
+      employee?: {
+        first_name: string;
+        last_name: string;
+      };
     };
   }[];
   created_at: string;
@@ -151,6 +157,10 @@ export default function RolesPage() {
   const { roles } = useRoleAccess();
   const [state, dispatch] = useReducer(rolesReducer, initialRolesState);
 
+  // Modal state
+  const [selectedRole, setSelectedRole] = useState<Role | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
   // Use the reusable organization filter hook
   const {
     selectedOrganization,
@@ -225,6 +235,16 @@ export default function RolesPage() {
       console.error('Error deleting role:', error);
       alert('Failed to delete role');
     }
+  };
+
+  const handleViewDetails = (role: Role) => {
+    setSelectedRole(role);
+    setIsModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setSelectedRole(null);
   };
 
   if (state.initialLoading) { // display this only on first page load
@@ -306,6 +326,7 @@ export default function RolesPage() {
             currentPage={state.pagination?.page}
             limit={state.pagination?.limit}
             onDeleteRole={handleDeleteRole}
+            onViewDetails={handleViewDetails}
           />
 
           {/* Mobile Card View */}
@@ -352,6 +373,13 @@ export default function RolesPage() {
           itemName="roles"
         />
       </div>
+
+      {/* Role Details Modal */}
+      <RoleDetailsModal
+        isOpen={isModalOpen}
+        onClose={handleCloseModal}
+        role={selectedRole}
+      />
     </div>
   );
 }
