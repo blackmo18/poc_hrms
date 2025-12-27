@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { useAuth } from '@/app/components/providers/auth-provider';
-import { useRoleAccess } from '@/app/components/providers/role-access-provider';
+import { useAuth } from '@/components/providers/auth-provider';
+import { useRoleAccess } from '@/components/providers/role-access-provider';
 
 export interface Organization {
   id: string;
@@ -24,7 +24,7 @@ export interface OrganizationFilterActions {
 export interface UseOrganizationFilterOptions {
   apiEndpoint: string;
   defaultPageSize?: number;
-  onDataFetch?: (orgId?: string, page?: number) => Promise<void>;
+  onDataFetch?: (orgId?: string, page?: number, isOrgChange?: boolean) => Promise<void>;
   enabled?: boolean;
 }
 
@@ -50,6 +50,9 @@ export function useOrganizationFilter(options: UseOrganizationFilterOptions): Us
 
   // Use ref to store the latest onDataFetch callback
   const onDataFetchRef = useRef(onDataFetch);
+  
+  // Use ref to track if the current data fetch is due to organization change
+  const isOrgChangeRef = useRef(false);
   
   // Update ref when onDataFetch changes
   useEffect(() => {
@@ -93,6 +96,7 @@ export function useOrganizationFilter(options: UseOrganizationFilterOptions): Us
 
   // Handle organization change with loading state
   const handleOrganizationChange = useCallback((orgId: string | null) => {
+    isOrgChangeRef.current = true;
     setSelectedOrganization(orgId);
     setCurrentPage(1); // Reset to first page when changing organization
     setIsOrganizationFilterLoading(true);
@@ -130,7 +134,8 @@ export function useOrganizationFilter(options: UseOrganizationFilterOptions): Us
         : selectedOrganization || undefined;
       
       if (orgId !== undefined || isSuperAdmin) {
-        onDataFetchRef.current(orgId, currentPage);
+        onDataFetchRef.current(orgId, currentPage, isOrgChangeRef.current);
+        isOrgChangeRef.current = false;
       }
     }
   }, [currentPage, selectedOrganization, authLoading, enabled, isSuperAdmin, user?.organization_id]);

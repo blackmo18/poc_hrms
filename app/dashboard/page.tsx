@@ -1,10 +1,10 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
-import MetricCard from '../components/common/MetricCard';
+import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
+import MetricCard from '../../components/common/MetricCard';
 import { Users, Building2, DollarSign, Calendar } from 'lucide-react';
-import { ProtectedRoute } from '../components/protected-route';
+import { ProtectedRoute } from '../../components/protected-route';
 
 interface DashboardStats {
   totalEmployees: number;

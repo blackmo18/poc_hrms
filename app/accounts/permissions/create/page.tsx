@@ -2,11 +2,11 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useAuth } from "@/app/components/providers/auth-provider";
-import { useRoleAccess } from "@/app/components/providers/role-access-provider";
-import Button from "@/app/components/ui/button/Button";
-import Input from "@/app/components/form/input/InputField";
-import Select from "@/app/components/form/Select";
+import { useAuth } from "@/components/providers/auth-provider";
+import { useRoleAccess } from "@/components/providers/role-access-provider";
+import Button from "@/components/ui/button/Button";
+import Input from "@/components/form/input/InputField";
+import Select from "@/components/form/Select";
 
 interface Organization {
   id: string;

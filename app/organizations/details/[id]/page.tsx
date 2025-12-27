@@ -3,12 +3,12 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Organization } from '@/lib/models';
-import ComponentCard from '@/app/components/common/ComponentCard';
-import RoleComponentWrapper from '@/app/components/common/RoleComponentWrapper';
-import OrganizationNameCard from '@/app/components/organizations/OrgnizationNameCard';
-import GeneralInfoCard from '@/app/components/profiles/general/GeneralInfoCard';
-import PageMeta from '@/app/components/common/PageMeta';
-import PageBreadcrumb from '@/app/components/common/PageBreadCrumb';
+import ComponentCard from '@/components/common/ComponentCard';
+import RoleComponentWrapper from '@/components/common/RoleComponentWrapper';
+import OrganizationNameCard from '@/components/organizations/OrgnizationNameCard';
+import GeneralInfoCard from '@/components/profiles/general/GeneralInfoCard';
+import PageMeta from '@/components/common/PageMeta';
+import PageBreadcrumb from '@/components/common/PageBreadCrumb';
 
 
 const OrganizationPage = () => {

@@ -3,8 +3,8 @@
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { PencilIcon, ArrowLeftIcon } from "@/app/icons";
-import Button from "@/app/components/ui/button/Button";
+import { PencilIcon, ArrowLeftIcon } from "@/icons";
+import Button from "@/components/ui/button/Button";
 
 interface Permission {
   id: string;

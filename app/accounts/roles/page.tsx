@@ -2,19 +2,21 @@
 
 import { useState, useEffect, useMemo, useCallback, useReducer } from "react";
 import Link from "next/link";
-import { PencilIcon, PlusIcon, TrashBinIcon, EyeIcon, UserGroupIcon } from "@/app/icons";
-import Button from "@/app/components/ui/button/Button";
-import ComponentCard from '@/app/components/common/ComponentCard';
-import PageMeta from '@/app/components/common/PageMeta';
-import PageBreadcrumb from '@/app/components/common/PageBreadCrumb';
-import Pagination from '@/app/components/ui/pagination';
-import RoleComponentWrapper from '@/app/components/common/RoleComponentWrapper';
-import OrganizationFilter from '@/app/components/common/OrganizationFilter';
+import { PencilIcon, PlusIcon, TrashBinIcon, EyeIcon, UserGroupIcon } from "@/icons";
+import Button from "@/components/ui/button/Button";
+import ComponentCard from '@/components/common/ComponentCard';
+import PageMeta from '@/components/common/PageMeta';
+import PageBreadcrumb from '@/components/common/PageBreadCrumb';
+import Pagination from '@/components/ui/pagination';
+import RoleComponentWrapper from '@/components/common/RoleComponentWrapper';
+import OrganizationFilter from '@/components/common/OrganizationFilter';
 import { useOrganizationFilter } from '@/hooks/useOrganizationFilter';
-import { useAuth } from '@/app/components/providers/auth-provider';
-import { useRoleAccess } from '@/app/components/providers/role-access-provider';
-import RoleCard from '@/app/components/accounts/RoleCard';
-import RolesTable from '@/app/components/accounts/RolesTable';
+import { useAuth } from '@/components/providers/auth-provider';
+import { useRoleAccess } from '@/components/providers/role-access-provider';
+import RoleCard from '@/components/accounts/RoleCard';
+import RolesTable from '@/components/accounts/RolesTable';
+import RoleDetailsModal from '@/components/accounts/RoleDetailsModal';
+import InitialLoadingScreen from '@/components/common/InitialLoadingScreen';
 
 interface Role {
   id: string;
@@ -29,6 +31,7 @@ interface Role {
     permission: {
       id: string;
       name: string;
+      description?: string;
     };
   }[];
   userRoles: {
@@ -37,6 +40,10 @@ interface Role {
       id: string;
       email: string;
       name: string;
+      employee?: {
+        first_name: string;
+        last_name: string;
+      };
     };
   }[];
   created_at: string;
@@ -150,6 +157,10 @@ export default function RolesPage() {
   const { roles } = useRoleAccess();
   const [state, dispatch] = useReducer(rolesReducer, initialRolesState);
 
+  // Modal state
+  const [selectedRole, setSelectedRole] = useState<Role | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
   // Use the reusable organization filter hook
   const {
     selectedOrganization,
@@ -226,23 +237,23 @@ export default function RolesPage() {
     }
   };
 
+  const handleViewDetails = (role: Role) => {
+    setSelectedRole(role);
+    setIsModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setSelectedRole(null);
+  };
+
   if (state.initialLoading) { // display this only on first page load
     return (
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-              Roles
-            </h1>
-            <p className="mt-2 text-gray-600 dark:text-gray-300">
-              Manage user roles and their permissions
-            </p>
-          </div>
-        </div>
-        <div className="flex items-center justify-center h-64">
-          <div className="text-lg text-gray-600 dark:text-gray-300">Loading roles...</div>
-        </div>
-      </div>
+      <InitialLoadingScreen
+        title="Roles"
+        subtitle="Manage user roles and their permissions"
+        loadingText="Loading roles..."
+      />
     );
   }
 
@@ -315,6 +326,7 @@ export default function RolesPage() {
             currentPage={state.pagination?.page}
             limit={state.pagination?.limit}
             onDeleteRole={handleDeleteRole}
+            onViewDetails={handleViewDetails}
           />
 
           {/* Mobile Card View */}
@@ -361,6 +373,13 @@ export default function RolesPage() {
           itemName="roles"
         />
       </div>
+
+      {/* Role Details Modal */}
+      <RoleDetailsModal
+        isOpen={isModalOpen}
+        onClose={handleCloseModal}
+        role={selectedRole}
+      />
     </div>
   );
 }

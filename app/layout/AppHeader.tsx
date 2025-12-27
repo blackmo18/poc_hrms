@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useSidebar } from "../context/SidebarContext";
-import { ThemeToggleButton } from "../components/common/ThemeToggleButton";
-import UserDropdown from "../components/header/UserDropdown";
+import { useSidebar } from "../../context/SidebarContext";
+import { ThemeToggleButton } from "../../components/common/ThemeToggleButton";
+import UserDropdown from "../../components/header/UserDropdown";
 import Link from "next/link";
 
 const AppHeader: React.FC = () => {

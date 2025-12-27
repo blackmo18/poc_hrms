@@ -2,20 +2,22 @@
 
 import { useState, useEffect, useMemo, useCallback, useReducer } from 'react';
 import Link from 'next/link';
-import { PlusIcon, Building2Icon } from '@/app/icons';
-import ComponentCard from '@/app/components/common/ComponentCard';
-import PageMeta from '@/app/components/common/PageMeta';
-import PageBreadcrumb from '@/app/components/common/PageBreadCrumb';
-import Pagination from '@/app/components/ui/pagination';
-import ConfirmationModal from '@/app/components/ui/modal/ConfirmationModal';
-import ErrorModal from '@/app/components/ui/modal/ErrorModal';
-import DepartmentTable from '@/app/components/departments/DepartmentTable';
-import DepartmentCardList from '@/app/components/departments/DepartmentCardList';
-import RoleComponentWrapper from '@/app/components/common/RoleComponentWrapper';
-import { useAuth } from '@/app/components/providers/auth-provider';
-import { useRoleAccess } from '@/app/components/providers/role-access-provider';
-import OrganizationFilter from '@/app/components/common/OrganizationFilter';
+import { PlusIcon, Building2Icon } from '@/icons';
+import ComponentCard from '@/components/common/ComponentCard';
+import PageMeta from '@/components/common/PageMeta';
+import PageBreadcrumb from '@/components/common/PageBreadCrumb';
+import Pagination from '@/components/ui/pagination';
+import ConfirmationModal from '@/components/ui/modal/ConfirmationModal';
+import ErrorModal from '@/components/ui/modal/ErrorModal';
+import DepartmentTable from '@/components/departments/DepartmentTable';
+import DepartmentCardList from '@/components/departments/DepartmentCardList';
+import RoleComponentWrapper from '@/components/common/RoleComponentWrapper';
+import { useAuth } from '@/components/providers/auth-provider';
+import { useRoleAccess } from '@/components/providers/role-access-provider';
+import OrganizationFilter from '@/components/common/OrganizationFilter';
 import { useOrganizationFilter } from '@/hooks/useOrganizationFilter';
+import { BadgeColor } from "@/components/ui/badge/Badge";
+import InitialLoadingScreen from '@/components/common/InitialLoadingScreen';
 
 interface Organization {
   id: string;
@@ -174,8 +176,8 @@ export default function DepartmentsPage() {
   } = useOrganizationFilter({
     apiEndpoint: '/api/departments',
     defaultPageSize: 15,
-    onDataFetch: async (orgId, page) => {
-      await fetchDepartments(orgId, page);
+    onDataFetch: async (orgId, page, isOrgChange = false) => {
+      await fetchDepartments(orgId, page, isOrgChange);
     },
   });
 
@@ -232,32 +234,13 @@ export default function DepartmentsPage() {
     }
   };
 
-  
+
   const handleDeleteClick = useCallback((departmentId: number, departmentName: string) => {
     dispatch({ type: 'SET_DEPARTMENT_TO_DELETE', payload: { id: departmentId, name: departmentName } });
     dispatch({ type: 'SET_DELETE_SUCCESS', payload: false });
     dispatch({ type: 'SET_SHOW_DELETE_MODAL', payload: true });
   }, []);
 
-  // Memoize the empty state component to prevent unnecessary re-renders
-  const emptyStateComponent = useMemo(() => (
-    state.departments.length === 0 && (
-      <div className="text-center py-12">
-        <Building2Icon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-        <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No departments found</h3>
-        <p className="text-gray-600 dark:text-gray-400 mb-4">
-          Get started by adding your first department.
-        </p>
-        <Link
-          href="/departments/add"
-          className="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 transition-colors"
-        >
-          <PlusIcon className="w-4 h-4 mr-2" />
-          Add Department
-        </Link>
-      </div>
-    )
-  ), [state.departments.length]);
 
   const handleConfirmDelete = async () => {
     if (!state.departmentToDelete) return;
@@ -301,21 +284,11 @@ export default function DepartmentsPage() {
 
   if (state.initialLoading) { // display this only on first page load
     return (
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-              Departments
-            </h1>
-            <p className="mt-2 text-gray-600 dark:text-gray-300">
-              Manage departments in your organization
-            </p>
-          </div>
-        </div>
-        <div className="flex items-center justify-center h-64">
-          <div className="text-lg text-gray-600 dark:text-gray-300">Loading departments...</div>
-        </div>
-      </div>
+      <InitialLoadingScreen
+        title="Departments"
+        subtitle="Manage departments in your organization"
+        loadingText="Loading departments..."
+      />
     );
   }
 

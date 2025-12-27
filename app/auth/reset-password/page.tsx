@@ -1,16 +1,17 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useReducer } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import PageMeta from '@/app/components/common/PageMeta';
-import PageBreadcrumb from '@/app/components/common/PageBreadCrumb';
-import Button from '@/app/components/ui/button/Button';
-import ErrorModal from '@/app/components/ui/modal/ErrorModal';
-import ConfirmationModal from '@/app/components/ui/modal/ConfirmationModal';
+import PageMeta from '@/components/common/PageMeta';
+import PageBreadcrumb from '@/components/common/PageBreadCrumb';
+import Button from '@/components/ui/button/Button';
+import ErrorModal from '@/components/ui/modal/ErrorModal';
+import ConfirmationModal from '@/components/ui/modal/ConfirmationModal';
 import ResetPasswordForm from '@/app/auth/components/ResetPasswordForm';
-import { useTheme } from '@/app/context/ThemeContext';
+import { useTheme } from '@/context/ThemeContext';
+import InitialLoadingScreen from '@/components/common/InitialLoadingScreen';
 
 interface User {
   id: string;
@@ -23,23 +24,98 @@ interface PasswordResetData {
   confirmPassword: string;
 }
 
+interface PasswordResetState {
+  // Data states
+  user: User | null;
+
+  // Loading states
+  loading: boolean;
+  initialLoading: boolean;
+  submitting: boolean;
+
+  // UI states
+  showErrorModal: boolean;
+  showSuccessModal: boolean;
+  errorMessage: string;
+}
+
+type PasswordResetAction =
+  // Data actions
+  | { type: 'SET_USER'; payload: User | null }
+
+  // Loading actions
+  | { type: 'SET_LOADING'; payload: boolean }
+  | { type: 'SET_INITIAL_LOADING'; payload: boolean }
+  | { type: 'SET_SUBMITTING'; payload: boolean }
+
+  // UI actions
+  | { type: 'SET_SHOW_ERROR_MODAL'; payload: boolean }
+  | { type: 'SET_SHOW_SUCCESS_MODAL'; payload: boolean }
+  | { type: 'SET_ERROR_MESSAGE'; payload: string }
+
+  // Combined actions
+  | { type: 'START_LOADING' }
+  | { type: 'FINISH_LOADING' };
+
+function passwordResetReducer(state: PasswordResetState, action: PasswordResetAction): PasswordResetState {
+  switch (action.type) {
+    // Data actions
+    case 'SET_USER':
+      return { ...state, user: action.payload };
+
+    // Loading actions
+    case 'SET_LOADING':
+      return { ...state, loading: action.payload };
+    case 'SET_INITIAL_LOADING':
+      return { ...state, initialLoading: action.payload };
+    case 'SET_SUBMITTING':
+      return { ...state, submitting: action.payload };
+
+    // UI actions
+    case 'SET_SHOW_ERROR_MODAL':
+      return { ...state, showErrorModal: action.payload };
+    case 'SET_SHOW_SUCCESS_MODAL':
+      return { ...state, showSuccessModal: action.payload };
+    case 'SET_ERROR_MESSAGE':
+      return { ...state, errorMessage: action.payload };
+
+    // Combined actions
+    case 'START_LOADING':
+      return { ...state, loading: true, showErrorModal: false, errorMessage: '' };
+    case 'FINISH_LOADING':
+      return { ...state, loading: false, initialLoading: false };
+
+    default:
+      return state;
+  }
+}
+
+const initialPasswordResetState: PasswordResetState = {
+  // Data states
+  user: null,
+
+  // Loading states
+  loading: true,
+  initialLoading: true,
+  submitting: false,
+
+  // UI states
+  showErrorModal: false,
+  showSuccessModal: false,
+  errorMessage: '',
+};
+
 export default function ResetPasswordPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const token = searchParams.get('token');
   const { toggleTheme } = useTheme();
-
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [submitting, setSubmitting] = useState(false);
-  const [showErrorModal, setShowErrorModal] = useState(false);
-  const [errorMessage, setErrorMessage] = useState('');
-  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [state, dispatch] = useReducer(passwordResetReducer, initialPasswordResetState);
 
   useEffect(() => {
     if (!token) {
-      setErrorMessage('Invalid reset link. Please request a new password reset.');
-      setShowErrorModal(true);
+      dispatch({ type: 'SET_ERROR_MESSAGE', payload: 'Invalid reset link. Please request a new password reset.' });
+      dispatch({ type: 'SET_SHOW_ERROR_MODAL', payload: true });
       return;
     }
 
@@ -48,6 +124,8 @@ export default function ResetPasswordPage() {
 
   const validateToken = async () => {
     try {
+      dispatch({ type: 'START_LOADING' });
+
       const response = await fetch('/api/password-reset/validate', {
         method: 'POST',
         headers: {
@@ -59,8 +137,8 @@ export default function ResetPasswordPage() {
       const result = await response.json();
 
       if (!response.ok) {
-        setErrorMessage(result.error || 'Invalid or expired reset link.');
-        setShowErrorModal(true);
+        dispatch({ type: 'SET_ERROR_MESSAGE', payload: result.error || 'Invalid or expired reset link.' });
+        dispatch({ type: 'SET_SHOW_ERROR_MODAL', payload: true });
         return;
       }
 
@@ -68,21 +146,21 @@ export default function ResetPasswordPage() {
       const userResponse = await fetch(`/api/users/${result.user_id}`);
       const userData = await userResponse.json();
 
-      setUser({
+      dispatch({ type: 'SET_USER', payload: {
         id: userData.id,
         name: userData.name || userData.email,
         email: userData.email,
-      });
+      }});
     } catch (error) {
-      setErrorMessage('Failed to validate reset link. Please try again.');
-      setShowErrorModal(true);
+      dispatch({ type: 'SET_ERROR_MESSAGE', payload: 'Failed to validate reset link. Please try again.' });
+      dispatch({ type: 'SET_SHOW_ERROR_MODAL', payload: true });
     } finally {
-      setLoading(false);
+      dispatch({ type: 'FINISH_LOADING' });
     }
   };
 
   const handleFormSubmit = async (formData: PasswordResetData) => {
-    setSubmitting(true);
+    dispatch({ type: 'SET_SUBMITTING', payload: true });
 
     try {
       const response = await fetch('/api/password-reset/reset', {
@@ -99,33 +177,32 @@ export default function ResetPasswordPage() {
       const result = await response.json();
 
       if (!response.ok) {
-        setErrorMessage(result.error || 'Failed to reset password. Please try again.');
-        setShowErrorModal(true);
+        dispatch({ type: 'SET_ERROR_MESSAGE', payload: result.error || 'Failed to reset password. Please try again.' });
+        dispatch({ type: 'SET_SHOW_ERROR_MODAL', payload: true });
         return;
       }
 
       // Password reset successful, show success modal
-      setShowSuccessModal(true);
+      dispatch({ type: 'SET_SHOW_SUCCESS_MODAL', payload: true });
     } catch (error) {
-      setErrorMessage('An error occurred while resetting your password. Please try again.');
-      setShowErrorModal(true);
+      dispatch({ type: 'SET_ERROR_MESSAGE', payload: 'An error occurred while resetting your password. Please try again.' });
+      dispatch({ type: 'SET_SHOW_ERROR_MODAL', payload: true });
     } finally {
-      setSubmitting(false);
+      dispatch({ type: 'SET_SUBMITTING', payload: false });
     }
   };
 
-  if (loading) {
+  if (state.initialLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-200 dark:border-blue-900 border-t-blue-600 dark:border-t-blue-400 mx-auto mb-4"></div>
-          <p className="text-gray-600 dark:text-gray-400">Loading...</p>
-        </div>
-      </div>
+      <InitialLoadingScreen
+        title="Reset Password"
+        subtitle="Reset your password"
+        loadingText="Loading..."
+      />
     );
   }
 
-  if (!user) {
+  if (!state.user) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 px-4">
         <div className="w-full max-w-md">
@@ -207,13 +284,13 @@ export default function ResetPasswordPage() {
                 Reset Password
               </h1>
               <p className="text-sm text-gray-600 dark:text-gray-400">
-                Create a new password for <span className="font-semibold text-gray-900 dark:text-white">{user.email}</span>
+                Create a new password for <span className="font-semibold text-gray-900 dark:text-white">{state.user.email}</span>
               </p>
             </div>
 
             <ResetPasswordForm 
               onSubmit={handleFormSubmit}
-              isSubmitting={submitting}
+              isSubmitting={state.submitting}
             />
 
             <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
@@ -229,8 +306,8 @@ export default function ResetPasswordPage() {
       </div>
 
       <ConfirmationModal
-        isOpen={showSuccessModal}
-        onClose={() => setShowSuccessModal(false)}
+        isOpen={state.showSuccessModal}
+        onClose={() => dispatch({ type: 'SET_SHOW_SUCCESS_MODAL', payload: false })}
         onConfirm={() => router.push('/auth/login')}
         title="Password Reset Successful"
         message="Your password has been reset successfully. Click OK to proceed to the login page."
@@ -240,10 +317,10 @@ export default function ResetPasswordPage() {
       />
 
       <ErrorModal
-        isOpen={showErrorModal}
-        onClose={() => setShowErrorModal(false)}
+        isOpen={state.showErrorModal}
+        onClose={() => dispatch({ type: 'SET_SHOW_ERROR_MODAL', payload: false })}
         title="Error"
-        errorMessage={errorMessage}
+        errorMessage={state.errorMessage}
       />
     </div>
   );

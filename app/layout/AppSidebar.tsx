@@ -20,10 +20,10 @@ import {
   UserGroupIcon,
   BriefcaseIcon,
   LayoutGridIcon,
-} from "../icons";
-import { useSidebar } from "../context/SidebarContext";
-import { useAuth } from "../components/providers/auth-provider";
-import { useRoleAccess } from "../components/providers/role-access-provider";
+} from "../../icons";
+import { useSidebar } from "../../context/SidebarContext";
+import { useAuth } from "../../components/providers/auth-provider";
+import { useRoleAccess } from "../../components/providers/role-access-provider";
 import SidebarWidget from "./SidebarWidget";
 
 type SubItem ={

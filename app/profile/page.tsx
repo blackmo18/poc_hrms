@@ -1,9 +1,9 @@
 'use client';
 
-import PageBreadCrumb from '../components/common/PageBreadCrumb';
-import UserMetaCard from '../components/UserProfile/UserMetaCard';
-import UserInfoCard from '../components/UserProfile/UserInfoCard';
-import UserAddressCard from '../components/UserProfile/UserAddressCard';
+import PageBreadCrumb from '../../components/common/PageBreadCrumb';
+import UserMetaCard from '../../components/UserProfile/UserMetaCard';
+import UserInfoCard from '../../components/UserProfile/UserInfoCard';
+import UserAddressCard from '../../components/UserProfile/UserAddressCard';
 
 export default function ProfilePage() {
   return (

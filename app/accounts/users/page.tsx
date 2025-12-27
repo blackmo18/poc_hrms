@@ -2,18 +2,19 @@
 
 import { useEffect, useCallback, useMemo, useReducer } from "react";
 import Link from "next/link";
-import { useRoleAccess } from "@/app/components/providers/role-access-provider";
-import {  PlusIcon, UserIcon } from "@/app/icons";
-import UserCard from "@/app/components/accounts/UserCard";
-import UsersTable from "@/app/components/accounts/UsersTable";
-import Pagination from "@/app/components/ui/pagination/Pagination";
-import ComponentCard from "@/app/components/common/ComponentCard";
-import PageMeta from "@/app/components/common/PageMeta";
-import PageBreadcrumb from "@/app/components/common/PageBreadCrumb";
-import RoleComponentWrapper from "@/app/components/common/RoleComponentWrapper";
-import OrganizationFilter from "@/app/components/common/OrganizationFilter";
-import { useOrganizationFilter } from "@/hooks/useOrganizationFilter";
-import { BadgeColor } from "@/app/components/ui/badge/Badge";
+import { useRoleAccess } from "@/components/providers/role-access-provider";
+import {  PlusIcon, UserIcon } from "@/icons";
+import UserCard from "@/components/accounts/UserCard";
+import UsersTable from "@/components/accounts/UsersTable";
+import Pagination from "@/components/ui/pagination/Pagination";
+import ComponentCard from "@/components/common/ComponentCard";
+import PageMeta from "@/components/common/PageMeta";
+import PageBreadcrumb from "@/components/common/PageBreadCrumb";
+import RoleComponentWrapper from "@/components/common/RoleComponentWrapper";
+import OrganizationFilter from "@/components/common/OrganizationFilter";
+import { useOrganizationFilter } from '@/hooks/useOrganizationFilter';
+import { BadgeColor } from "@/components/ui/badge/Badge";
+import InitialLoadingScreen from '@/components/common/InitialLoadingScreen';
 import { UserWithRelations } from "@/lib/models/user";
 
 interface ApiResponse {
@@ -223,21 +224,11 @@ export default function UsersPage() {
 
   if (state.initialLoading) { // display this only on first page load
     return (
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-              Users
-            </h1>
-            <p className="mt-2 text-gray-600 dark:text-gray-300">
-              Manage user accounts and their roles
-            </p>
-          </div>
-        </div>
-        <div className="flex items-center justify-center h-64">
-          <div className="text-lg text-gray-600 dark:text-gray-300">Loading users...</div>
-        </div>
-      </div>
+      <InitialLoadingScreen
+        title="Users"
+        subtitle="Manage user accounts and their roles"
+        loadingText="Loading users..."
+      />
     );
   }
 

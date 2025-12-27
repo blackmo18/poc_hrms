@@ -1,8 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import InputField from '@/app/components/form/input/InputField';
-import Button from '@/app/components/ui/button/Button';
+import InputField from '@/components/form/input/InputField';
+import Button from '@/components/ui/button/Button';
 
 interface PasswordResetData {
   password: string;
