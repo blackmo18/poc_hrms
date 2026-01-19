@@ -35,9 +35,9 @@ export async function POST(request: NextRequest) {
           }
 
           result = await timeEntryService.clockIn({
-            employee_id: employee.id,
+            employeeId: employee.id,
             organizationId: employee.organizationId,
-            created_by: user.id,
+            createdBy: user.id,
           });
           break;
 

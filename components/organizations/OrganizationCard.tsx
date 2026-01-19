@@ -5,22 +5,22 @@ import Badge, { BadgeColor } from '../ui/badge/Badge';
 import { Card, CardContent, CardHeader } from '../ui/card';
 
 interface Organization {
-  id: number;
+  id: string;
   name: string;
   email?: string;
-  contact_number?: string;
+  contactNumber?: string;
   website?: string;
   address?: string;
   logo?: string;
   status: string;
-  created_at: string;
-  updated_at: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 interface OrganizationCardProps {
   org: Organization;
   isExpanded: boolean;
-  onToggle: (orgId: number) => void;
+  onToggle: (orgId: string) => void;
   getStatusColor: (status: string) => BadgeColor;
 }
 
@@ -84,10 +84,10 @@ const OrganizationCard: React.FC<OrganizationCardProps> = ({
                 </div>
               )}
 
-              {org.contact_number && (
+              {org.contactNumber && (
                 <div>
                   <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                    {org.contact_number}
+                    {org.contactNumber}
                   </p>
                 </div>
               )}
@@ -122,7 +122,7 @@ const OrganizationCard: React.FC<OrganizationCardProps> = ({
                 Created
               </span>
               <p className="text-sm text-gray-900 dark:text-white mt-1">
-                {new Date(org.created_at).toLocaleDateString()}
+                {new Date(org.createdAt).toLocaleDateString()}
               </p>
             </div>
             <div>
@@ -130,7 +130,7 @@ const OrganizationCard: React.FC<OrganizationCardProps> = ({
                 Updated
               </span>
               <p className="text-sm text-gray-900 dark:text-white mt-1">
-                {new Date(org.updated_at).toLocaleDateString()}
+                {new Date(org.updatedAt).toLocaleDateString()}
               </p>
             </div>
             <div className="flex justify-end pt-2">

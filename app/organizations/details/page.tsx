@@ -20,17 +20,17 @@ import OrganizationTable from '../../../components/organizations/OrganizationTab
 import Pagination from '../../../components/ui/pagination';
 
 interface Organization {
-  id: number;
+  id: string;
   name: string;
   email?: string;
-  contact_number?: string;
+  contactNumber?: string;
   address?: string;
   logo?: string;
   website?: string;
   description?: string;
   status: 'ACTIVE' | 'INACTIVE' | 'SUSPENDED';
-  created_at: string;
-  updated_at: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 interface PaginationInfo {
@@ -53,7 +53,7 @@ export default function OrganizationDetailsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const [expandedCards, setExpandedCards] = useState<Set<number>>(new Set());
+  const [expandedCards, setExpandedCards] = useState<Set<string>>(new Set());
 
   const fetchOrganizations = async (page: number = 1) => {
     try {
@@ -106,7 +106,7 @@ export default function OrganizationDetailsPage() {
     }
   };
 
-  const toggleCardExpansion = (orgId: number) => {
+  const toggleCardExpansion = (orgId: string) => {
     const newExpanded = new Set(expandedCards);
     if (newExpanded.has(orgId)) {
       newExpanded.delete(orgId);

@@ -9,18 +9,18 @@ export class TimeEntryService implements ITimeEntryService {
    * Clock in - create a new time entry with OPEN status
    */
   async clockIn(data: {
-    employee_id: string;
+    employeeId: string;
     organizationId: string;
-    clock_in_at?: Date;
-    created_by?: string;
+    clockInAt?: Date;
+    createdBy?: string;
   }): Promise<TimeEntry> {
-    const clockInAt = data.clock_in_at || new Date();
+    const clockInAt = data.clockInAt || new Date();
     
     // Create work date in local timezone to avoid timezone issues
     const workDate = new Date(clockInAt.getFullYear(), clockInAt.getMonth(), clockInAt.getDate());
 
     const createData: CreateTimeEntry = {
-      employeeId: data.employee_id,
+      employeeId: data.employeeId,
       organizationId: data.organizationId,
       clockInAt: clockInAt,
       workDate: workDate,

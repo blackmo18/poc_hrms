@@ -8,10 +8,10 @@ export interface ITimeEntryService {
    * Clock in - create a new time entry with OPEN status
    */
   clockIn(data: {
-    employee_id: string;
+    employeeId: string;
     organizationId: string;
-    clock_in_at?: Date;
-    created_by?: string;
+    clockInAt?: Date;
+    createdBy?: string;
   }): Promise<TimeEntry>;
 
   /**
