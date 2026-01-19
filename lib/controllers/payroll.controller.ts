@@ -6,9 +6,9 @@ export class PayrollController {
   async getAll(employeeId?: string, periodStart?: Date, periodEnd?: Date) {
     return await prisma.payroll.findMany({
       where: {
-        ...(employeeId && { employee_id: employeeId }),
-        ...(periodStart && { period_start: { gte: periodStart } }),
-        ...(periodEnd && { period_end: { lte: periodEnd } }),
+        ...(employeeId && { employeeId }),
+        ...(periodStart && { periodStart: { gte: periodStart } }),
+        ...(periodEnd && { periodEnd: { lte: periodEnd } }),
       },
       include: {
         employee: {
@@ -20,7 +20,7 @@ export class PayrollController {
         deductions: true,
       },
       orderBy: {
-        created_at: 'desc',
+        createdAt: 'desc',
       },
     });
   }
@@ -44,9 +44,14 @@ export class PayrollController {
     return await prisma.payroll.create({
       data: {
         id: generateULID(),
-        ...data,
-        processed_at: new Date(),
-      },
+        employeeId: data.employeeId,
+        organizationId: data.organizationId,
+        departmentId: data.departmentId,
+        periodStart: data.periodStart,
+        periodEnd: data.periodEnd,
+        grossPay: data.grossPay,
+        netPay: data.netPay,
+      } as any,
       include: {
         employee: {
           include: {
@@ -81,19 +86,21 @@ export class PayrollController {
     });
   }
 
-  async processPayroll(employeeId: string, periodStart: Date, periodEnd: Date, grossSalary: number, deductions: Array<{ type: string; amount: number }>) {
+  async processPayroll(employeeId: string, organizationId: string, departmentId: string | undefined, periodStart: Date, periodEnd: Date, grossSalary: number, deductions: Array<{ type: string; amount: number }>) {
     const netSalary = deductions.reduce((total, deduction) => total - deduction.amount, grossSalary);
 
     const payroll = await prisma.payroll.create({
       data: {
         id: generateULID(),
-        employee_id: employeeId,
-        period_start: periodStart,
-        period_end: periodEnd,
-        gross_salary: grossSalary,
-        net_salary: netSalary,
-        processed_at: new Date(),
-      },
+        employeeId: employeeId,
+        organizationId: organizationId,
+        departmentId: departmentId,
+        periodStart: periodStart,
+        periodEnd: periodEnd,
+        grossPay: grossSalary,
+        netPay: netSalary,
+        processedAt: new Date(),
+      } as any,
     });
 
     // Create deductions
@@ -101,9 +108,13 @@ export class PayrollController {
       await prisma.deduction.createMany({
         data: deductions.map(deduction => ({
           id: generateULID(),
-          payroll_id: payroll.id,
+          payrollId: payroll.id,
+          employeeId,
+          organizationId,
           type: deduction.type,
           amount: deduction.amount,
+          createdAt: new Date(),
+          updatedAt: new Date(),
         })),
       });
     }

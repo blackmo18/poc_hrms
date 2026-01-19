@@ -28,9 +28,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ message: 'Access denied. Super admin required.' }, { status: 403 });
     }
 
-    const { organization_id, first_name, last_name, work_email, work_contact } = await request.json();
+    const { organization_id, firstName, lastName, email, work_contact } = await request.json();
 
-    if (!organization_id || !first_name || !last_name || !work_email || !work_contact) {
+    if (!organization_id || !firstName || !lastName || !email || !work_contact) {
       return NextResponse.json({ message: 'All fields are required' }, { status: 400 });
     }
 
@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ message: 'Invalid organization' }, { status: 400 });
     }
 
-    const existingUser = await userService.getByEmail(work_email);
+    const existingUser = await userService.getByEmail(email);
 
     if (existingUser) {
       return NextResponse.json({ message: 'User with this email already exists' }, { status: 400 });
@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
 
     if (!hrDept) {
       hrDept = await departmentService.create(session, {
-        organization_id: organization.id,
+        organizationId: organization.id,
         name: 'Human Resources',
         description: 'HR and people operations',
       });
@@ -68,7 +68,7 @@ export async function POST(request: NextRequest) {
 
     if (!hrJobTitle) {
       hrJobTitle = await jobTitleService.create({
-        organization_id: organization.id,
+        organizationId: organization.id,
         name: 'HR Manager',
         description: 'Human resources manager',
       });
@@ -76,44 +76,42 @@ export async function POST(request: NextRequest) {
 
     const hashedPassword = await userService.hashPassword('admin123');
     const newUser = await userService.create({
-      organization_id: organization.id,
-      email: work_email,
-      employee_id: '', // Temporary, will update after creating employee
-      role_ids: [adminRole.id],
+      email: email,
+      organizationId: organization.id,
+      employeeId: '', // Temporary, will update after creating employee
+      roleIds: [adminRole.id],
       status: 'ACTIVE',
-      generated_password: 'admin123',
+      generatedPassword: 'admin123',
     });
 
     const employee = await employeeService.create({
-      organization_id: organization.id,
-      user_id: newUser.id,
-      department_id: hrDept.id,
-      job_title_id: hrJobTitle.id,
-      manager_id: null,
-      first_name,
-      last_name,
-      email: work_email,
-      work_email,
+      organizationId: organization.id,
+      userId: newUser.id,
+      departmentId: hrDept.id,
+      jobTitleId: hrJobTitle.id,
+      managerId: null,
+      email,
+      firstName,
+      lastName,
       work_contact,
-      personal_address: 'To be updated',
-      personal_contact_number: work_contact,
-      personal_email: work_email,
-      date_of_birth: new Date('1985-01-01'),
+      personalAddress: 'To be updated',
+      personalContactNumber: work_contact,
+      dateOfBirth: new Date('1985-01-01'),
       gender: 'Other',
-      employment_status: 'ACTIVE',
-      hire_date: new Date(),
-      exit_date: null,
+      employmentStatus: 'ACTIVE',
+      hireDate: new Date(),
+      exitDate: null,
     });
 
     // Update user with employee_id
     await userService.update(newUser.id, {
-      employee_id: employee.id,
+      employeeId: employee.id,
     });
 
     return NextResponse.json({
       message: 'Admin onboarded successfully',
       user: { id: newUser.id, email: newUser.email },
-      employee: { id: employee.id, name: `${first_name} ${last_name}` }
+      employee: { id: employee.id, name: `${firstName} ${lastName}` }
     });
 
   } catch (error) {

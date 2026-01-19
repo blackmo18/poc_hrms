@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { getPasswordResetSessionService } from '@/lib/service/password-reset-session.service';
+// import { getPasswordResetSessionService } from '@/lib/service/password-reset-session.service';
 import { userController } from '@/lib/controllers/user.controller';
 
 export async function POST(request: NextRequest) {
@@ -37,21 +37,22 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const passwordResetService = getPasswordResetSessionService();
-    const resetSession = await passwordResetService.createPasswordResetSession(
-      user.id,
-      session.user.id
-    );
+    // TODO: Implement password reset session creation
+    // const passwordResetService = getPasswordResetSessionService();
+    // const resetSession = await passwordResetService.createPasswordResetSession(
+    //   user.id,
+    //   session.user.id
+    // );
 
     return NextResponse.json({
       message: 'Password reset request created successfully',
       user: {
         id: user.id,
-        name: user.name,
+        // name: user.name,
         email: user.email,
       },
-      token: resetSession.token,
-      expires_on: resetSession.expired_on,
+      // token: resetSession.token,
+      // expires_on: resetSession.expired_on,
     }, { status: 201 });
 
   } catch (error) {

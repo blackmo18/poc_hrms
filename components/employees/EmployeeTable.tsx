@@ -13,12 +13,12 @@ import { PencilIcon } from '@/icons';
 
 export interface Employee {
   id: string;
-  first_name: string;
-  last_name: string;
+  firstName: string;
+  lastName: string;
   email: string;
-  custom_id?: string; // Organization-specific custom employee ID
-  employment_status: 'ACTIVE' | 'INACTIVE' | 'TERMINATED' | 'ON_LEAVE';
-  hire_date: string;
+  employeeId?: string; // Organization-specific employee ID
+  employmentStatus: 'ACTIVE' | 'INACTIVE' | 'TERMINATED' | 'ON_LEAVE';
+  hireDate: string;
   organization: {
     id: string;
     name: string;
@@ -33,8 +33,8 @@ export interface Employee {
   };
   manager?: {
     id: string;
-    first_name: string;
-    last_name: string;
+    firstName: string;
+    lastName: string;
   };
   user?: {
     id: string;
@@ -61,11 +61,11 @@ const EmployeeTableBody = memo(function EmployeeTableBody({ employees, getStatus
           </TableCell>
           <TableCell className="px-4 py-3 text-start">
             <span className="font-medium text-gray-800 text-theme-sm dark:text-white/90">
-              {employee.first_name} {employee.last_name}
+              {employee.firstName} {employee.lastName}
             </span>
           </TableCell>
           <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
-            {employee.custom_id || '-'}
+            {employee.employeeId || '-'}
           </TableCell>
           <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
             {employee.email}
@@ -82,9 +82,9 @@ const EmployeeTableBody = memo(function EmployeeTableBody({ employees, getStatus
           <TableCell className="px-4 py-3 text-start">
             <Badge
               size="sm"
-              color={getStatusColor(employee.employment_status)}
+              color={getStatusColor(employee.employmentStatus)}
             >
-              {employee.employment_status}
+              {employee.employmentStatus}
             </Badge>
           </TableCell>
           <TableCell className="px-4 py-3 text-center">

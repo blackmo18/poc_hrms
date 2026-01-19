@@ -37,10 +37,10 @@ export async function GET(request: NextRequest) {
       );
     } else if (isAdmin) {
       // Admin can see employees in their organization only
-      result = await employeeController.getAll(user.organization_id, { page, limit });
+      result = await employeeController.getAll(user.organizationId, { page, limit });
     } else if (isHRManager) {
       // HR Manager can only see employees from their own organization
-      result = await employeeController.getAll(user.organization_id, { page, limit });
+      result = await employeeController.getAll(user.organizationId, { page, limit });
     } else {
       // Regular employees might have limited access or no access
       return NextResponse.json(
@@ -83,7 +83,7 @@ export async function POST(request: NextRequest) {
 
       // Super Admin can create employees for any organization
       // Admin and HR Manager can only create for their own organization
-      if (!isSuperAdmin && !isAdmin && (!isHRManager || validatedData.organization_id !== user.organization_id)) {
+      if (!isSuperAdmin && !isAdmin && (!isHRManager || validatedData.organizationId !== user.organizationId)) {
         return NextResponse.json(
           { error: 'Cannot create employees for this organization' },
           { status: 403 }
@@ -91,7 +91,7 @@ export async function POST(request: NextRequest) {
       }
 
       // Admin can only create for their own organization
-      if (isAdmin && !isSuperAdmin && validatedData.organization_id !== user.organization_id) {
+      if (isAdmin && !isSuperAdmin && validatedData.organizationId !== user.organizationId) {
         return NextResponse.json(
           { error: 'Cannot create employees for this organization' },
           { status: 403 }

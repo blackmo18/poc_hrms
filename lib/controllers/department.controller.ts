@@ -40,10 +40,10 @@ export class DepartmentController {
 
     // Super admin can see all, others only their organization
     if (!isSuperAdmin) {
-      where.organization_id = userWithRoles.organization_id;
+      where.organizationId = userWithRoles.organization.id;
     } else if (organizationId) {
       // Super admin can filter by organization
-      where.organization_id = organizationId;
+      where.organizationId = organizationId;
     }
 
     // Get total count for pagination
@@ -129,7 +129,7 @@ export class DepartmentController {
     }
 
     // Check if user can access this department's organization
-    if (!isSuperAdmin && department.organization_id !== userWithRoles.organization_id) {
+    if (!isSuperAdmin && department.organization.id !== userWithRoles.organization.id) {
       throw new Error('Access denied');
     }
 
@@ -170,7 +170,7 @@ export class DepartmentController {
 
     // Set organization_id if not super admin
     if (!isSuperAdmin) {
-      data.organization_id = userWithRoles.organization_id!;
+      data.organizationId = userWithRoles.organization.id;
     }
 
     return await prisma.department.create({
@@ -178,7 +178,8 @@ export class DepartmentController {
         id: generateULID(),
         name: data.name,
         description: data.description,
-        organization_id: data.organization_id!
+        organization: { connect: { id: data.organizationId } },
+        updatedAt: new Date(),
       },
       include: {
         organization: true,
@@ -228,7 +229,7 @@ export class DepartmentController {
       throw new Error('Department not found');
     }
 
-    if (!isSuperAdmin && existingDepartment.organization_id !== userWithRoles.organization_id) {
+    if (!isSuperAdmin && existingDepartment.organizationId !== userWithRoles.organization.id) {
       throw new Error('Access denied');
     }
 
@@ -283,7 +284,7 @@ export class DepartmentController {
       throw new Error('Department not found');
     }
 
-    if (!isSuperAdmin && existingDepartment.organization_id !== userWithRoles.organization_id) {
+    if (!isSuperAdmin && existingDepartment.organizationId !== userWithRoles.organization.id) {
       throw new Error('Access denied');
     }
 
@@ -295,7 +296,7 @@ export class DepartmentController {
   // Simple repository method for internal use
   async findByOrganizationId(organizationId: string) {
     return await prisma.department.findMany({
-      where: { organization_id: organizationId }
+      where: { organizationId }
     });
   }
 }

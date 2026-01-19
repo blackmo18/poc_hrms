@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
         return NextResponse.json(user);
       } else {
         // Get all users for the organization
-        const organizationId = authRequest.user!.organization_id;
+        const organizationId = authRequest.user!.organizationId;
         const users = await listUsers(organizationId);
         return NextResponse.json(users);
       }
@@ -55,7 +55,7 @@ export async function POST(request: NextRequest) {
       }
 
       // Create user
-      const organizationId = authRequest.user!.organization_id;
+      const organizationId = authRequest.user!.organizationId;
       const userId = await createUser(email, password, name, organizationId, authRequest.user!.email);
 
       // Assign role if provided
@@ -92,7 +92,7 @@ export async function PUT(request: NextRequest) {
       const userService = getUserService();
       const user = await userService.getById(id);
 
-      if (!user || user.organization_id !== authRequest.user!.organization_id) {
+      if (!user || user.organizationId !== authRequest.user!.organizationId) {
         return NextResponse.json({ error: 'User not found' }, { status: 404 });
       }
 
@@ -115,7 +115,7 @@ export async function PUT(request: NextRequest) {
         const userRoleService = getUserRoleService();
         // Get current roles first
         const currentUserRoles = await userRoleService.getByUserId(id);
-        const currentRoleId = currentUserRoles[0]?.role_id;
+        const currentRoleId = currentUserRoles[0]?.roleId;
         
         // Remove existing roles if different
         if (currentRoleId && currentRoleId !== roleId) {
@@ -157,7 +157,7 @@ export async function DELETE(request: NextRequest) {
       const userService = getUserService();
       const user = await userService.getById(userId);
 
-      if (!user || user.organization_id !== authRequest.user!.organization_id) {
+      if (!user || user.organizationId !== authRequest.user!.organizationId) {
         return NextResponse.json({ error: 'User not found' }, { status: 404 });
       }
 

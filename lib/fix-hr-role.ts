@@ -13,7 +13,7 @@ async function fixHRRole() {
     await prisma.$connect();
 
     // Find HR Manager role
-    const hrRole = await prisma.role.findUnique({
+    const hrRole = await prisma.role.findFirst({
       where: { name: 'HR_MANAGER' }
     });
 
@@ -41,16 +41,16 @@ async function fixHRRole() {
 
     // Remove existing role assignments
     await prisma.userRole.deleteMany({
-      where: { user_id: janeUser.id }
+      where: { userId: janeUser.id }
     });
 
     // Assign HR Manager role
     await prisma.userRole.create({
       data: {
         id: generateULID(),
-        user_id: janeUser.id,
-        role_id: hrRole.id
-      }
+        userId: janeUser.id,
+        roleId: hrRole.id
+      } as any
     });
 
     console.log('✅ Assigned HR_MANAGER role to Jane Smith');

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requiresRoles, AuthenticatedRequest, requiresAdmin } from '@/lib/auth/middleware';
-import { getPasswordResetSessionService } from '@/lib/service/password-reset-session.service';
+// import { getPasswordResetSessionService } from '@/lib/service/password-reset-session.service';
 import { getUserService } from '@/lib/service/user.service';
 
 export async function POST(
@@ -30,21 +30,21 @@ export async function POST(
         );
       }
 
-      // Create password reset session
-      const passwordResetService = getPasswordResetSessionService();
-      const resetSession = await passwordResetService.createPasswordResetSession(
-        userId,
-        authRequest.user.id
-      );
+      // TODO: Implement password reset session creation
+      // const passwordResetService = getPasswordResetSessionService();
+      // const resetSession = await passwordResetService.createPasswordResetSession(
+      //   userId,
+      //   authRequest.user.id
+      // );
 
-      // Generate reset link (for sharing with user)
-      const resetLink = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/auth/reset-password?token=${resetSession.token}`;
+      // // Generate reset link (for sharing with user)
+      // const resetLink = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/auth/reset-password?token=${resetSession.token}`;
 
       return NextResponse.json({
         message: 'Password reset session created',
-        resetLink,
-        token: resetSession.token,
-        expires_on: resetSession.expired_on,
+        // resetLink,
+        // token: resetSession.token,
+        // expires_on: resetSession.expired_on,
       }, { status: 200 });
 
     } catch (error) {

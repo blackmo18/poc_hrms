@@ -9,12 +9,12 @@ export class RoleController {
 
     // First get the total count
     const total = await prisma.role.count({
-      where: organizationId ? { organization_id: organizationId } : undefined,
+      where: organizationId ? { organizationId: organizationId } : undefined,
     });
 
     // Then fetch the paginated roles
     const roles = await prisma.role.findMany({
-      where: organizationId ? { organization_id: organizationId } : undefined,
+      where: organizationId ? { organizationId: organizationId } : undefined,
       skip,
       take: limit,
       include: {
@@ -27,8 +27,8 @@ export class RoleController {
                 email: true,
                 employee: {
                   select: {
-                    first_name: true,
-                    last_name: true,
+                    firstName: true,
+                    lastName: true,
                   },
                 },
               }
@@ -70,8 +70,8 @@ export class RoleController {
                 email: true,
                 employee: {
                   select: {
-                    first_name: true,
-                    last_name: true,
+                    firstName: true,
+                    lastName: true,
                   },
                 },
               }
@@ -89,7 +89,7 @@ export class RoleController {
 
   async create(data: CreateRole) {
     return await prisma.role.create({
-      data: { id: generateULID(), ...data },
+      data: { id: generateULID(), ...data } as any,
       include: {
         organization: true,
         rolePermissions: {
@@ -119,12 +119,12 @@ export class RoleController {
   async delete(id: string) {
     // First, delete all user-role associations
     await prisma.userRole.deleteMany({
-      where: { role_id: id }
+      where: { roleId: id }
     });
 
     // Then, delete all role-permission associations
     await prisma.rolePermission.deleteMany({
-      where: { role_id: id }
+      where: { roleId: id }
     });
 
     // Finally, delete the role
@@ -137,9 +137,9 @@ export class RoleController {
     return await prisma.rolePermission.create({
       data: {
         id: generateULID(),
-        role_id: roleId,
-        permission_id: permissionId
-      },
+        roleId: roleId,
+        permissionId: permissionId
+      } as any,
       include: {
         role: true,
         permission: true
@@ -150,8 +150,8 @@ export class RoleController {
   async removePermission(roleId: string, permissionId: string) {
     return await prisma.rolePermission.deleteMany({
       where: {
-        role_id: roleId,
-        permission_id: permissionId
+        roleId: roleId,
+        permissionId: permissionId
       }
     });
   }
@@ -187,12 +187,12 @@ export class RoleController {
                 email: true,
                 employee: {
                   select: {
-                    first_name: true,
-                    last_name: true,
+                    firstName: true,
+                    lastName: true,
                   },
                 },
                 status: true,
-                organization_id: true
+                organizationId: true
               }
             }
           }
@@ -208,15 +208,15 @@ export class RoleController {
   }
 
   // Simple repository methods for internal use
-  async findByName(name: string) {
-    return await prisma.role.findUnique({
-      where: { name }
+  async findByName(name: string, organizationId?: string) {
+    return await prisma.role.findFirst({
+      where: { name, ...(organizationId && { organizationId }) }
     });
   }
 
   async findByOrganizationId(organizationId: string) {
     return await prisma.role.findMany({
-      where: { organization_id: organizationId }
+      where: { organizationId: organizationId }
     });
   }
 

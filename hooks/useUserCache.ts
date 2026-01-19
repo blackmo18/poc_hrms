@@ -7,6 +7,8 @@ interface User {
   username: string;
   role?: string;
   organization_id?: string;
+  firstName?: string;
+  lastName?: string;
 }
 
 interface UseUserCacheOptions {
@@ -19,7 +21,9 @@ const sanitizeUser = (user: any): User => ({
   id: user.id,
   email: user.email,
   username: user.username,
-  organization_id: user.organization_id
+  organization_id: user.organization_id,
+  firstName: user.firstName,
+  lastName: user.lastName
 });
 
 export function useUserCache(
@@ -62,8 +66,6 @@ export function useUserCache(
         }
       });
 
-      console.log('Auth response: ', response);
-
       if (response.ok) {
         const data = await response.json();
         if (data.user) {
@@ -96,7 +98,6 @@ export function useUserCache(
 
   // Periodic session revalidation
   useEffect(() => {
-    console.log('Revalidating session...');
     if (!enabled || isRevalidating) return;
 
     const interval = setInterval(async () => {

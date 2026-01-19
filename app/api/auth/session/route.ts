@@ -20,9 +20,24 @@ export async function GET() {
     const roles = await getUserRoles(payload.userId);
     const permissions = await getUserPermissions(payload.userId);
 
-    // Get user's organization_id from the database
+    // Get user's organizationId from the database
     const userService = getUserService();
     const user = await userService.getById(payload.userId.toString());
+
+    // Get employee details if available
+    let firstName = '';
+    let lastName = '';
+    if (user?.employeeId) {
+      const { prisma } = await import('@/lib/db');
+      const employee = await prisma.employee.findUnique({
+        where: { id: user.employeeId },
+        select: { firstName: true, lastName: true }
+      });
+      if (employee) {
+        firstName = employee.firstName;
+        lastName = employee.lastName;
+      }
+    }
 
     return NextResponse.json({
       user: {
@@ -32,7 +47,9 @@ export async function GET() {
         role: roles[0]?.name || 'EMPLOYEE',
         roles: roles.map(role => role.name),
         permissions,
-        organization_id: user?.organization_id
+        organizationId: user?.organizationId,
+        firstName: firstName,
+        lastName: lastName
       }
     });
 

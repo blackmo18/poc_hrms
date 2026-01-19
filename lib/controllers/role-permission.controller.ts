@@ -15,19 +15,19 @@ export class RolePermissionController {
 
   async getByRoleId(roleId: string) {
     return await prisma.rolePermission.findMany({
-      where: { role_id: roleId }
+      where: { roleId: roleId }
     });
   }
 
   async getByPermissionId(permissionId: string) {
     return await prisma.rolePermission.findMany({
-      where: { permission_id: permissionId }
+      where: { permissionId: permissionId }
     });
   }
 
   async create(data: CreateRolePermission) {
     return await prisma.rolePermission.create({
-      data: { id: generateULID(), ...data }
+      data: { id: generateULID(), ...data } as any
     });
   }
 
@@ -40,8 +40,8 @@ export class RolePermissionController {
   async deleteByRoleAndPermission(roleId: string, permissionId: string) {
     const result = await prisma.rolePermission.deleteMany({
       where: {
-        role_id: roleId,
-        permission_id: permissionId
+        roleId: roleId,
+        permissionId: permissionId
       }
     });
     return result.count;

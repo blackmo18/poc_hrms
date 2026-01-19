@@ -17,10 +17,10 @@ export async function GET(request: NextRequest) {
         return NextResponse.json(permission);
       } else {
         // Get all permissions (system + organization)
-        const organization_id = authRequest.user!.organization_id;
+        const organizationId = authRequest.user!.organizationId;
         const [systemPermissions, orgPermissions] = await Promise.all([
           permissionController.getSystemPermissions(),
-          permissionController.getOrganizationPermissions(organization_id)
+          permissionController.getOrganizationPermissions(organizationId)
         ]);
 
         return NextResponse.json({
@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
       // Check if permission already exists (system-wide or in organization)
       const [systemPermissions, orgPermissions] = await Promise.all([
         permissionController.getSystemPermissions(),
-        permissionController.getOrganizationPermissions(authRequest.user!.organization_id)
+        permissionController.getOrganizationPermissions(authRequest.user!.organizationId)
       ]);
 
       const allPermissions = [...systemPermissions, ...orgPermissions];
@@ -65,7 +65,7 @@ export async function POST(request: NextRequest) {
       const permission = await permissionController.create({
         name,
         description,
-        organization_id: authRequest.user!.organization_id
+        organizationId: authRequest.user!.organizationId
       });
 
       return NextResponse.json({
@@ -92,7 +92,7 @@ export async function PUT(request: NextRequest) {
 
       // Check if permission exists and belongs to the organization
       const permission = await permissionController.getById(id);
-      if (!permission || permission.organization_id !== authRequest.user!.organization_id) {
+      if (!permission || permission.organizationId !== authRequest.user!.organizationId) {
         return NextResponse.json({ error: 'Permission not found' }, { status: 404 });
       }
 
@@ -100,7 +100,7 @@ export async function PUT(request: NextRequest) {
       if (name && name !== permission.name) {
         const [systemPermissions, orgPermissions] = await Promise.all([
           permissionController.getSystemPermissions(),
-          permissionController.getOrganizationPermissions(authRequest.user!.organization_id)
+          permissionController.getOrganizationPermissions(authRequest.user!.organizationId)
         ]);
 
         const allPermissions = [...systemPermissions, ...orgPermissions];
@@ -144,12 +144,12 @@ export async function DELETE(request: NextRequest) {
 
       // Check if permission exists and belongs to the organization
       const permission = await permissionController.getById(permissionId);
-      if (!permission || permission.organization_id !== authRequest.user!.organization_id) {
+      if (!permission || permission.organizationId !== authRequest.user!.organizationId) {
         return NextResponse.json({ error: 'Permission not found' }, { status: 404 });
       }
 
       // Prevent deletion of system permissions
-      if (!permission.organization_id) {
+      if (!permission.organizationId) {
         return NextResponse.json({
           error: 'Cannot delete system permissions'
         }, { status: 403 });

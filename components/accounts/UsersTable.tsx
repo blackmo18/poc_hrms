@@ -26,7 +26,7 @@ const UsersTableBody = memo(function UsersTableBody({ users, getStatusColor, cur
               {rowNumber}
             </TableCell>
             <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
-              {user.employee?.custom_id || '-'}
+              {user.employee?.customId || '-'}
             </TableCell>
             <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
               {user.email}

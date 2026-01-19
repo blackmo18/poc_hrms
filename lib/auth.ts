@@ -24,11 +24,11 @@ export const auth = betterAuth({
     },
   },
   session: {
-    expiresIn: 60 * 60 * 24 * 7, // 7 days
-    updateAge: 60 * 60 * 24, // 1 day
+    expiresIn: parseInt(process.env.SESSION_EXPIRES_IN_MINUTES || "10080") * 60, // 7 days default (10080 minutes)
+    updateAge: parseInt(process.env.SESSION_UPDATE_AGE_MINUTES || "1440") * 60, // 1 day default (1440 minutes)
     cookieCache: {
       enabled: true,
-      maxAge: 5 * 60, // 5 minutes
+      maxAge: parseInt(process.env.SESSION_COOKIE_CACHE_AGE_MINUTES || "5") * 60, // 5 minutes default
     }
   },
   trustedOrigins: ["http://localhost:3000"],

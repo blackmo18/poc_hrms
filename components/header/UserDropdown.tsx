@@ -53,6 +53,12 @@ export default function UserDropdown() {
     closeDropdown();
   };
 
+  const getDisplayName = () => {
+    if (user?.lastName && user?.firstName) {
+      return `${user.lastName}, ${user.firstName}`;
+    }
+  };
+
   return (
     <div className='relative'>
       <button
@@ -93,10 +99,10 @@ export default function UserDropdown() {
       >
         <div>
           <span className='block font-medium text-gray-700 text-theme-sm dark:text-gray-400'>
-            {user?.username || 'User'}
+            {getDisplayName()}
           </span>
           <span className='mt-0.5 block text-theme-xs text-gray-500 dark:text-gray-400'>
-            {user?.email}
+            {user?.username || 'User'}
           </span>
         </div>
 

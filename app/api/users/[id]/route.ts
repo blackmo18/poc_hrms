@@ -24,16 +24,16 @@ export async function GET(
       const transformedUser = {
         id: user.id,
         email: user.email,
-        organization_id: user.organization_id,
-        organization: user.organization,
-        employee: user.employee,
-        roles: user.userRoles.map(userRole => ({
+        organizationId: user.organizationId,
+        organization: (user as any).organization,
+        employee: (user as any).employee,
+        roles: (user as any).userRoles.map(userRole => ({
           id: userRole.role.id,
           name: userRole.role.name
         })),
         status: user.status,
-        created_at: user.created_at.toISOString(),
-        updated_at: user.updated_at.toISOString(),
+        createdAt: user.createdAt.toISOString(),
+        updatedAt: user.updatedAt.toISOString(),
       };
 
       return NextResponse.json(transformedUser);
@@ -95,7 +95,7 @@ export async function PUT(
       // Update user
       const updatedUser = await getUserService().update(userId, {
         email,
-        organization_id,
+        organizationId: organization_id,
         status: status || existingUser.status,
       });
 
@@ -103,10 +103,10 @@ export async function PUT(
       const transformedUser = {
         id: updatedUser.id,
         email: updatedUser.email,
-        organization_id: updatedUser.organization_id,
+        organizationId: updatedUser.organizationId,
         status: updatedUser.status,
-        created_at: updatedUser.created_at.toISOString(),
-        updated_at: updatedUser.updated_at.toISOString(),
+        createdAt: updatedUser.createdAt.toISOString(),
+        updatedAt: updatedUser.updatedAt.toISOString(),
       };
 
       return NextResponse.json({

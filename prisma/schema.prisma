@@ -1,9 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -13,577 +7,824 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+/////////////////////////////
+// ORGANIZATION & USERS
+/////////////////////////////
+
 model Organization {
-  id              String  @id 
-  name            String
-  email           String?
-  contact_number  String?
-  address         String?
-  logo            String?
-  website         String?
-  description     String?
-  status          String   @default("ACTIVE")
-  created_at      DateTime @default(now()) @db.Timestamp(3)
-  updated_at      DateTime @updatedAt @db.Timestamp(3)
-  created_by      String?
-  updated_by      String?
+  id             String             @id 
+  name           String
+  email          String?
+  contactNumber String?            @map("contact_number")
+  address        String?
+  logo           String?
+  website        String?
+  description    String?
+  status         OrganizationStatus @default(ACTIVE)
+  createdAt      DateTime           @default(now()) @map("created_at")
+  updatedAt      DateTime           @updatedAt @map("updated_at")
 
   users                   User[]
   employees               Employee[]
-  admins                  Admin[]
+  calendars               Calendar[]
+  payrollRules            PayrollRule[]
+  holidayTemplates        HolidayTemplate[]
+  holidays                Holiday[]
   departments             Department[]
   jobTitles               JobTitle[]
   benefits                Benefit[]
   documents               Document[]
-  permissions             Permission[]
-  roles                   Role[]
+  admins                  Admin[]
   auditLogs               AuditLog[]
-  organizationOnboarding  OrganizationOnboarding[]
-  organizationOffboarding OrganizationOffboarding[]
-  HolidayTemplate         HolidayTemplate[]
-  Calendar                Calendar[]
+  roles                   Role[]
+  permissions             Permission[]
+  organizationOnboarding  OrganizationOnboarding?
+  organizationOffboarding OrganizationOffboarding?
 
-  @@map("organizations")
-}
-
-model Department {
-  id              String  @id 
-  organization_id String
-  name            String
-  description     String?
-
-  organization Organization @relation(fields: [organization_id], references: [id], onDelete: Cascade)
-  employees    Employee[]
-
-  @@map("departments")
-}
-
-model JobTitle {
-  id              String  @id 
-  organization_id String
-  name            String
-  description     String?
-
-  organization Organization @relation(fields: [organization_id], references: [id], onDelete: Cascade)
-  employees    Employee[]
-
-  @@map("job_titles")
+  @@index([status])
 }
 
 model User {
-  id              String  @id 
-  email           String    @unique
-  emailVerified   DateTime?
-  image           String?
-  password_hash   String?   @db.Text
-  status          String    @default("ACTIVE")
-  created_at      DateTime  @default(now()) @db.Timestamp(3)
-  updated_at      DateTime  @updatedAt @db.Timestamp(3)
-  created_by      String?
-  updated_by      String?
-  organization_id String
-  employee_id     String?  @unique
+  id             String     @id 
+  email          String     @unique
+  passwordHash   String?    @map("password_hash")
+  status         UserStatus @default(ACTIVE)
+  organizationId String     @map("organization_id")
+  employeeId     String     @map("employee_id")
 
-  // Relations
-  employee       Employee? @relation(fields: [employee_id], references: [id])
-  organization Organization @relation(fields: [organization_id], references: [id], onDelete: Cascade)
-  userRoles    UserRole[]
-  auditLogs    AuditLog[]
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  employee     Employee     @relation(fields: [employeeId], references: [id], onDelete: Cascade)
 
-  // Better Auth relations
-  accounts Account[]
-  sessions Session[]
+  sessions  Session[]
+  accounts  Account[]
+  auditLogs AuditLog[]
+  userRoles UserRole[]
+  passwordResetLogs UserPasswordResetLog[]
 
-  @@map("users")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
 }
+
+/////////////////////////////
+// EMPLOYEE & CALENDAR
+/////////////////////////////
 
 model Employee {
-  id                String  @id 
-  organization_id   String
-  department_id     String
-  job_title_id      String
-  manager_id        String?
-  custom_id         String?  // Organization-specific custom employee ID
-  first_name        String
-  last_name         String
-  email             String
-  // Work details
-  work_email        String?
-  work_contact      String?
-  // Personal details
-  personal_address        String
-  personal_contact_number String
-  personal_email          String?
-  date_of_birth           DateTime
-  gender                  String
-  employment_status String    @default("ACTIVE")
-  hire_date         DateTime
-  exit_date         DateTime?
-  created_at        DateTime  @default(now()) @db.Timestamp(3)
-  updated_at        DateTime  @updatedAt @db.Timestamp(3)
-  created_by      String?
-  updated_by      String?
+  id             String  @id 
+  organizationId String  @map("organization_id")
+  departmentId   String? @map("department_id")
+  jobTitleId     String? @map("job_title_id")
+  calendarId     String? @map("calendar_id")
+  employeeId     String? @map("employee_id")
 
-  organization               Organization                @relation(fields: [organization_id], references: [id], onDelete: Cascade)
-  department                 Department                  @relation(fields: [department_id], references: [id])
-  jobTitle                   JobTitle                    @relation(fields: [job_title_id], references: [id])
-  manager                    Employee?                   @relation("EmployeeReportsTo", fields: [manager_id], references: [id])
-  directReports              Employee[]                  @relation("EmployeeReportsTo")
-  user                       User?
-  compensations              Compensation[]
-  employeeBenefits           EmployeeBenefit[]
-  employeeDocuments          EmployeeDocument[]
-  timesheets                 Timesheet[]
-  leaveRequests              LeaveRequest[]
-  payrolls                   Payroll[]
-  employeeOnboarding         EmployeeOnboarding?
-  employeeOffboarding        EmployeeOffboarding?
-  employeeHolidayAssignments EmployeeHolidayAssignment[]
-  auditLogs                  AuditLog[]
+  employmentStatus EmploymentStatus @default(ACTIVE) @map("employment_status")
 
-  @@map("employees")
-}
+  firstName String @map("first_name")
+  lastName  String @map("last_name")
+  email     String
+  hireDate  DateTime @map("hire_date")
+  exitDate  DateTime? @map("exit_date")
 
-model Compensation {
-  id             String  @unique 
-  employee_id    String
-  base_salary    Float
-  pay_frequency  String
-  effective_date DateTime
-  created_at      DateTime @default(now()) @db.Timestamp(3)
-  updated_at      DateTime @updatedAt @db.Timestamp(3)
-  created_by      String?
-  updated_by      String?
+  managerId     String? @map("manager_id")
+  manager       Employee?  @relation("EmployeeReportsTo", fields: [managerId], references: [id])
+  directReports Employee[] @relation("EmployeeReportsTo")
 
-  employee Employee @relation(fields: [employee_id], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  department   Department?  @relation(fields: [departmentId], references: [id])
+  jobTitle     JobTitle?    @relation(fields: [jobTitleId], references: [id])
+  calendar     Calendar?    @relation(fields: [calendarId], references: [id])
 
-  @@map("compensations")
-}
+  holidayAssignments EmployeeHolidayAssignment[]
+  timeEntries        TimeEntry[]
 
-model Benefit {
-  id              String  @id 
-  organization_id String
-  name            String
-  description     String?
-  type            String
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  user      User[]
 
-  organization     Organization      @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+  compensations    Compensation[]
+  leaveRequests    LeaveRequest[]
+  payrolls         Payroll[]
   employeeBenefits EmployeeBenefit[]
+  employeeDocument EmployeeDocument[]
+  overtimes        Overtime[]
 
-  created_at      DateTime @default(now()) @db.Timestamp(3)
-  updated_at      DateTime @updatedAt @db.Timestamp(3)
-  created_by      String?
-  updated_by      String?
-
-  @@map("benefits")
+  @@unique([organizationId, email])
+  @@index([organizationId])
+  @@index([departmentId])
+  @@index([jobTitleId])
 }
 
-model EmployeeBenefit {
-  id                    String  @id 
-  employee_id           String
-  benefit_id            String
-  employee_contribution Float
-  enrollment_date       DateTime @default(now())
+model Department {
+  id             String  @id 
+  organizationId String  @map("organization_id")
+  name           String
+  description    String?
 
-  employee Employee @relation(fields: [employee_id], references: [id], onDelete: Cascade)
-  benefit  Benefit  @relation(fields: [benefit_id], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  employees    Employee[]
 
-  @@map("employee_benefits")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([organizationId, name])
+  @@index([organizationId])
 }
 
-model Document {
-  id                 String  @id 
-  organization_id    String
-  name               String
-  file_type          String
-  storage_path       String
-  requires_signature Boolean  @default(false)
+model JobTitle {
+  id             String  @id 
+  organizationId String  @map("organization_id")
+  name           String
+  description    String?
 
-  organization      Organization       @relation(fields: [organization_id], references: [id], onDelete: Cascade)
-  employeeDocuments EmployeeDocument[]
-  created_at      DateTime @default(now()) @db.Timestamp(3)
-  updated_at      DateTime @updatedAt @db.Timestamp(3)
-  created_by      String?
-  updated_by      String?
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  employees    Employee[]
 
-  @@map("documents")
-}
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
-model EmployeeDocument {
-  id          String  @id 
-  employee_id String
-  document_id String
-  version     String
-  uploaded_at DateTime  @default(now())
-  signed_at   DateTime?
-
-  employee Employee @relation(fields: [employee_id], references: [id], onDelete: Cascade)
-  document Document @relation(fields: [document_id], references: [id], onDelete: Cascade)
-
-  @@map("employee_documents")
-}
-
-model AuditLog {
-  id              Int     @id @default(autoincrement())
-  organization_id String
-  user_id         String
-  action_type     String
-  entity_type     String
-  entity_id       String?
-  old_data        Json?
-  new_data        Json?
-  timestamp       DateTime @default(now())
-
-  organization Organization @relation(fields: [organization_id], references: [id], onDelete: Cascade)
-  user         User         @relation(fields: [user_id], references: [id])
-  employee     Employee?    @relation(fields: [entity_id], references: [id])
-
-  @@map("audit_logs")
-}
-
-model Role {
-  id              String  @id 
-  organization_id String
-  name            String   @unique
-  description     String?
-  created_at      DateTime @default(now()) @db.Timestamp(3)
-  updated_at      DateTime @updatedAt @db.Timestamp(3)
-  created_by      String?
-  updated_by      String?
-
-  organization    Organization     @relation(fields: [organization_id], references: [id], onDelete: Cascade)
-  userRoles       UserRole[]
-  rolePermissions RolePermission[]
-
-  @@map("roles")
-}
-
-model Permission {
-  id              String  @id 
-  name            String   @unique
-  description     String?
-  created_at      DateTime @default(now()) @db.Timestamp(3)
-  updated_at      DateTime @updatedAt @db.Timestamp(3)
-  created_by      String?
-  updated_by      String?
-
-  rolePermissions RolePermission[]
-  organization    Organization?    @relation(fields: [organization_id], references: [id])
-  organization_id String?
-
-  @@map("permissions")
-}
-
-model UserRole {
-  id          String  @id 
-  user_id     String
-  role_id     String
-  created_at  DateTime @default(now())
-
-  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
-  role Role @relation(fields: [role_id], references: [id], onDelete: Cascade)
-
-  @@unique([user_id, role_id])
-  @@map("user_roles")
-}
-
-model RolePermission {
-  id            String  @unique 
-  role_id       String
-  permission_id String
-  created_at    DateTime @default(now())
-
-  role       Role       @relation(fields: [role_id], references: [id], onDelete: Cascade)
-  permission Permission @relation(fields: [permission_id], references: [id], onDelete: Cascade)
-
-  @@unique([role_id, permission_id])
-  @@map("role_permissions")
-}
-
-model Admin {
-  id              String  @id 
-  organization_id String
-  name            String
-  email           String
-  role            String
-  created_at      DateTime @default(now()) @db.Timestamp(3)
-  updated_at      DateTime @updatedAt @db.Timestamp(3)
-  created_by      String?
-  updated_by      String?
-
-  organization Organization @relation(fields: [organization_id], references: [id], onDelete: Cascade)
-
-  @@map("admins")
-}
-
-model EmployeeOnboarding {
-  id             String  @unique 
-  employee_id    String   @unique
-  date_started   DateTime  @default(now())
-  date_completed DateTime?
-  status         String    @default("PENDING")
-  created_at     DateTime  @default(now()) @db.Timestamp(3)
-  updated_at     DateTime  @updatedAt @db.Timestamp(3)
-  created_by      String?
-  updated_by      String?
-
-  employee Employee @relation(fields: [employee_id], references: [id], onDelete: Cascade)
-
-  @@map("employee_onboarding")
-}
-
-model EmployeeOffboarding {
-  id             String  @unique 
-  employee_id    String   @unique
-  date_started   DateTime  @default(now())
-  date_completed DateTime?
-  reason         String?
-  status         String    @default("PENDING")
-  created_at     DateTime  @default(now()) @db.Timestamp(3)
-  updated_at     DateTime  @updatedAt @db.Timestamp(3)
-  created_by      String?
-  updated_by      String?
-
-  employee Employee @relation(fields: [employee_id], references: [id], onDelete: Cascade)
-
-  @@map("employee_offboarding")
-}
-
-model OrganizationOnboarding {
-  id              String  @id 
-  organization_id String   @unique
-  started_at      DateTime  @default(now())
-  completed_at    DateTime?
-  status          String    @default("PENDING")
-  created_at      DateTime  @default(now()) @db.Timestamp(3)
-  updated_at      DateTime  @updatedAt @db.Timestamp(3)
-  created_by      String?
-  updated_by      String?
-
-  organization Organization @relation(fields: [organization_id], references: [id], onDelete: Cascade)
-
-  @@map("organization_onboarding")
-}
-
-model OrganizationOffboarding {
-  id              String  @id 
-  organization_id String   @unique
-  started_at      DateTime  @default(now())
-  completed_at    DateTime?
-  reason          String?
-  status          String    @default("PENDING")
-  created_at      DateTime  @default(now()) @db.Timestamp(3)
-  updated_at      DateTime  @updatedAt @db.Timestamp(3)
-  created_by      String?
-  updated_by      String?
-
-  organization Organization @relation(fields: [organization_id], references: [id], onDelete: Cascade)
-
-  @@map("organization_offboarding")
-}
-
-model Timesheet {
-  id          String  @id 
-  employee_id String
-  work_date   DateTime
-  time_in     DateTime
-  time_out    DateTime?
-  total_hours Float
-  source      String
-  created_at  DateTime  @default(now()) @db.Timestamp(3)
-  updated_at  DateTime  @updatedAt @db.Timestamp(3)
-  created_by      String?
-  updated_by      String?
-
-  employee Employee @relation(fields: [employee_id], references: [id], onDelete: Cascade)
-
-  @@map("timesheets")
-}
-
-model LeaveRequest {
-  id          String  @id 
-  employee_id String
-  leave_type  String
-  start_date  DateTime
-  end_date    DateTime
-  status      String   @default("PENDING")
-  remarks     String?
-  created_at  DateTime @default(now()) @db.Timestamp(3)
-  updated_at  DateTime @updatedAt @db.Timestamp(3)
-  created_by      String?
-  updated_by      String?
-
-  employee Employee @relation(fields: [employee_id], references: [id], onDelete: Cascade)
-
-  @@map("leave_requests")
-}
-
-model Payroll {
-  id           String  @unique 
-  employee_id  String
-  period_start DateTime
-  period_end   DateTime
-  gross_salary Float
-  net_salary   Float
-  processed_at DateTime @default(now())
-  created_at   DateTime @default(now()) @db.Timestamp(3)
-  updated_at   DateTime @updatedAt @db.Timestamp(3)
-  created_by      String?
-  updated_by      String?
-
-  employee   Employee    @relation(fields: [employee_id], references: [id], onDelete: Cascade)
-  deductions Deduction[]
-
-  @@map("payrolls")
-}
-
-model Deduction {
-  id          String  @id 
-  payroll_id  String
-  type        String
-  amount      Float
-  created_at  DateTime @default(now()) @db.Timestamp(3)
-  updated_at  DateTime @updatedAt @db.Timestamp(3)
-  created_by      String?
-  updated_by      String?
-
-  payroll Payroll @relation(fields: [payroll_id], references: [id], onDelete: Cascade)
-
-  @@map("deductions")
-}
-
-model HolidayTemplate {
-  id              String  @id 
-  organization_id String
-  name            String
-  description     String?
-  created_at      DateTime @default(now())
-  updated_at      DateTime @updatedAt
-
-  organization Organization @relation(fields: [organization_id], references: [id], onDelete: Cascade)
-  holidays     Holiday[]
-
-  @@map("holiday_templates")
-}
-
-model Holiday {
-  id                  String  @id 
-  organization_id     String
-  holiday_template_id String
-  date                DateTime
-  is_recurring        Boolean  @default(false)
-  type                String
-  created_at          DateTime @default(now())
-  updated_at          DateTime @updatedAt
-
-  holidayTemplate            HolidayTemplate             @relation(fields: [holiday_template_id], references: [id], onDelete: Cascade)
-  calendarHolidays           CalendarHoliday[]
-  employeeHolidayAssignments EmployeeHolidayAssignment[]
-
-  @@map("holidays")
-}
-
-model EmployeeHolidayAssignment {
-  id          String  @id 
-  employee_id String
-  holiday_id  String
-  created_at  DateTime @default(now())
-  updated_at  DateTime @updatedAt
-
-  employee Employee @relation(fields: [employee_id], references: [id], onDelete: Cascade)
-  holiday  Holiday  @relation(fields: [holiday_id], references: [id], onDelete: Cascade)
-
-  @@unique([employee_id, holiday_id])
-  @@map("employee_holiday_assignments")
+  @@unique([organizationId, name])
+  @@index([organizationId])
 }
 
 model Calendar {
-  id              String  @id 
-  organization_id String
-  name            String
-  description     String?
-  created_at      DateTime @default(now())
-  updated_at      DateTime @updatedAt
+  id             String    @id 
+  organizationId String    @map("organization_id")
+  name           String
+  description    String?
+  effectiveFrom  DateTime  @map("effective_from")
+  effectiveTo    DateTime? @map("effective_to")
 
-  organization     Organization      @relation(fields: [organization_id], references: [id], onDelete: Cascade)
-  calendarHolidays CalendarHoliday[]
+  organization Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  holidays     CalendarHoliday[]
+  employees    Employee[]
 
-  @@map("calendars")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([organizationId])
 }
 
 model CalendarHoliday {
-  id          String  @id 
-  calendar_id String
-  holiday_id  String
-  created_at  DateTime @default(now())
-  updated_at  DateTime @updatedAt
+  id         String @id 
+  calendarId String @map("calendar_id")
+  holidayId  String @map("holiday_id")
 
-  calendar Calendar @relation(fields: [calendar_id], references: [id], onDelete: Cascade)
-  holiday  Holiday  @relation(fields: [holiday_id], references: [id], onDelete: Cascade)
+  calendar Calendar @relation(fields: [calendarId], references: [id], onDelete: Cascade)
+  holiday  Holiday  @relation(fields: [holidayId], references: [id], onDelete: Cascade)
 
-  @@unique([calendar_id, holiday_id])
-  @@map("calendar_holidays")
+  @@unique([calendarId, holidayId])
 }
 
-// Better Auth required tables
-model Account {
-  id                String  @unique 
-  userId            String
-  type              String
-  provider          String
-  providerAccountId String
-  refresh_token     String? @db.Text
-  access_token      String? @db.Text
-  expires_at        Int?
-  token_type        String?
-  scope             String?
-  id_token          String? @db.Text
-  session_state     String?
+/////////////////////////////
+// HOLIDAYS
+/////////////////////////////
+
+model HolidayTemplate {
+  id             String  @id 
+  organizationId String  @map("organization_id")
+  name           String
+  description    String?
+  isDefault      Boolean @default(false) @map("is_default")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  holidays     Holiday[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+}
+
+model Holiday {
+  id                String      @id 
+  organizationId    String      @map("organization_id")
+  holidayTemplateId String      @map("holiday_template_id")
+  date              DateTime
+  isRecurring       Boolean     @default(false) @map("is_recurring")
+  type              HolidayType
+  name              String
+  isPaidIfNotWorked Boolean     @map("is_paid_if_not_worked")
+  countsTowardOt    Boolean     @map("counts_toward_ot")
+  rateMultiplier    Float       @map("rate_multiplier")
+
+  organization      Organization                @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  holidayTemplate   HolidayTemplate             @relation(fields: [holidayTemplateId], references: [id], onDelete: Cascade)
+  calendarLinks     CalendarHoliday[]
+  employeeOverrides EmployeeHolidayAssignment[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([date])
+  @@index([type])
+}
+
+model EmployeeHolidayAssignment {
+  id             String @id 
+  employeeId     String @map("employee_id")
+  holidayId      String @map("holiday_id")
+  organizationId String @map("organization_id")
+
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  holiday  Holiday  @relation(fields: [holidayId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([employeeId, holidayId])
+  @@index([organizationId])
+  @@index([employeeId])
+  @@index([holidayId])
+}
+
+/////////////////////////////
+// PAYROLL RULES
+/////////////////////////////
+
+model PayrollRule {
+  id             String       @id 
+  organizationId String       @map("organization_id")
+  ruleCode       String       @map("rule_code")
+  dayType        DayType      @map("day_type")
+  holidayType    HolidayType? @map("holiday_type")
+  appliesTo      PayComponent @map("applies_to")
+  multiplier     Float
+  effectiveFrom  DateTime     @map("effective_from")
+  effectiveTo    DateTime?    @map("effective_to")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, ruleCode, effectiveFrom])
+}
+
+/////////////////////////////
+// TIME & PAYROLL
+/////////////////////////////
+
+model TimeEntry {
+  id               String          @id 
+  employeeId       String          @map("employee_id")
+  organizationId   String          @map("organization_id")
+  departmentId     String?         @map("department_id")
+
+  clockInAt        DateTime        @db.Timestamptz(3) @map("clock_in_at")
+  clockOutAt       DateTime?       @db.Timestamptz(3) @map("clock_out_at")
+
+  workDate         DateTime        @db.Date @map("work_date")
+  totalWorkMinutes Int?            @map("total_work_minutes")
+
+  status           TimeEntryStatus @default(OPEN)
+
+  createdAt        DateTime        @default(now()) @map("created_at")
+  updatedAt        DateTime        @updatedAt @map("updated_at")
+
+  employee         Employee        @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  timeBreaks       TimeBreak[]
+
+  @@index([organizationId])
+  @@index([employeeId])
+  @@index([departmentId])
+  @@index([workDate])
+  @@index([status])
+}
+
+model TimeBreak {
+  id             String     @id 
+  timeEntryId    String     @map("time_entry_id")
+  organizationId String     @map("organization_id")
+  employeeId     String     @map("employee_id")
+
+  breakStartAt   DateTime   @db.Timestamptz(3) @map("break_start_at")
+  breakEndAt     DateTime?  @db.Timestamptz(3) @map("break_end_at")
+
+  breakType      BreakType  @default(REST)
+  isPaid         Boolean    @default(false)
+
+  createdAt      DateTime   @default(now()) @map("created_at")
+
+  timeEntry      TimeEntry  @relation(fields: [timeEntryId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([employeeId])
+  @@index([timeEntryId])
+}
+
+
+
+model Payroll {
+  id             String   @id 
+  employeeId     String   @map("employee_id")
+  organizationId String   @map("organization_id")
+  departmentId   String?  @map("department_id")
+  periodStart    DateTime @map("period_start")
+  periodEnd      DateTime @map("period_end")
+  grossPay       Float    @map("gross_pay")
+  netPay         Float    @map("net_pay")
+  processedAt    DateTime @default(now()) @map("processed_at")
+
+  employee   Employee         @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  earnings   PayrollEarning[]
+  deductions Deduction[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([organizationId])
+  @@index([employeeId])
+  @@index([departmentId])
+  @@index([periodStart, periodEnd])
+}
+
+model PayrollEarning {
+  id             String             @id 
+  payrollId      String             @map("payroll_id")
+  organizationId String             @map("organization_id")
+  employeeId     String             @map("employee_id")
+  type           PayrollEarningType
+  hours          Float
+  rate           Float
+  amount         Float
+
+  payroll Payroll @relation(fields: [payrollId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([employeeId])
+  @@index([payrollId])
+  @@index([type])
+}
+
+model Deduction {
+  id             String @id 
+  payrollId      String @map("payroll_id")
+  organizationId String @map("organization_id")
+  employeeId     String @map("employee_id")
+  type           String
+  amount         Float
+
+  payroll Payroll @relation(fields: [payrollId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([organizationId])
+  @@index([employeeId])
+  @@index([payrollId])
+  @@index([type])
+}
+
+/////////////////////////////
+// COMPENSATION & BENEFITS
+/////////////////////////////
+
+model Compensation {
+  id             String       @id 
+  employeeId     String       @map("employee_id")
+  organizationId String       @map("organization_id")
+  departmentId   String?      @map("department_id")
+  baseSalary     Float        @map("base_salary")
+  payFrequency   PayFrequency @map("pay_frequency")
+  effectiveDate  DateTime     @map("effective_date")
+
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([organizationId])
+  @@index([employeeId])
+  @@index([departmentId])
+  @@index([effectiveDate])
+}
+
+model Benefit {
+  id             String  @id 
+  organizationId String  @map("organization_id")
+  name           String
+  description    String?
+  type           String
+
+  organization     Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  employeeBenefits EmployeeBenefit[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([organizationId])
+  @@index([type])
+}
+
+model EmployeeBenefit {
+  id             String @id 
+  employeeId     String @map("employee_id")
+  benefitId      String @map("benefit_id")
+  organizationId String @map("organization_id")
+  contribution   Float
+
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  benefit  Benefit  @relation(fields: [benefitId], references: [id], onDelete: Cascade)
+
+  enrolledAt DateTime @default(now()) @map("enrolled_at")
+
+  @@index([organizationId])
+  @@index([employeeId])
+  @@index([benefitId])
+}
+
+/////////////////////////////
+// DOCUMENTS & LEAVE
+/////////////////////////////
+
+model Document {
+  id                String  @id 
+  organizationId    String  @map("organization_id")
+  name              String
+  fileType          String  @map("file_type")
+  storagePath       String  @map("storage_path")
+  requiresSignature Boolean @default(false) @map("requires_signature")
+
+  organization      Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  employeeDocuments EmployeeDocument[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  createdBy String? @map("created_by")
+  updatedBy String? @map("updated_by")
+
+  @@index([organizationId])
+  @@index([fileType])
+  @@index([name])
+}
+
+model EmployeeDocument {
+  id             String @id 
+  employeeId     String @map("employee_id")
+  documentId     String @map("document_id")
+  organizationId String @map("organization_id")
+  version        String
+
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  uploadedAt DateTime  @default(now()) @map("uploaded_at")
+  signedAt   DateTime? @map("signed_at")
+
+  @@index([organizationId])
+  @@index([employeeId])
+  @@index([documentId])
+  @@index([uploadedAt])
+}
+
+model LeaveRequest {
+  id             String      @id 
+  employeeId     String      @map("employee_id")
+  organizationId String      @map("organization_id")
+  departmentId   String?     @map("department_id")
+  leaveType      LeaveType   @map("leave_type")
+  startDate      DateTime    @map("start_date")
+  endDate        DateTime    @map("end_date")
+  totalMinutes   Int?        @map("total_minutes")
+  isPaid         Boolean     @default(true) @map("is_paid")
+  status         LeaveStatus @default(PENDING)
+  remarks        String?
+
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([organizationId])
+  @@index([employeeId])
+  @@index([departmentId])
+  @@index([status])
+  @@index([leaveType])
+  @@index([startDate, endDate])
+}
+
+/////////////////////////////
+// ADMIN & AUDIT
+/////////////////////////////
+
+model Admin {
+  id             String @id 
+  organizationId String @map("organization_id")
+  name           String
+  email          String
+  role           String
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([organizationId])
+  @@index([email])
+  @@index([role])
+}
+
+model AuditLog {
+  id             Int      @id @default(autoincrement())
+  organizationId String   @map("organization_id")
+  userId         String   @map("user_id")
+  actionType     String   @map("action_type")
+  entityType     String   @map("entity_type")
+  entityId       String?  @map("entity_id")
+  oldData        Json?    @map("old_data")
+  newData        Json?    @map("new_data")
+  timestamp      DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id])
+
+  @@index([organizationId])
+  @@index([userId])
+  @@index([entityType])
+  @@index([timestamp])
+}
+
+/////////////////////////////
+// AUTH
+/////////////////////////////
+
+model Session {
+  id           String   @id 
+  sessionToken String   @unique @map("session_token")
+  userId       String   @map("user_id")
+  expires      DateTime
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([userId])
+  @@index([expires])
+}
+
+model Account {
+  id                String @id
+  userId            String @map("user_id")
+  provider          String
+  providerAccountId String @map("provider_account_id")
+
+  accessToken  String? @map("access_token")
+  refreshToken String? @map("refresh_token")
+  expiresAt    Int?    @map("expires_at")
+  tokenType    String? @map("token_type")
+  scope        String?
+  idToken      String? @map("id_token")
+  sessionState String? @map("session_state")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
   @@unique([provider, providerAccountId])
-  @@map("accounts")
+  @@index([userId])
 }
 
-model Session {
-  id           String  @unique 
-  sessionToken String   @unique
-  userId       String
-  expires      DateTime
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+/////////////////////////////
+// RBAC
+/////////////////////////////
 
-  @@map("sessions")
+model Role {
+  id             String @id 
+  organizationId String @map("organization_id")
+  name           String
+
+  organization    Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  userRoles       UserRole[]
+  rolePermissions RolePermission[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([organizationId, name])
+  @@index([organizationId])
 }
 
-model VerificationToken {
-  id          String  @id 
-  identifier  String
-  token       String   @unique
-  expires     DateTime
+model Permission {
+  description    String?
+  id             String  @id 
+  organizationId String  @map("organization_id")
+  name           String
 
-  @@unique([identifier, token])
-  @@map("verification_tokens")
+  organization    Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  rolePermissions RolePermission[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([organizationId])
 }
 
-model PasswordResetSession {
-  id           String   @id 
-  user_id      String
-  token        String   @unique
-  requested_by String
-  created_at   DateTime @default(now()) @db.Timestamp(3)
-  expired_on   DateTime @db.Timestamp(3)
-  validated    DateTime?
+model UserRole {
+  id     String @id 
+  userId String @map("user_id")
+  roleId String @map("role_id")
 
-  @@map("password_reset_sessions")
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([userId, roleId])
+  @@index([userId])
+  @@index([roleId])
 }
+
+model RolePermission {
+  id           String @id 
+  roleId       String @map("role_id")
+  permissionId String @map("permission_id")
+
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([roleId, permissionId])
+  @@index([roleId])
+  @@index([permissionId])
+}
+
+/////////////////////////////
+// PASSWORD RESET
+/////////////////////////////
 
 model UserPasswordResetLog {
-  id           String  @id 
-  user_id      String
-  requested_by String
-  created_at   DateTime @default(now()) @db.Timestamp(3)
-  action       String
+  id        String   @id 
+  userId    String   @map("user_id")
+  token     String   @unique
+  expiresAt DateTime @map("expires_at")
+  usedAt    DateTime? @map("used_at")
 
-  @@map("user_password_reset_logs")
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([userId])
+  @@index([token])
+}
+
+/////////////////////////////
+// OVERTIME
+/////////////////////////////
+
+model Overtime {
+  id                String                  @id 
+  employeeId        String                  @map("employee_id")
+  organizationId    String                  @map("organization_id")
+  workDate          DateTime                @map("work_date")
+  requestedMinutes  Int                     @map("requested_minutes")
+  approvedMinutes   Int?                    @map("approved_minutes")
+  status            OvertimeRequestStatus   @default(PENDING)
+  reason            String?
+  approvedByUserId  String?                 @map("approved_by_user_id")
+  approvedAt        DateTime?               @map("approved_at")
+
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([organizationId])
+  @@index([employeeId])
+  @@index([status])
+  @@index([workDate])
+}
+
+/////////////////////////////
+// ORG LIFECYCLE
+/////////////////////////////
+
+model OrganizationOnboarding {
+  id             String    @id 
+  organizationId String    @unique @map("organization_id")
+  startedAt      DateTime  @default(now()) @map("started_at")
+  completedAt    DateTime? @map("completed_at")
+  status         String    @default("PENDING")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([status])
+}
+
+model OrganizationOffboarding {
+  id             String    @id 
+  organizationId String    @unique @map("organization_id")
+  startedAt      DateTime  @default(now()) @map("started_at")
+  completedAt    DateTime? @map("completed_at")
+  reason         String?
+  status         String    @default("PENDING")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([status])
+}
+
+/////////////////////////////
+// ENUMS
+/////////////////////////////
+
+enum DayType {
+  REGULAR
+  REST
+  HOLIDAY
+}
+
+enum HolidayType {
+  REGULAR
+  SPECIAL_NON_WORKING
+  SPECIAL_WORKING
+  COMPANY
+  LGU
+}
+
+enum PayComponent {
+  REGULAR
+  OVERTIME
+  NIGHT_DIFF
+}
+
+enum PayrollEarningType {
+  BASE_SALARY
+  OVERTIME
+  NIGHT_DIFFERENTIAL
+  HOLIDAY_PAY
+}
+
+enum OrganizationStatus {
+  ACTIVE
+  SUSPENDED
+  CLOSED
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+}
+
+enum PayFrequency {
+  MONTHLY
+  SEMI_MONTHLY
+  BI_WEEKLY
+  WEEKLY
+}
+
+enum EmploymentStatus {
+  ACTIVE
+  RESIGNED
+  TERMINATED
+  RETIRED
+}
+
+enum LeaveType {
+  VACATION
+  SICK
+  EMERGENCY
+  BEREAVEMENT
+  UNPAID
+}
+
+enum LeaveStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+enum OrganizationOnboardingStatus {
+  PENDING // record created, no action yet
+  IN_PROGRESS // configuration/setup ongoing
+  ON_HOLD // blocked (missing docs, payment, verification)
+  COMPLETED // onboarding finished successfully
+  CANCELLED // onboarding abandoned by org or system
+}
+
+
+enum TimeEntryStatus {
+  OPEN
+  CLOSED
+}
+
+enum BreakType {
+  MEAL
+  REST
+  PERSONAL
+  SYSTEM
+}
+
+enum OvertimeRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
 }

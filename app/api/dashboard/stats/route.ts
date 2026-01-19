@@ -31,9 +31,9 @@ export async function GET(request: NextRequest) {
       leaveRequestService.getAll()
     ]);
 
-    const totalEmployees = allEmployees.data.filter(e => e.employment_status === 'ACTIVE').length;
+    const totalEmployees = allEmployees.data.filter(e => e.employmentStatus === 'ACTIVE').length;
     const totalDepartments = allDepartments.data.length;
-    const totalPayroll = allPayrolls.data.reduce((sum, p) => sum + p.net_salary, 0);
+    const totalPayroll = allPayrolls.data.reduce((sum, p) => sum + p.netPay, 0);
     const pendingLeaveRequests = allLeaveRequests.data.filter(lr => lr.status === 'PENDING').length;
 
     const stats = {

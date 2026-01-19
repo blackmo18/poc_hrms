@@ -24,17 +24,19 @@ export type CreatePasswordResetSession = z.infer<typeof CreatePasswordResetSessi
 
 export const UserPasswordResetLogSchema = z.object({
   id: z.string().optional(),
-  user_id: z.string().min(1, 'User ID is required'),
-  requested_by: z.string().min(1, 'Requested by is required'),
-  created_at: z.date().optional(),
-  action: z.string().min(1, 'Action is required'),
+  userId: z.string().min(1, 'User ID is required'),
+  token: z.string().min(1, 'Token is required'),
+  expiresAt: z.date(),
+  usedAt: z.date().optional(),
+  createdAt: z.date().optional(),
 });
 
 export type UserPasswordResetLog = z.infer<typeof UserPasswordResetLogSchema>;
 
-export const CreateUserPasswordResetLogSchema = UserPasswordResetLogSchema.omit({
-  id: true,
-  created_at: true,
+export const CreateUserPasswordResetLogSchema = z.object({
+  user_id: z.string().min(1, 'User ID is required'),
+  token: z.string().optional(),
+  expiresAt: z.date().optional(),
 });
 
 export type CreateUserPasswordResetLog = z.infer<typeof CreateUserPasswordResetLogSchema>;

@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
     const tokenPayload = {
       userId: user.id,
       email: user.email,
-      organization_id: user.organization_id,
+      organizationId: user.organizationId,
       roleIds,
       username: user.email
     };
@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
         email: user.email,
         name: user.name,
         role: roles[0]?.name || 'EMPLOYEE',
-        organizationId: user.organization_id
+        organizationId: user.organizationId
       }
     });
 

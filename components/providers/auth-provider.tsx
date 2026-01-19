@@ -12,6 +12,8 @@ interface User {
   username: string;
   role?: string;
   organization_id?: string;
+  firstName?: string;
+  lastName?: string;
 }
 
 interface AuthContextType {
@@ -31,7 +33,9 @@ const sanitizeUser = (user: any): User => ({
   id: user.id,
   email: user.email,
   username: user.username,
-  organization_id: user.organization_id
+  organization_id: user.organization_id,
+  firstName: user.first_name,
+  lastName: user.last_name
 });
 
 export function AuthProvider({
@@ -84,10 +88,20 @@ export function AuthProvider({
     checkAuth();
   }, [hasCheckedAuth]);
 
-  // Redirect to login if user is null after auth check
+  // Redirect to login if user is null after auth check (skip for public routes)
   useEffect(() => {
     if (!user && hasCheckedAuth) {
-      router.push('/login');
+      // Check if current route is public
+      const currentPath = window.location.pathname;
+      const publicRoutes = ["/", "/signin", "/signup", "/login", "/test"];
+
+      const isPublicRoute = publicRoutes.some((route) =>
+        currentPath === route || currentPath.startsWith(route)
+      );
+
+      if (!isPublicRoute) {
+        router.push('/login');
+      }
     }
   }, [user, hasCheckedAuth, router]);
 
@@ -108,7 +122,9 @@ export function AuthProvider({
           id: session.user.id,
           email: session.user.email,
           username: session.user.username,
-          organization_id: session.user.organization_id
+          organization_id: session.user.organization_id,
+          firstName: session.user.firstName,
+          lastName: session.user.lastName
         });
         setRoles(session.user.roles || []);
         setPermissions(session.user.permissions || []);

@@ -33,7 +33,7 @@ export async function GET(request: NextRequest) {
       roles = await roleController.getAll(organizationId ? organizationId : undefined, { page, limit });
     } else if (isAdmin) {
       // Admin can see roles in their organization only
-      roles = await roleController.getAll(user.organization_id, { page, limit });
+      roles = await roleController.getAll(user.organizationId, { page, limit });
     } else {
       // Regular employees might have limited access or no access
       return NextResponse.json(
@@ -70,7 +70,7 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      if (isAdmin && !isSuperAdmin && validatedData.organization_id !== user.organization_id) {
+      if (isAdmin && !isSuperAdmin && validatedData.organizationId !== user.organizationId) {
         return NextResponse.json(
           { error: 'Cannot create roles for this organization' },
           { status: 403 }

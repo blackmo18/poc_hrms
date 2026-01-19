@@ -1,3 +1,4 @@
+import { OrganizationStatus } from '@prisma/client';
 import { prisma } from '../db';
 import { CreateOrganization, UpdateOrganization } from '../models/organization';
 import { generateULID } from '../utils/ulid.service';
@@ -20,7 +21,7 @@ export class OrganizationController {
         admins: false,
       },
       orderBy: {
-        created_at: 'desc'
+        createdAt: 'desc'
       }
     });
 
@@ -55,8 +56,15 @@ export class OrganizationController {
   }
 
   async create(data: CreateOrganization) {
+    const status = this.normalizeStatus(data.status);
     return await prisma.organization.create({
-      data: {id: generateULID(), ...data},
+      data: {
+        id: generateULID(),
+        name: data.name,
+        status: status ?? OrganizationStatus.ACTIVE,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
       include: {
         departments: true,
         employees: true,
@@ -66,9 +74,17 @@ export class OrganizationController {
   }
 
   async update(id: string, data: UpdateOrganization) {
+    const status = this.normalizeStatus(data.status);
+    const updateData: any = {
+      updatedAt: new Date(),
+    };
+
+    if (data.name !== undefined) updateData.name = data.name;
+    if (status !== undefined) updateData.status = status;
+
     return await prisma.organization.update({
       where: { id },
-      data,
+      data: updateData,
       include: {
         departments: true,
         employees: true,
@@ -88,6 +104,17 @@ export class OrganizationController {
     return await prisma.organization.findFirst({
       where: { name }
     });
+  }
+
+  private normalizeStatus(status?: string) {
+    if (!status) return undefined;
+    const allowed = new Set<OrganizationStatus>([
+      OrganizationStatus.ACTIVE,
+      OrganizationStatus.SUSPENDED,
+      OrganizationStatus.CLOSED,
+    ]);
+    const normalized = status.toUpperCase() as OrganizationStatus;
+    return allowed.has(normalized) ? normalized : undefined;
   }
 }
 

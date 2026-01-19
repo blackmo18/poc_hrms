@@ -11,7 +11,7 @@ export class PayrollService {
 
   async getByEmployeeId(employeeId: string): Promise<Payroll[]> {
     const result = await payrollController.getAll();
-    return result.filter(p => p.employee_id === employeeId);
+    return result.filter(p => p.employeeId === employeeId);
   }
 
   async getAll(options?: PaginationOptions): Promise<PaginatedResponse<Payroll>> {

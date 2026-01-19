@@ -2,19 +2,19 @@ import { z } from 'zod';
 
 export const RoleSchema = z.object({
   id: z.string().optional(),
-  organization_id: z.string().min(1, 'Organization ID is required'),
+  organizationId: z.string().min(1, 'Organization ID is required'),
   name: z.string().min(1, 'Role name is required'),
   description: z.string().optional(),
-  created_at: z.date().optional(),
-  updated_at: z.date().optional(),
+  createdAt: z.date().optional(),
+  updatedAt: z.date().optional(),
 });
 
 export type Role = z.infer<typeof RoleSchema>;
 
 export const CreateRoleSchema = RoleSchema.omit({
   id: true,
-  created_at: true,
-  updated_at: true,
+  createdAt: true,
+  updatedAt: true,
 });
 
 export type CreateRole = z.infer<typeof CreateRoleSchema>;

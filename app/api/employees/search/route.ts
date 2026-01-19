@@ -37,12 +37,12 @@ export async function GET(request: NextRequest) {
 
     const data = result.data.map(employee => ({
       id: employee.id,
-      first_name: employee.first_name,
-      last_name: employee.last_name,
+      firstName: employee.firstName,
+      lastName: employee.lastName,
       email: employee.email,
-      custom_id: employee.custom_id,
+      customId: employee.customId,
       job_title: employee.jobTitle?.name || '',
-      employment_status: employee.employment_status || 'ACTIVE',
+      employmentStatus: employee.employmentStatus || 'ACTIVE',
     }));
 
     const pagination = result.pagination || {

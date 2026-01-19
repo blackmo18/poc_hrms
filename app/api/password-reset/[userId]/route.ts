@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { getPasswordResetSessionService } from '@/lib/service/password-reset-session.service';
+// import { getPasswordResetSessionService } from '@/lib/service/password-reset-session.service';
 
 export async function GET(
   request: NextRequest,
@@ -17,17 +17,18 @@ export async function GET(
     }
 
     const { userId } = await params;
-    const passwordResetService = getPasswordResetSessionService();
+    // TODO: Implement password reset sessions retrieval
+    // const passwordResetService = getPasswordResetSessionService();
 
-    // Get user's password reset sessions
-    const sessions = await passwordResetService.getUserPasswordResetSessions(userId);
+    // // Get user's password reset sessions
+    // const sessions = await passwordResetService.getUserPasswordResetSessions(userId);
 
-    // Get user's password reset logs
-    const logs = await passwordResetService.getUserPasswordResetLogs(userId);
+    // // Get user's password reset logs
+    // const logs = await passwordResetService.getUserPasswordResetLogs(userId);
 
     return NextResponse.json({
-      sessions,
-      logs,
+      // sessions,
+      // logs,
     });
 
   } catch (error) {

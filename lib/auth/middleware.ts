@@ -9,7 +9,7 @@ export interface AuthenticatedRequest extends NextRequest {
   user?: {
     id: string;
     email: string;
-    organization_id: string;
+    organizationId: string;
     roles: string[];
   };
 }
@@ -74,7 +74,7 @@ export async function authMiddleware(request: NextRequest): Promise<any | NextRe
     return {
       id: payload.userId,
       email: payload.email,
-      organization_id: user.organization_id,
+      organizationId: user.organizationId,
       roles: roles
     };
   } catch (error) {
@@ -91,7 +91,7 @@ export async function authMiddleware(request: NextRequest): Promise<any | NextRe
  */
 export async function organizationMiddleware(request: NextRequest): Promise<NextResponse | null> {
   const authRequest = request as AuthenticatedRequest;
-  const userOrganization = authRequest.user?.organization_id;
+  const userOrganization = authRequest.user?.organizationId;
   const requestedOrganization = request.nextUrl.searchParams.get('organization_id') || 
                                request.headers.get('x-organization-id');
 

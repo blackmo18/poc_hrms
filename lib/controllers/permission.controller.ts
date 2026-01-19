@@ -5,7 +5,7 @@ import { CreatePermission, UpdatePermission } from '../models/permission';
 export class PermissionController {
   async getAll(organizationId?: string) {
     return await prisma.permission.findMany({
-      where: organizationId ? { organization_id: organizationId } : undefined,
+      where: organizationId ? { organizationId: organizationId } : undefined,
       include: {
         rolePermissions: {
           include: {
@@ -38,8 +38,8 @@ export class PermissionController {
                         email: true,
                         employee: {
                           select: {
-                            first_name: true,
-                            last_name: true,
+                            firstName: true,
+                            lastName: true,
                           },
                         },
                       }
@@ -56,7 +56,7 @@ export class PermissionController {
 
   async create(data: CreatePermission) {
     return await prisma.permission.create({
-      data: { id: generateULID(), ...data },
+      data: { id: generateULID(), ...data } as any,
       include: {
         rolePermissions: {
           include: {
@@ -84,7 +84,7 @@ export class PermissionController {
   async delete(id: string) {
     // First, delete all role-permission associations
     await prisma.rolePermission.deleteMany({
-      where: { permission_id: id }
+      where: { permissionId: id }
     });
 
     // Then, delete the permission
@@ -110,8 +110,8 @@ export class PermissionController {
                         email: true,
                         employee: {
                           select: {
-                            first_name: true,
-                            last_name: true,
+                            firstName: true,
+                            lastName: true,
                           },
                         },
                       }
@@ -136,9 +136,9 @@ export class PermissionController {
     return await prisma.rolePermission.create({
       data: {
         id: generateULID(),
-        role_id: roleId,
-        permission_id: permissionId
-      },
+        roleId: roleId,
+        permissionId: permissionId
+      } as any,
       include: {
         role: true,
         permission: true
@@ -149,8 +149,8 @@ export class PermissionController {
   async removeFromRole(permissionId: string, roleId: string) {
     return await prisma.rolePermission.deleteMany({
       where: {
-        role_id: roleId,
-        permission_id: permissionId
+        roleId: roleId,
+        permissionId: permissionId
       }
     });
   }
@@ -159,7 +159,7 @@ export class PermissionController {
     // Get all permissions that are not organization-specific
     return await prisma.permission.findMany({
       where: {
-        organization_id: null
+        organizationId: null
       },
       include: {
         rolePermissions: {
@@ -176,7 +176,7 @@ export class PermissionController {
     // Get all permissions for a specific organization
     return await prisma.permission.findMany({
       where: {
-        organization_id: organizationId
+        organizationId: organizationId
       },
       include: {
         rolePermissions: {
@@ -191,7 +191,7 @@ export class PermissionController {
 
   async bulkCreate(permissions: CreatePermission[]) {
     const createdPermissions = await prisma.permission.createMany({
-      data: permissions.map(p => ({ ...p, id: generateULID() })),
+      data: permissions.map(p => ({ ...p, id: generateULID() })) as any,
       skipDuplicates: true
     });
 
@@ -214,7 +214,7 @@ export class PermissionController {
 
   async getPermissionsByRoleId(roleId: string): Promise<string[]> {
     const rolePermissions = await prisma.rolePermission.findMany({
-      where: { role_id: roleId },
+      where: { roleId: roleId },
       include: {
         permission: true
       }
@@ -225,7 +225,7 @@ export class PermissionController {
 
   async getPermissionDetailsByRoleId(roleId: string) {
     return await prisma.rolePermission.findMany({
-      where: { role_id: roleId },
+      where: { roleId: roleId },
       include: {
         permission: true,
         role: {
@@ -239,7 +239,7 @@ export class PermissionController {
 
   // Simple repository methods for internal use
   async findByName(name: string) {
-    return await prisma.permission.findUnique({
+    return await prisma.permission.findFirst({
       where: { name }
     });
   }
@@ -262,8 +262,8 @@ export class PermissionController {
                         email: true,
                         employee: {
                           select: {
-                            first_name: true,
-                            last_name: true,
+                            firstName: true,
+                            lastName: true,
                           },
                         },
                       }

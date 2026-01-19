@@ -30,9 +30,11 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     
     if (body.action === 'process') {
-      const { employeeId, periodStart, periodEnd, grossSalary, deductions } = body;
+      const { employeeId, organizationId, departmentId, periodStart, periodEnd, grossSalary, deductions } = body;
       const payroll = await payrollController.processPayroll(
         employeeId,
+        organizationId,
+        departmentId,
         new Date(periodStart),
         new Date(periodEnd),
         grossSalary,
