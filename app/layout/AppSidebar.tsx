@@ -65,7 +65,7 @@ const navItems: NavItem[] = [
     subItems: [
       { name: 'Employee List', path: '/employees', pro: false },
     ],
-    systemAdminOnly: false,
+    systemAdminOnly: true,
   },
   {
     icon: <CalenderIcon />,
@@ -88,9 +88,11 @@ const navItems: NavItem[] = [
 const othersItems: NavItem[] = [
   {
     icon: <CalendarInDaysIcon/>,
-    name: 'Attentandance',
+    name: 'Attendance',
     subItems: [
-      {name: 'Timesheet', path: '/timesheet'}
+      {name: 'Cutoff Overview', path: '/attendance/cutoff-overview'},
+      {name: 'Timesheet', path: '/attendance/timesheet'},
+      {name: 'Requests', path: '/attendance/requests'}
     ]
   },
   {
@@ -117,6 +119,7 @@ const othersItems: NavItem[] = [
       { name: 'Analytics', path: '/reports/analytics', pro: false },
       { name: 'Attendance', path: '/reports/attendance', pro: false },
     ],
+    systemAdminOnly: true
   },
   {
     icon: <BoxCubeIcon />,
