@@ -12,9 +12,13 @@ export default function AttendanceLayout({
   const pathname = usePathname();
 
   const pages = [
+    { label: 'Clock In/Out', href: '/attendance/clock-in-out' },
+    { label: 'Timesheet View', href: '/attendance/timesheet-view' },
     { label: 'Cutoff Overview', href: '/attendance/cutoff-overview' },
-    { label: 'Timesheet', href: '/attendance/timesheet' },
-    { label: 'Requests', href: '/attendance/requests' },
+    { label: 'Employee Timesheets', href: '/attendance/timesheets' },
+    { label: 'Time Corrections', href: '/attendance/corrections' },
+    { label: 'Break Validation', href: '/attendance/breaks' },
+    { label: 'Night Shift Monitor', href: '/attendance/night-shift' },
   ];
 
   // Get current page title based on pathname

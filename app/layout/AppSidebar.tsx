@@ -26,14 +26,16 @@ import { useSidebar } from '../../context/SidebarContext';
 import { useAuth } from '../../components/providers/auth-provider';
 import { useRoleAccess } from '../../components/providers/role-access-provider';
 import SidebarWidget from './SidebarWidget';
+import { ADMINSTRATIVE_ROLES } from '@/lib/constants/roles';
 
 type SubItem ={
   name: string;
   path: string;
   pro?: boolean;
   new?: boolean;
-  systemAdminOnly?: boolean
+  roles?: string[];
 }
+
 
 type User = {
   id: string;
@@ -50,7 +52,7 @@ type NavItem = {
   icon: React.ReactNode;
   path?: string;
   subItems?: SubItem[];
-  systemAdminOnly?: boolean
+  roles?: string[];
 };
 
 const navItems: NavItem[] = [
@@ -64,8 +66,10 @@ const navItems: NavItem[] = [
     name: 'Employees',
     subItems: [
       { name: 'Employee List', path: '/employees', pro: false },
+      { name: 'Onboarding', path: '/employees/onboard', pro: false },
+      { name: 'Offboarding', path: '/employees/offboarding', pro: false },
     ],
-    systemAdminOnly: true,
+    roles: ['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER'],
   },
   {
     icon: <CalenderIcon />,
@@ -73,16 +77,38 @@ const navItems: NavItem[] = [
     subItems: [
       { name: 'Leave Requests', path: '/leave', pro: false },
       { name: 'Leave Calendar', path: '/leave/calendar', pro: false },
+      { name: 'Leave Approvals', path: '/leave/approvals', pro: false },
     ]
   },
   {
-    name: 'Job Titles',
+    name: 'Overtime',
     icon: <BriefcaseIcon />,
-    subItems: [{ name: 'Job Title List', path: '/job-titles', pro: false }]  },
+    subItems: [
+      { name: 'OT Requests', path: '/overtime/requests', pro: false },
+      { name: 'OT Approvals', path: '/overtime/approvals', pro: false, roles: ADMINSTRATIVE_ROLES },
+      { name: 'OT History', path: '/overtime/history', pro: false },
+    ]
+  },
   {
     name: 'Payroll',
     icon: <TableIcon />,
-    subItems: [{ name: 'Payroll Records', path: '/payroll', pro: false }]  },
+    subItems: [
+      { name: 'Payroll Run', path: '/payroll/run', pro: false, roles: ADMINSTRATIVE_ROLES },
+      { name: 'Payroll Summary', path: '/payroll/summary', pro: false, roles: ADMINSTRATIVE_ROLES },
+      { name: 'Payroll History', path: '/payroll/history', pro: false },
+      { name: 'Payroll Rules', path: '/payroll/rules', pro: false, roles: ADMINSTRATIVE_ROLES },
+    ]
+
+  },
+  {
+    name: 'Holidays & Calendar',
+    icon: <CalendarInDaysIcon />,
+    subItems: [
+      { name: 'Holidays', path: '/holidays', pro: false },
+      { name: 'Holiday Templates', path: '/holidays/templates', pro: false },
+      { name: 'Calendars', path: '/calendars', pro: false },
+    ]
+  },
 ];
 
 const othersItems: NavItem[] = [
@@ -90,9 +116,13 @@ const othersItems: NavItem[] = [
     icon: <CalendarInDaysIcon/>,
     name: 'Attendance',
     subItems: [
+      {name: 'Clock In/Out', path: '/attendance/clock-in-out'},
+      {name: 'Timesheet View', path: '/attendance/timesheet-view'},
       {name: 'Cutoff Overview', path: '/attendance/cutoff-overview'},
-      {name: 'Timesheet', path: '/attendance/timesheet'},
-      {name: 'Requests', path: '/attendance/requests'}
+      {name: 'Employee Timesheets', path: '/attendance/timesheets'},
+      {name: 'Time Corrections', path: '/attendance/corrections'},
+      {name: 'Break Validation', path: '/attendance/breaks'},
+      {name: 'Night Shift Monitor', path: '/attendance/night-shift'},
     ]
   },
   {
@@ -103,7 +133,7 @@ const othersItems: NavItem[] = [
       { name: 'Roles', path: '/accounts/roles', pro: false },
       { name: 'Permissions', path: '/accounts/permissions', pro: false },
     ],
-    systemAdminOnly: true,
+    roles: ['SUPER_ADMIN', 'ADMIN'],
   },
   {
     icon: <LayoutGridIcon />,
@@ -119,7 +149,7 @@ const othersItems: NavItem[] = [
       { name: 'Analytics', path: '/reports/analytics', pro: false },
       { name: 'Attendance', path: '/reports/attendance', pro: false },
     ],
-    systemAdminOnly: true
+    roles: ['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER']
   },
   {
     icon: <BoxCubeIcon />,
@@ -136,7 +166,7 @@ const othersItems: NavItem[] = [
       { name: 'Onboarding', path: '/organizations/onboarding', pro: false },
       { name: 'Details', path: '/organizations/details', pro: false },
     ],
-    systemAdminOnly: true,
+    roles: ['SUPER_ADMIN', 'ADMIN'],
   },
 ];
 
@@ -155,13 +185,16 @@ const AppSidebar: React.FC = () => {
   );
   const subMenuRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
-  const isSuperAdmin = roles.includes('SUPER_ADMIN');
+  const hasAccessToItem = (itemRoles?: string[]) => {
+    if (!itemRoles || itemRoles.length === 0) return true;
+    return itemRoles.some(role => roles.includes(role));
+  };
 
   const filterNavItems = (items: NavItem[]) => {
     return items.map(item => ({
       ...item,
-      subItems: item.subItems ? item.subItems.filter(sub => !sub.systemAdminOnly || isSuperAdmin) : item.subItems
-    })).filter(item => !item.systemAdminOnly || isSuperAdmin);
+      subItems: item.subItems ? item.subItems.filter(sub => hasAccessToItem(sub.roles)) : item.subItems
+    })).filter(item => hasAccessToItem(item.roles));
   };
 
   const filteredNavItems = filterNavItems(navItems);

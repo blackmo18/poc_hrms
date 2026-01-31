@@ -1,0 +1,2 @@
+
+export const ADMINSTRATIVE_ROLES = ['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER']
