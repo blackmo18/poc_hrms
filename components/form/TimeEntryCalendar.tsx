@@ -1,8 +1,9 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { EventClickArg } from '@fullcalendar/core';
-import Calendar from './Calendar';
+import DragSelectCalendar from './DragSelectCalendar';
+import SelectedEntriesSection from './SelectedEntriesSection';
+import { format } from 'date-fns';
 
 interface TimeEntry {
   id: string;
@@ -12,56 +13,63 @@ interface TimeEntry {
   duration: number;
 }
 
-interface TimeEntryCalendarProps {
-  onSelectTimeEntry: (timeEntry: TimeEntry) => void;
-  selectedTimeEntryId?: string;
-  daysToShow?: number;
-}
-
 interface CalendarEvent {
   id: string;
   title: string;
-  start: string;
-  end: string;
-  extendedProps: {
-    timeEntry: TimeEntry;
-  };
+  startDate: Date;
+  endDate: Date;
+}
+
+interface TimeEntryCalendarProps {
+  onSelectTimeEntry: (timeEntry: TimeEntry) => void;
+  selectedTimeEntryId?: string;
+  onRangeSelect?: (start: Date, end: Date) => void;
 }
 
 export default function TimeEntryCalendar({
   onSelectTimeEntry,
   selectedTimeEntryId,
-  daysToShow = 30,
+  onRangeSelect
 }: TimeEntryCalendarProps) {
   const [timeEntries, setTimeEntries] = useState<TimeEntry[]>([]);
-  const [events, setEvents] = useState<CalendarEvent[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true); // Start with loading true
+  const [backgroundLoading, setBackgroundLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
 
-  // Fetch time entries on mount
+  const handleRangeSelect = async (start: Date, end: Date) => {
+    try {
+      const response = await fetch('/api/overtime-requests', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          startDate: format(start, 'yyyy-MM-dd'),
+          endDate: format(end, 'yyyy-MM-dd')
+        }),
+        credentials: 'include'
+      });
+      if (response.ok) {
+        console.log('Overtime request saved successfully');
+        // Optionally show success message
+      } else {
+        console.error('Failed to save overtime request');
+        setError('Failed to save overtime request');
+      }
+    } catch (err) {
+      console.error('Error saving overtime request:', err);
+      setError('Error saving overtime request');
+    }
+  };
+
   useEffect(() => {
     fetchTimeEntries();
   }, []);
 
-  // Convert time entries to calendar events
-  useEffect(() => {
-    const calendarEvents: CalendarEvent[] = timeEntries.map((entry) => ({
-      id: entry.id,
-      title: `${entry.startTime} - ${entry.endTime}`,
-      start: `${entry.date}T${entry.startTime}`,
-      end: `${entry.date}T${entry.endTime}`,
-      extendedProps: {
-        timeEntry: entry,
-      },
-    }));
-    setEvents(calendarEvents);
-  }, [timeEntries]);
-
   const fetchTimeEntries = async () => {
+    const startTime = Date.now();
     setLoading(true);
     setError(null);
     try {
-      // Get last 30 days from today
       const endDate = new Date();
       const startDate = new Date();
       startDate.setDate(startDate.getDate() - 30);
@@ -76,7 +84,7 @@ export default function TimeEntryCalendar({
 
       if (response.ok) {
         const data = await response.json();
-        setTimeEntries(data.data || []);
+        setTimeEntries(data.data?.filter(Boolean) || []);
       } else {
         setError('Failed to fetch time entries');
       }
@@ -84,67 +92,118 @@ export default function TimeEntryCalendar({
       setError('Error fetching time entries');
       console.error(err);
     } finally {
-      setLoading(false);
+      // Ensure minimum loading time of 1.5 seconds
+      const elapsedTime = Date.now() - startTime;
+      const remainingTime = Math.max(0, 1500 - elapsedTime);
+
+      setTimeout(() => {
+        setLoading(false);
+      }, remainingTime);
     }
   };
 
-  const handleEventClick = (clickInfo: EventClickArg) => {
-    const timeEntry = clickInfo.event.extendedProps.timeEntry as TimeEntry;
-    onSelectTimeEntry(timeEntry);
+  const refreshTimeEntries = async () => {
+    const startTime = Date.now();
+    setBackgroundLoading(true);
+    setError(null);
+    try {
+      const endDate = new Date();
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() - 30);
+
+      const startDateStr = startDate.toISOString().split('T')[0];
+      const endDateStr = endDate.toISOString().split('T')[0];
+
+      const response = await fetch(
+        `/api/timesheets?startDate=${startDateStr}&endDate=${endDateStr}`,
+        { credentials: 'include' }
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        setTimeEntries(data.data?.filter(Boolean) || []);
+      } else {
+        setError('Failed to refresh time entries');
+      }
+    } catch (err) {
+      setError('Error refreshing time entries');
+      console.error(err);
+    } finally {
+      // Ensure minimum loading time of 1.5 seconds
+      const elapsedTime = Date.now() - startTime;
+      const remainingTime = Math.max(0, 500 - elapsedTime);
+
+      setTimeout(() => {
+        setBackgroundLoading(false);
+      }, remainingTime);
+    }
+  };
+
+  const convertToCalendarEvents = (): CalendarEvent[] => {
+    return timeEntries.map((entry) => {
+      const eventDate = new Date(entry.date);
+      return {
+        id: entry.id,
+        title: `${entry.startTime} - ${entry.endTime}`,
+        startDate: eventDate,
+        endDate: eventDate,
+      };
+    });
+  };
+
+  const handleCellClick = (date: Date, events: CalendarEvent[]) => {
+    setSelectedDate(date);
+    // Reset selected entry when date changes
+    if (selectedTimeEntryId) {
+      onSelectTimeEntry(null as any);
+    }
   };
 
   return (
-    <div className="rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
+    <div className="space-y-6">
       {error && (
-        <div className="m-4 rounded-lg bg-error-50 p-3 text-sm text-error-600 dark:bg-error-900/20 dark:text-error-400">
+        <div className="rounded-lg bg-red-50 p-3 text-sm text-red-600 dark:bg-red-900/20 dark:text-red-400">
           {error}
         </div>
       )}
 
-      {loading && (
-        <div className="m-4 text-center text-sm text-gray-500">
-          Loading time entries...
+      {loading ? (
+        <div className="rounded-2xl border border-gray-200 bg-white p-6 dark:border-gray-800 dark:bg-white/[0.03]">
+          <div className="text-center text-sm text-gray-500">
+            Loading time entries...
+          </div>
         </div>
-      )}
+      ) : (
+        <>
+          {/* Calendar Section */}
+          <div className="relative">
+            <DragSelectCalendar
+              disableEventClicks
+              disableDragSelect
+              events={convertToCalendarEvents()}
+              onCellClick={handleCellClick}
+              selectedDate={selectedDate}
+            />
 
-      <Calendar
-        events={events}
-        onEventClick={handleEventClick}
-        initialView="dayGridMonth"
-        height="auto"
-        contentHeight="auto"
-      />
-
-      {/* Selected entry details */}
-      {selectedTimeEntryId && (
-        <div className="m-4 rounded-lg border border-brand-200 bg-brand-50 p-4 dark:border-brand-800 dark:bg-brand-900/20">
-          {(() => {
-            const selected = timeEntries.find(
-              (e) => e.id === selectedTimeEntryId
-            );
-            return selected ? (
-              <div>
-                <p className="text-sm font-semibold text-brand-900 dark:text-brand-100">
-                  Selected Time Entry
-                </p>
-                <p className="mt-2 text-sm text-brand-800 dark:text-brand-200">
-                  <span className="font-medium">Date:</span> {selected.date}
-                </p>
-                <p className="text-sm text-brand-800 dark:text-brand-200">
-                  <span className="font-medium">Time:</span> {selected.startTime}{' '}
-                  - {selected.endTime}
-                </p>
-                <p className="text-sm text-brand-800 dark:text-brand-200">
-                  <span className="font-medium">Duration:</span>{' '}
-                  {selected.duration} hours
-                </p>
-                <p className="mt-2 text-xs text-brand-700 dark:text-brand-300">
-                  <span className="font-medium">Entry ID:</span> {selected.id}
-                </p>
+            {/* Background Loading Overlay */}
+            {backgroundLoading && (
+              <div className="absolute inset-0 bg-white/50 dark:bg-gray-900/50 flex items-center justify-center rounded-2xl backdrop-blur-sm">
+                <div className="flex items-center gap-3 bg-white dark:bg-gray-800 px-4 py-2 rounded-lg shadow-lg">
+                  <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                  <span className="text-sm text-gray-700 dark:text-gray-300">Refreshing...</span>
+                </div>
               </div>
-            ) : null;
-          })()}
-        </div>
+            )}
+          </div>
+
+          {/* Selected Entry Details - Always visible */}
+          <SelectedEntriesSection
+            selectedDate={selectedDate}
+            timeEntries={timeEntries}
+            onSelectTimeEntry={onSelectTimeEntry}
+            selectedTimeEntryId={selectedTimeEntryId}
+          />
+        </>
       )}
     </div>
   );

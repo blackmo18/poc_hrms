@@ -2,7 +2,7 @@
 
 import { Modal } from '@/components/ui/modal';
 import Button from '@/components/ui/button/Button';
-import TimeEntryCalendarV2 from '../form/TimeEntryCalendarV2';
+import TimeEntryCalendar from '../form/TimeEntryCalendar';
 
 
 interface TimeEntry {
@@ -44,7 +44,7 @@ export default function TimeEntrySelectionModal({
 
         {/* Scrollable Content Area */}
         <div className="px-2 mb-6 max-h-[500px] overflow-y-auto custom-scrollbar">
-          <TimeEntryCalendarV2
+          <TimeEntryCalendar
             onSelectTimeEntry={onSelectTimeEntry}
             selectedTimeEntryId={selectedTimeEntryId}
           />

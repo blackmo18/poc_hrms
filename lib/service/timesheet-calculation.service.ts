@@ -194,7 +194,7 @@ export class TimesheetCalculationService implements ITimesheetCalculationService
    */
   private async getBreaksForTimeEntry(timeEntryId: string): Promise<TimeBreakWithRelations[]> {
     return await timeBreakController.getAll({
-      timesheet_id: timeEntryId,
+      timeEntryId: timeEntryId,
     });
   }
 }
