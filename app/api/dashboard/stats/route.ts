@@ -1,18 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
+import { validateSession } from '@/lib/auth/session-validator';
 import { getEmployeeService, getDepartmentService, getPayrollService, getLeaveRequestService } from '@/lib/service';
 
 export async function GET(request: NextRequest) {
   try {
-    // Get authenticated session
-    const session = await auth.api.getSession({ headers: request.headers });
+    // Validate session
+    const session = await validateSession();
 
-    if (!session?.user?.id) {
+    if (!session) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
       );
     }
+
+    const userId = session.userId;
 
     const employeeService = getEmployeeService();
     const departmentService = getDepartmentService();

@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
-import { JWTUtils } from './jwt';
+import { validateSession } from './session-validator';
 import { permissionController } from '../controllers';
-import { findUserById, getPermissionsByRoleIds, getUserRoles } from './auth-db';
+import { getPermissionsByRoleIds, getUserRoles } from './auth-db';
 import { getUserService } from '../service';
 
 export interface AuthenticatedRequest extends NextRequest {
@@ -23,41 +22,19 @@ export interface AuthenticatedRequest extends NextRequest {
  */
 export async function authMiddleware(request: NextRequest): Promise<any | NextResponse> {
   try {
-    // First try to extract token from Authorization header
-    let token = JWTUtils.extractTokenFromHeader(request.headers.get('authorization') || undefined);
+    // Validate session from cookies
+    const session = await validateSession();
 
-    // If no header token, try to get token from cookies (for cookie-based auth)
-    if (!token) {
-      try {
-        const cookieStore = await cookies();
-        token = cookieStore.get('access_token')?.value;
-      } catch (error) {
-        // cookies() might not be available in all contexts
-        console.warn('Could not access cookies for authentication');
-      }
-    }
-
-    if (!token) {
+    if (!session) {
       return NextResponse.json(
         { error: 'Authentication required' },
         { status: 401 }
       );
     }
 
-    // Check if token is expired
-    if (JWTUtils.isTokenExpired(token)) {
-      return NextResponse.json(
-        { error: 'Token expired' },
-        { status: 401 }
-      );
-    }
-
-    // Verify token
-    const payload = JWTUtils.verifyAccessToken(token);
-
     // Fetch user from database to ensure they still exist and are active
     const userService = getUserService();
-    const user = await userService.getById(payload.userId.toString());
+    const user = await userService.getById(session.userId);
 
     if (!user || user.status !== 'ACTIVE') {
       return NextResponse.json(
@@ -67,13 +44,13 @@ export async function authMiddleware(request: NextRequest): Promise<any | NextRe
     }
 
     // Get user roles
-    const userRoles = await getUserRoles(payload.userId.toString());
+    const userRoles = await getUserRoles(session.userId);
     const roles = userRoles.map(role => role.name);
 
     // Return user object
     return {
-      id: payload.userId,
-      email: payload.email,
+      id: session.userId,
+      email: session.email,
       organizationId: user.organizationId,
       roles: roles
     };
@@ -133,21 +110,11 @@ export function rbacMiddleware(allowedRoles: string[]) {
 /* ===================================================== */
 
 /**
- * Helper function to extract role IDs from token
+ * Helper function to get user permissions from database
  */
-export async function extractRoleIds(token: string): Promise<string[]> {
-  const decoded = JWTUtils.decodeToken(token);
-  if (!decoded) {
-    throw new Error('Invalid authentication token');
-  }
-  return decoded.roleIds;
-}
-
-/**
- * Helper function to check if user has required permissions
- */
-export async function getUserPermissions(token: string): Promise<string[]> {
-  const roleIds = await extractRoleIds(token);
+export async function getUserPermissionsForUser(userId: string): Promise<string[]> {
+  const userRoles = await getUserRoles(userId);
+  const roleIds = userRoles.map(role => role.id);
   return await getPermissionsByRoleIds(roleIds);
 }
 
@@ -208,37 +175,8 @@ export const requiresPermissions = async (
 
     const user = authResult;
 
-    // Get role IDs - since we have user, but to get permissions, we need role IDs from JWT
-    // Get token again to get roleIds
-    let token = JWTUtils.extractTokenFromHeader(request.headers.get('authorization') || undefined);
-
-    // If no header token, try to get token from cookies
-    if (!token) {
-      try {
-        const cookieStore = await cookies();
-        token = cookieStore.get('access_token')?.value;
-      } catch (error) {
-        console.warn('Could not access cookies for authentication');
-      }
-    }
-
-    if (!token) {
-      return NextResponse.json(
-        { error: 'Authentication required' },
-        { status: 401 }
-      );
-    }
-
-    const decoded = JWTUtils.decodeToken(token);
-    if (!decoded) {
-      return NextResponse.json(
-        { error: 'Invalid authentication token' },
-        { status: 401 }
-      );
-    }
-
     // Authorization - Check permissions
-    const userPermissions = await getPermissionsByRoleIds(decoded.roleIds);
+    const userPermissions = await getUserPermissionsForUser(user.id);
     const hasRequiredPermission = requiredPermissions.some(permission => 
       userPermissions.includes(permission)
     );

@@ -57,9 +57,9 @@ export async function POST(request: NextRequest) {
           }
 
           await timeBreakService.startBreak({
-            employee_id: employee.id,
-            time_entry_id: activeEntryForBreak.id,
-            created_by: user.id,
+            employeeId: employee.id,
+            timeEntryId: activeEntryForBreak.id,
+            createdBy: user.id,
           });
 
           // Fetch updated entry with breaks
@@ -73,9 +73,9 @@ export async function POST(request: NextRequest) {
           }
 
           await timeBreakService.endBreak({
-            employee_id: employee.id,
-            time_entry_id: activeEntryForBreakOut.id,
-            updated_by: user.id,
+            employeeId: employee.id,
+            timeEntryId: activeEntryForBreakOut.id,
+            updatedBy: user.id,
           });
 
           // Fetch updated entry with breaks
@@ -126,7 +126,7 @@ export async function GET(request: NextRequest) {
       let activeBreak = null;
       if (activeEntry) {
         const breaks = await timeBreakService.getByTimeEntryId(activeEntry.id);
-        activeBreak = breaks.find(breakItem => !breakItem.break_end_at) || null;
+        activeBreak = breaks.find(breakItem => !breakItem.breakEndAt) || null;
       }
 
       return NextResponse.json({

@@ -46,8 +46,12 @@ export function useUserCache(
   // Check auth with caching logic
   const checkAuth = async (forceRefresh = false) => {
     try {
-      // First, try to get cached user data for immediate display
-      if (!forceRefresh) {
+      // Always validate session with server first on initial load
+      // Only use cache for subsequent revalidations
+      const isInitialCheck = !forceRefresh && user === null;
+      
+      if (!isInitialCheck && !forceRefresh) {
+        // For revalidations (not initial check), show cached data while fetching
         const sessionData = sessionManager.getSessionData();
         const cachedUser = sessionData?.user;
         if (cachedUser) {
@@ -75,11 +79,13 @@ export function useUserCache(
           setRoles(data.user.roles || []);
           setPermissions(data.user.permissions || []);
         } else {
+          // Session endpoint returned no user - invalid session
           setUser(null);
           setInternalUser(null);
           onUserNull?.();
         }
       } else {
+        // Session endpoint returned error - invalid session
         setUser(null);
         setInternalUser(null);
         onUserNull?.();

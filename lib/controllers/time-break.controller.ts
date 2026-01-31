@@ -9,14 +9,26 @@ export class TimeBreakController {
   async create(data: CreateTimeBreak) {
     const id = generateULID();
 
+    // Get the time entry to retrieve organizationId and employeeId
+    const timeEntry = await prisma.timeEntry.findUnique({
+      where: { id: data.timeEntryId },
+      select: { organizationId: true, employeeId: true },
+    });
+
+    if (!timeEntry) {
+      throw new Error('TimeEntry not found');
+    }
+
     const timeBreak = await prisma.timeBreak.create({
       data: {
         id,
-        timeEntryId: data.timesheet_id,
-        breakStartAt: data.break_start_at,
-        breakEndAt: data.break_end_at,
-        breakType: data.break_type || 'REST',
-        isPaid: data.is_paid || false,
+        timeEntryId: data.timeEntryId,
+        organizationId: timeEntry.organizationId,
+        employeeId: timeEntry.employeeId,
+        breakStartAt: data.breakStartAt,
+        breakEndAt: data.breakEndAt,
+        breakType: data.breakType || 'REST',
+        isPaid: data.isPaid || false,
       } as any,
       include: {
         timeEntry: {
@@ -58,9 +70,9 @@ export class TimeBreakController {
   async getAll(filters: TimeBreakFilters) {
     const where: any = {};
 
-    if (filters.timesheet_id) where.timeEntryId = filters.timesheet_id;
-    if (filters.break_type) where.breakType = filters.break_type;
-    if (filters.is_paid !== undefined) where.isPaid = filters.is_paid;
+    if (filters.timeEntryId) where.timeEntryId = filters.timeEntryId;
+    if (filters.breakType) where.breakType = filters.breakType;
+    if (filters.isPaid !== undefined) where.isPaid = filters.isPaid;
 
     const timeBreaks = await prisma.timeBreak.findMany({
       where,
@@ -112,9 +124,9 @@ export class TimeBreakController {
   async update(id: string, data: UpdateTimeBreak) {
     const updateData: any = {};
     
-    if (data.break_end_at !== undefined) updateData.breakEndAt = data.break_end_at;
-    if (data.break_type !== undefined) updateData.breakType = data.break_type;
-    if (data.is_paid !== undefined) updateData.isPaid = data.is_paid;
+    if (data.breakEndAt !== undefined) updateData.breakEndAt = data.breakEndAt;
+    if (data.breakType !== undefined) updateData.breakType = data.breakType;
+    if (data.isPaid !== undefined) updateData.isPaid = data.isPaid;
 
     const timeBreak = await prisma.timeBreak.update({
       where: { id },
@@ -152,7 +164,7 @@ export class TimeBreakController {
    */
   async endBreak(id: string, endTime: Date) {
     return this.update(id, {
-      break_end_at: endTime,
+      breakEndAt: endTime,
     });
   }
 

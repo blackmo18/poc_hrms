@@ -10,31 +10,31 @@ export const BreakType = {
 
 export type BreakTypeEnum = typeof BreakType[keyof typeof BreakType];
 
-// TimeBreak create schema
+// TimeBreak create schema (camelCase in code)
 export const CreateTimeBreakSchema = z.object({
-  timesheet_id: z.string(),
-  break_start_at: z.date(),
-  break_end_at: z.date().optional(),
-  break_type: z.enum([BreakType.MEAL, BreakType.REST, BreakType.PERSONAL, BreakType.SYSTEM]).default(BreakType.REST),
-  is_paid: z.boolean().default(false),
+  timeEntryId: z.string(),
+  breakStartAt: z.date(),
+  breakEndAt: z.date().optional(),
+  breakType: z.enum([BreakType.MEAL, BreakType.REST, BreakType.PERSONAL, BreakType.SYSTEM]).default(BreakType.REST),
+  isPaid: z.boolean().default(false),
 });
 
 export type CreateTimeBreak = z.infer<typeof CreateTimeBreakSchema>;
 
-// TimeBreak update schema
+// TimeBreak update schema (camelCase in code)
 export const UpdateTimeBreakSchema = z.object({
-  break_end_at: z.date().optional(),
-  break_type: z.enum([BreakType.MEAL, BreakType.REST, BreakType.PERSONAL, BreakType.SYSTEM]).optional(),
-  is_paid: z.boolean().optional(),
+  breakEndAt: z.date().optional(),
+  breakType: z.enum([BreakType.MEAL, BreakType.REST, BreakType.PERSONAL, BreakType.SYSTEM]).optional(),
+  isPaid: z.boolean().optional(),
 });
 
 export type UpdateTimeBreak = z.infer<typeof UpdateTimeBreakSchema>;
 
-// TimeBreak filters
+// TimeBreak filters (camelCase in code)
 export const TimeBreakFiltersSchema = z.object({
-  timesheet_id: z.string().optional(),
-  break_type: z.enum([BreakType.MEAL, BreakType.REST, BreakType.PERSONAL, BreakType.SYSTEM]).optional(),
-  is_paid: z.boolean().optional(),
+  timeEntryId: z.string().optional(),
+  breakType: z.enum([BreakType.MEAL, BreakType.REST, BreakType.PERSONAL, BreakType.SYSTEM]).optional(),
+  isPaid: z.boolean().optional(),
 });
 
 export type TimeBreakFilters = z.infer<typeof TimeBreakFiltersSchema>;

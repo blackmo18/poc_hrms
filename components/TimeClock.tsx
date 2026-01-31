@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useEffect } from 'react';
-import { Clock, Play, Square, History, Calendar } from 'lucide-react';
+import { Clock, Play, Square, History } from 'lucide-react';
 import Alert from './ui/alert/Alert';
 import { Button } from './ui/button';
 import { useTimeClock } from '../hooks/useTimeClock';

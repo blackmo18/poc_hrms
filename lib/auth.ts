@@ -28,7 +28,7 @@ export const auth = betterAuth({
     updateAge: parseInt(process.env.SESSION_UPDATE_AGE_MINUTES || "1440") * 60, // 1 day default (1440 minutes)
     cookieCache: {
       enabled: true,
-      maxAge: parseInt(process.env.SESSION_COOKIE_CACHE_AGE_MINUTES || "5") * 60, // 5 minutes default
+      maxAge: parseInt(process.env.SESSION_COOKIE_CACHE_AGE_MINUTES || "60") * 60, // 60 minutes default (increased from 5 to prevent premature expiration)
     }
   },
   trustedOrigins: ["http://localhost:3000"],

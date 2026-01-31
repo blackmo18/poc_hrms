@@ -1,13 +1,11 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 
 // API service functions
 const timesheetApi = {
   async performAction(type: 'clockin' | 'clockout' | 'breakin' | 'breakout') {
     const response = await fetch('/api/timesheet', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ type }),
     });
     
@@ -54,6 +52,28 @@ export interface TimeClockState {
 
 
 export const useTimeClock = () => {
+  // Helper function to load logs from localStorage
+  const loadLogsFromStorage = (): ClockLog[] => {
+    if (typeof window === 'undefined') return [];
+    try {
+      const stored = localStorage.getItem('timeClock_logs');
+      return stored ? JSON.parse(stored) : [];
+    } catch (error) {
+      console.error('Failed to load logs from storage:', error);
+      return [];
+    }
+  };
+
+  // Helper function to save logs to localStorage
+  const saveLogsToStorage = (logsToSave: ClockLog[]) => {
+    if (typeof window === 'undefined') return;
+    try {
+      localStorage.setItem('timeClock_logs', JSON.stringify(logsToSave));
+    } catch (error) {
+      console.error('Failed to save logs to storage:', error);
+    }
+  };
+
   // Initialize state with defaults
   const [isClockedIn, setIsClockedIn] = useState(false);
   const [isOnBreak, setIsOnBreak] = useState(false);
@@ -62,12 +82,38 @@ export const useTimeClock = () => {
   const [totalTime, setTotalTime] = useState(0);
   const [workTime, setWorkTime] = useState(0);
   const [breakTime, setBreakTime] = useState(0);
-  const [logs, setLogs] = useState<ClockLog[]>([]);
+  const [logs, setLogs] = useState<ClockLog[]>(loadLogsFromStorage());
   const [activeEntry, setActiveEntry] = useState<any>(null);
   const [activeBreak, setActiveBreak] = useState<any>(null);
   const [todayEntries, setTodayEntries] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Use ref to track accumulated break time for interval calculations
+  const accumulatedBreakTimeRef = useRef(0);
+  // Use ref to track clocked in status for interval checks
+  const isClockedInRef = useRef(false);
+  // Use ref to track start time for interval checks (avoid stale closure)
+  const startTimeRef = useRef<Date | null>(null);
+
+  // Validate and sync logs with API response
+  const validateLogsAgainstAPI = useCallback((apiResponse: any) => {
+    const hasEntries = apiResponse.todayEntries && apiResponse.todayEntries.length > 0;
+    const hasActiveEntry = apiResponse.activeEntry;
+
+    // Clear logs if no entries and no active entry (data was deleted)
+    if (!hasEntries && !hasActiveEntry) {
+      setLogs([]);
+      saveLogsToStorage([]);
+      return;
+    }
+
+    // Clear logs if active entry doesn't exist in entries (entry was deleted)
+    if (hasActiveEntry && !apiResponse.todayEntries.some((entry: any) => entry.id === apiResponse.activeEntry.id)) {
+      setLogs([]);
+      saveLogsToStorage([]);
+    }
+  }, []);
 
   // Fetch initial status from API
   const fetchStatus = useCallback(async () => {
@@ -77,6 +123,12 @@ export const useTimeClock = () => {
       
       const status = await timesheetApi.getStatus();
       
+      // Validate logs against API response
+      validateLogsAgainstAPI(status);
+      
+      // Update ref to track clocked in status for interval checks
+      isClockedInRef.current = status.isClockedIn;
+      
       setIsClockedIn(status.isClockedIn);
       setIsOnBreak(status.isOnBreak);
       setActiveEntry(status.activeEntry);
@@ -84,47 +136,91 @@ export const useTimeClock = () => {
       setTodayEntries(status.todayEntries || []);
       
       // Set start time if there's an active entry
-      if (status.activeEntry?.clock_in_at) {
-        setStartTime(new Date(status.activeEntry.clock_in_at));
+      if (status.activeEntry?.clockInAt) {
+        const newStartTime = new Date(status.activeEntry.clockInAt);
+        setStartTime(newStartTime);
+        startTimeRef.current = newStartTime;
+      } else {
+        setStartTime(null);
+        startTimeRef.current = null;
       }
       
       // Set break start time if there's an active break
-      if (status.activeBreak?.break_start_at) {
-        setBreakStartTime(new Date(status.activeBreak.break_start_at));
+      if (status.activeBreak?.breakStartAt) {
+        setBreakStartTime(new Date(status.activeBreak.breakStartAt));
+      } else {
+        // Clear break start time if no active break
+        setBreakStartTime(null);
       }
       
       if (status.activeEntry) {
-        const now = new Date();
-        const totalElapsed = Math.floor((now.getTime() - new Date(status.activeEntry.clock_in_at).getTime()) / 1000);
-        setTotalTime(totalElapsed);
+        const clockInDate = new Date(status.activeEntry.clockInAt);
+        
+        // Validate clock in date
+        if (isNaN(clockInDate.getTime())) {
+          console.error('Invalid clockInAt date:', status.activeEntry.clockInAt);
+          setTotalTime(0);
+          setWorkTime(0);
+          setBreakTime(0);
+          return;
+        }
+        
+        // If entry has clockOutAt, use it; otherwise use current time
+        let endTime: Date;
+        if (status.activeEntry.clockOutAt) {
+          endTime = new Date(status.activeEntry.clockOutAt);
+          if (isNaN(endTime.getTime())) {
+            endTime = new Date();
+          }
+        } else {
+          // Round current time to nearest second (remove milliseconds)
+          const now = new Date();
+          const currentSeconds = Math.floor(now.getTime() / 1000) * 1000;
+          endTime = new Date(currentSeconds);
+        }
+        
+        // Calculate elapsed time in seconds (second precision)
+        const totalElapsed = Math.floor((endTime.getTime() - clockInDate.getTime()) / 1000);
+        setTotalTime(Math.max(0, totalElapsed)); // Ensure non-negative
         
         // Calculate work time by subtracting break time
         let breakTimeSeconds = 0;
-        if (status.todayEntries) {
-          status.todayEntries.forEach((entry: any) => {
-            if (entry.timeBreaks) {
-              entry.timeBreaks.forEach((breakItem: any) => {
-                if (breakItem.break_start_at && breakItem.break_end_at) {
-                  const breakDuration = Math.floor(
-                    (new Date(breakItem.break_end_at).getTime() - new Date(breakItem.break_start_at).getTime()) / 1000
-                  );
+        if (status.activeEntry && status.activeEntry.timeBreaks) {
+          status.activeEntry.timeBreaks.forEach((breakItem: any) => {
+            if (breakItem.breakStartAt && breakItem.breakEndAt) {
+              const breakStartDate = new Date(breakItem.breakStartAt);
+              const breakEndDate = new Date(breakItem.breakEndAt);
+              
+              if (!isNaN(breakStartDate.getTime()) && !isNaN(breakEndDate.getTime())) {
+                const breakDuration = Math.floor(
+                  (breakEndDate.getTime() - breakStartDate.getTime()) / 1000
+                );
+                if (breakDuration > 0) {
                   breakTimeSeconds += breakDuration;
                 }
-              });
+              }
             }
           });
         }
         
         // Add current break duration if on break
-        if (status.isOnBreak && status.activeBreak?.break_start_at) {
-          const currentBreakElapsed = Math.floor(
-            (now.getTime() - new Date(status.activeBreak.break_start_at).getTime()) / 1000
-          );
-          breakTimeSeconds += currentBreakElapsed;
+        if (status.isOnBreak && status.activeBreak?.breakStartAt) {
+          const breakStartDate = new Date(status.activeBreak.breakStartAt);
+          if (!isNaN(breakStartDate.getTime())) {
+            const currentBreakElapsed = Math.floor(
+              (new Date().getTime() - breakStartDate.getTime()) / 1000
+            );
+            if (currentBreakElapsed > 0) {
+              breakTimeSeconds += currentBreakElapsed;
+            }
+          }
         }
         
-        setWorkTime(totalElapsed - breakTimeSeconds);
-        setBreakTime(breakTimeSeconds);
+        const workTimeValue = Math.max(0, totalElapsed - breakTimeSeconds);
+        setWorkTime(workTimeValue);
+        setBreakTime(Math.max(0, breakTimeSeconds));
+        // Update ref for interval calculations
+        accumulatedBreakTimeRef.current = Math.max(0, breakTimeSeconds);
       } else {
         // Reset times when no active entry
         setTotalTime(0);
@@ -141,7 +237,6 @@ export const useTimeClock = () => {
     }
   }, []);
 
-  // Initialize on mount
   useEffect(() => {
     const initialize = async () => {
       try {
@@ -155,156 +250,154 @@ export const useTimeClock = () => {
     initialize();
   }, [fetchStatus]);
 
-  // Calculate current break duration (only when actively on break)
   const currentBreakDuration = useMemo(() => {
     if (!isOnBreak || !breakStartTime) return 0;
-    // Calculate break duration in seconds, ignoring milliseconds
     return Math.floor((new Date().getTime() - breakStartTime.getTime()) / 1000);
   }, [isOnBreak, breakStartTime]);
   
-  // Total break time = accumulated break time + current break duration
   const totalBreakTime = useMemo(() => {
     return breakTime + currentBreakDuration;
   }, [breakTime, currentBreakDuration]);
   
-  // Calculate working time = workTime state (already excludes break time)
   const workingTime = useMemo(() => {
     return workTime;
   }, [workTime]);
 
 
-  // Update total time and work time - use 1-second intervals for precise second counting
   useEffect(() => {
     let interval: NodeJS.Timeout;
     
-    if (isClockedIn && startTime) {
+    if (isClockedIn && startTime && !isOnBreak && isClockedInRef.current) {
       interval = setInterval(() => {
-        const now = new Date();
+        if (!isClockedInRef.current || !startTimeRef.current) {
+          clearInterval(interval);
+          return;
+        }
         
-        // Calculate elapsed time in seconds (ignore milliseconds)
-        const totalElapsed = Math.floor((now.getTime() - startTime.getTime()) / 1000);
+        const now = new Date();
+        const currentSeconds = Math.floor(now.getTime() / 1000) * 1000;
+        const nowRounded = new Date(currentSeconds);
+        
+        const totalElapsed = Math.floor((nowRounded.getTime() - startTimeRef.current.getTime()) / 1000);
         setTotalTime(totalElapsed);
         
-        // Only update work time when not on break
-        if (!isOnBreak) {
-          setWorkTime(totalElapsed - breakTime);
-        }
-      }, 1000); // Update every second
+        const accumulatedBreakTime = accumulatedBreakTimeRef.current;
+        const calculatedWorkTime = Math.max(0, totalElapsed - accumulatedBreakTime);
+        setWorkTime(calculatedWorkTime);
+      }, 1000);
     }
     
     return () => {
       if (interval) clearInterval(interval);
     };
-  }, [isClockedIn, startTime, isOnBreak, breakTime]);
+  }, [isClockedIn, startTime, isOnBreak]);
 
-  // Format elapsed time as HH:MM:SS
   const formatElapsedTime = useCallback((seconds: number) => {
+    if (!Number.isFinite(seconds) || seconds < 0) {
+      return '00:00:00';
+    }
     const hours = Math.floor(seconds / 3600);
     const minutes = Math.floor((seconds % 3600) / 60);
-    const secs = seconds % 60;
+    const secs = Math.floor(seconds % 60);
     return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   }, []);
 
-  // Clock in handler
   const clockIn = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
       
       await timesheetApi.performAction('clockin');
-      
-      // Refresh status after successful clock in
-      // Add small delay to ensure database transaction is complete
       await new Promise(resolve => setTimeout(resolve, 100));
       await fetchStatus();
       
-      // Add local log for UI
       const now = new Date();
       const timestamp = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
       
-      setLogs(prev => [{
-        type: 'Clock In',
-        time: timestamp,
-        date: now.toLocaleDateString()
-      }, ...prev]);
+      setLogs(prev => {
+        const newLogs = [{
+          type: 'Clock In',
+          time: timestamp,
+          date: now.toLocaleDateString()
+        }, ...prev];
+        saveLogsToStorage(newLogs);
+        return newLogs;
+      });
 
-      // Dispatch custom event
       window.dispatchEvent(new CustomEvent('timeClock:clockIn'));
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Clock in failed';
       setError(errorMessage);
       console.error('Clock in error:', err);
-      
-      // Dispatch error event
       window.dispatchEvent(new CustomEvent('timeClock:error', {
         detail: { action: 'clockIn', reason: errorMessage }
       }));
+      await fetchStatus();
     } finally {
       setLoading(false);
     }
   }, [fetchStatus]);
 
-  // Clock out handler
   const clockOut = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
       
+      const currentWorkTime = workTime;
+      const currentTotalBreakTime = totalBreakTime;
+      
       await timesheetApi.performAction('clockout');
       
-      // Get work session summary before refreshing
-      const workHours = Math.floor(workTime / 3600);
-      const workMinutes = Math.floor((workTime % 3600) / 60);
-      const workSeconds = workTime % 60;
+      const workHours = Math.floor(currentWorkTime / 3600);
+      const workMinutes = Math.floor((currentWorkTime % 3600) / 60);
+      const workSeconds = Math.floor(currentWorkTime % 60);
       
-      const totalBreakHours = Math.floor(totalBreakTime / 3600);
-      const totalBreakMinutes = Math.floor((totalBreakTime % 3600) / 60);
-      const totalBreakSeconds = totalBreakTime % 60;
+      const totalBreakHours = Math.floor(currentTotalBreakTime / 3600);
+      const totalBreakMinutes = Math.floor((currentTotalBreakTime % 3600) / 60);
+      const totalBreakSeconds = Math.floor(currentTotalBreakTime % 60);
       
       const workTimeText = `Work: ${workHours.toString().padStart(2, '0')}:${workMinutes.toString().padStart(2, '0')}:${workSeconds.toString().padStart(2, '0')}`;
       const breakTimeText = `Break: ${totalBreakHours.toString().padStart(2, '0')}:${totalBreakMinutes.toString().padStart(2, '0')}:${totalBreakSeconds.toString().padStart(2, '0')}`;
       const summaryText = `${workTimeText} | ${breakTimeText}`;
       
-      // Add session summary and clock out logs
       const now = new Date();
       const timestamp = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
       
-      setLogs(prev => [
-        {
-          type: 'Session Summary',
-          time: summaryText,
-          date: now.toLocaleDateString()
-        },
-        {
-          type: 'Clock Out',
-          time: timestamp,
-          date: now.toLocaleDateString()
-        },
-        ...prev
-      ]);
-      
-      // Refresh status after successful clock out
-      // Add small delay to ensure database transaction is complete
+      setLogs(prev => {
+        const newLogs = [
+          {
+            type: 'Session Summary',
+            time: summaryText,
+            date: now.toLocaleDateString()
+          },
+          {
+            type: 'Clock Out',
+            time: timestamp,
+            date: now.toLocaleDateString()
+          },
+          ...prev
+        ];
+        saveLogsToStorage(newLogs);
+        return newLogs;
+      });
+
       await new Promise(resolve => setTimeout(resolve, 100));
       await fetchStatus();
 
-      // Dispatch custom event
       window.dispatchEvent(new CustomEvent('timeClock:clockOut'));
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Clock out failed';
       setError(errorMessage);
       console.error('Clock out error:', err);
-      
-      // Dispatch error event
       window.dispatchEvent(new CustomEvent('timeClock:error', {
         detail: { action: 'clockOut', reason: errorMessage }
       }));
+      await fetchStatus();
     } finally {
       setLoading(false);
     }
   }, [workTime, totalBreakTime, fetchStatus]);
 
-  // Break toggle handler
   const toggleBreak = useCallback(async () => {
     try {
       setLoading(true);
@@ -313,22 +406,22 @@ export const useTimeClock = () => {
       const action = isOnBreak ? 'breakout' : 'breakin';
       await timesheetApi.performAction(action);
       
-      // Add local log for UI
       const now = new Date();
       const timestamp = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
       
-      setLogs(prev => [{
-        type: isOnBreak ? 'Break End' : 'Break Start',
-        time: timestamp,
-        date: now.toLocaleDateString()
-      }, ...prev]);
+      setLogs(prev => {
+        const newLogs = [{
+          type: isOnBreak ? 'Break End' : 'Break Start',
+          time: timestamp,
+          date: now.toLocaleDateString()
+        }, ...prev];
+        saveLogsToStorage(newLogs);
+        return newLogs;
+      });
       
-      // Refresh status after successful break toggle
-      // Add small delay to ensure database transaction is complete
       await new Promise(resolve => setTimeout(resolve, 100));
       await fetchStatus();
 
-      // Dispatch custom event
       window.dispatchEvent(new CustomEvent('timeClock:breakToggle', {
         detail: { isOnBreak: !isOnBreak }
       }));
@@ -336,57 +429,50 @@ export const useTimeClock = () => {
       const errorMessage = err instanceof Error ? err.message : 'Break toggle failed';
       setError(errorMessage);
       console.error('Break toggle error:', err);
-      
-      // Dispatch error event
       window.dispatchEvent(new CustomEvent('timeClock:error', {
         detail: { action: 'break', reason: errorMessage }
       }));
+      await fetchStatus();
     } finally {
       setLoading(false);
     }
   }, [isOnBreak, fetchStatus]);
 
-  // Clear logs
   const clearLogs = useCallback(() => {
     setLogs([]);
+    saveLogsToStorage([]);
   }, []);
 
-  // Format today's entries for display
   const formattedEntries = useMemo(() => {
     if (!todayEntries || todayEntries.length === 0) return [];
     
-    // Helper function to format time
     const formatTime = (date: Date) => 
       date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     
-    // Helper function to format break
     const formatBreak = (breakItem: any) => ({
       id: breakItem.id,
-      type: breakItem.break_start_at && !breakItem.break_end_at ? 'Break Start' : 'Break',
-      startTime: breakItem.break_start_at ? formatTime(new Date(breakItem.break_start_at)) : null,
-      endTime: breakItem.break_end_at ? formatTime(new Date(breakItem.break_end_at)) : null,
-      duration: breakItem.break_start_at && breakItem.break_end_at 
-        ? formatTime(new Date(breakItem.break_end_at))
+      type: breakItem.breakStartAt && !breakItem.breakEndAt ? 'Break Start' : 'Break',
+      startTime: breakItem.breakStartAt ? formatTime(new Date(breakItem.breakStartAt)) : null,
+      endTime: breakItem.breakEndAt ? formatTime(new Date(breakItem.breakEndAt)) : null,
+      duration: breakItem.breakStartAt && breakItem.breakEndAt 
+        ? formatTime(new Date(breakItem.breakEndAt))
         : null,
     });
     
-    // Helper function to get sort timestamp
     const getSortTimestamp = (entry: any) => 
-      entry.clock_out_at 
-        ? new Date(entry.clock_out_at).getTime()
-        : new Date(entry.clock_in_at).getTime();
+      entry.clockOutAt 
+        ? new Date(entry.clockOutAt).getTime()
+        : new Date(entry.clockInAt).getTime();
     
-    // Sort entries by most recent activity
     const sortedEntries = [...todayEntries].sort((a, b) => 
       getSortTimestamp(b) - getSortTimestamp(a)
     );
     
-    // Map to formatted entries
     return sortedEntries.map((entry: any) => ({
       id: entry.id,
-      clockInTime: formatTime(new Date(entry.clock_in_at)),
-      clockOutTime: entry.clock_out_at ? formatTime(new Date(entry.clock_out_at)) : null,
-      totalWorkMinutes: entry.total_work_minutes || null, // Only for completed entries
+      clockInTime: formatTime(new Date(entry.clockInAt)),
+      clockOutTime: entry.clockOutAt ? formatTime(new Date(entry.clockOutAt)) : null,
+      totalWorkMinutes: entry.totalWorkMinutes || null,
       breaks: entry.timeBreaks?.map(formatBreak) || [],
     }));
   }, [todayEntries]);

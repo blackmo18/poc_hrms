@@ -65,6 +65,7 @@ export class TimeEntryController {
 
     if (filters.employeeId) where.employeeId = filters.employeeId;
     if (filters.departmentId) where.departmentId = filters.departmentId;
+    if (filters.status) where.status = filters.status;
     if (filters.workDate) where.workDate = filters.workDate;
     if (filters.dateFrom && filters.dateTo) {
       where.workDate = {
@@ -94,6 +95,7 @@ export class TimeEntryController {
             email: true,
           },
         },
+        timeBreaks: true,
       },
       orderBy: [
         { workDate: 'desc' },
@@ -120,6 +122,7 @@ export class TimeEntryController {
     
     if (data.clockOutAt !== undefined) updateData.clockOutAt = data.clockOutAt;
     if (data.totalWorkMinutes !== undefined) updateData.totalWorkMinutes = data.totalWorkMinutes;
+    if (data.status !== undefined) updateData.status = data.status;
 
     const timeEntry = await prisma.timeEntry.update({
       where: { id },
@@ -154,7 +157,7 @@ export class TimeEntryController {
   }
 
   /**
-   * Clock out - update clock_out_at and calculate total work minutes
+   * Clock out - update clock_out_at, status to CLOSED, and calculate total work minutes
    */
   async clockOut(id: string, clockOutAt: Date): Promise<any> {
     const timeEntry = await prisma.timeEntry.findUnique({
@@ -172,6 +175,7 @@ export class TimeEntryController {
     return this.update(id, {
       clockOutAt: clockOutAt,
       totalWorkMinutes: totalWorkMinutes,
+      status: 'CLOSED',
     });
   }
 

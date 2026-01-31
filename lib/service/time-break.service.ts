@@ -11,20 +11,25 @@ export class TimeBreakService implements ITimeBreakService {
    * Start a break for an employee on a specific time entry
    */
   async startBreak(data: {
-    employee_id: string;
-    time_entry_id: string;
-    break_type?: BreakType;
-    created_by?: string;
+    employeeId: string;
+    timeEntryId: string;
+    breakType?: BreakType;
+    createdBy?: string;
   }): Promise<any> {
     try {
+      // Validate required parameters
+      if (!data.timeEntryId) {
+        throw new Error('timeEntryId is required to start a break.');
+      }
+
       // Get the time entry to validate
-      const timeEntry = await timeEntryController.getById(data.time_entry_id);
+      const timeEntry = await timeEntryController.getById(data.timeEntryId);
 
       if (!timeEntry) {
         throw new Error('TimeEntry not found.');
       }
 
-      if (timeEntry.employeeId !== data.employee_id) {
+      if (timeEntry.employeeId !== data.employeeId) {
         throw new Error('TimeEntry does not belong to this employee.');
       }
 
@@ -40,23 +45,29 @@ export class TimeBreakService implements ITimeBreakService {
       }
 
       // Check for ongoing break
-      const existingBreaks = await timeBreakController.getByTimeEntryId(data.time_entry_id);
+      const existingBreaks = await timeBreakController.getByTimeEntryId(data.timeEntryId);
       const ongoingBreak = existingBreaks.find(breakItem => !breakItem.breakEndAt);
 
       if (ongoingBreak) {
         throw new Error('There is already an ongoing break.');
       }
 
-      // Create new break
+      // Create new break (using camelCase)
       const createData: CreateTimeBreak = {
-        timesheet_id: data.time_entry_id,
-        break_start_at: currentTime,
-        break_type: data.break_type || BreakType.REST,
-        break_end_at: undefined, // Not ended yet
-        is_paid: false,
+        timeEntryId: data.timeEntryId,
+        breakStartAt: currentTime,
+        breakType: data.breakType || BreakType.REST,
+        breakEndAt: undefined, // Not ended yet
+        isPaid: false,
       };
 
       const newBreak = await timeBreakController.create(createData);
+      console.log('Break created:', {
+        id: newBreak.id,
+        breakStartAt: newBreak.breakStartAt,
+        breakEndAt: newBreak.breakEndAt,
+        timeEntryId: newBreak.timeEntryId
+      });
 
       return {
         success: true,
@@ -72,29 +83,41 @@ export class TimeBreakService implements ITimeBreakService {
    * End a break for an employee
    */
   async endBreak(data: {
-    employee_id: string;
-    time_entry_id: string;
-    updated_by?: string;
+    employeeId: string;
+    timeEntryId: string;
+    updatedBy?: string;
   }): Promise<any> {
     try {
+      // Validate required parameters
+      if (!data.timeEntryId) {
+        throw new Error('timeEntryId is required to end a break.');
+      }
+
       // Get the time entry to validate
-      const timeEntry = await timeEntryController.getById(data.time_entry_id);
+      const timeEntry = await timeEntryController.getById(data.timeEntryId);
 
       if (!timeEntry) {
         throw new Error('TimeEntry not found.');
       }
 
-      if (timeEntry.employeeId !== data.employee_id) {
+      if (timeEntry.employeeId !== data.employeeId) {
         throw new Error('TimeEntry does not belong to this employee.');
       }
 
       const currentTime = new Date();
 
-      // Find ongoing break
-      const existingBreaks = await timeBreakController.getByTimeEntryId(data.time_entry_id);
+      // Find ongoing break with better error handling
+      const existingBreaks = await timeBreakController.getByTimeEntryId(data.timeEntryId);
+      console.log(`Found ${existingBreaks.length} breaks for time entry ${data.timeEntryId}`);
+      
       const ongoingBreak = existingBreaks.find(breakItem => !breakItem.breakEndAt);
 
       if (!ongoingBreak) {
+        console.error('No ongoing break found. Breaks:', existingBreaks.map(b => ({
+          id: b.id,
+          breakStartAt: b.breakStartAt,
+          breakEndAt: b.breakEndAt
+        })));
         throw new Error('No ongoing break to end.');
       }
 

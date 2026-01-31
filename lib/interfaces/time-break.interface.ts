@@ -9,19 +9,19 @@ export interface ITimeBreakService {
    * Start a break for an employee on a specific time entry
    */
   startBreak(data: {
-    employee_id: string;
-    time_entry_id: string;
-    break_type?: BreakType;
-    created_by?: string;
+    employeeId: string;
+    timeEntryId: string;
+    breakType?: BreakType;
+    createdBy?: string;
   }): Promise<any>;
 
   /**
    * End a break for an employee
    */
   endBreak(data: {
-    employee_id: string;
-    time_entry_id: string;
-    updated_by?: string;
+    employeeId: string;
+    timeEntryId: string;
+    updatedBy?: string;
   }): Promise<any>;
 
   /**
