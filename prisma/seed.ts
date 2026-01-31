@@ -886,6 +886,10 @@ async function seedDatabase() {
 
   console.log('✅ Created sample leave requests');
 
+  console.log('✅ Created sample overtime requests');
+
+  console.log('🎉 Database seeding completed successfully!');
+
   // Create sample compensation records
   await Promise.all(
     employees.map(employee =>
@@ -904,7 +908,6 @@ async function seedDatabase() {
 
   console.log('✅ Created compensation records');
 
-  console.log('🎉 Database seeding completed successfully!');
   console.log('');
   console.log('Login credentials:');
   console.log('Super Admin: superadmin@hrsystem.com / superadmin123');

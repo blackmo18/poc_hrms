@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import DragSelectCalendar from './DragSelectCalendar';
+import SelectedEntriesSection from './SelectedEntriesSection';
 import { format } from 'date-fns';
 
 interface TimeEntry {
@@ -22,17 +23,43 @@ interface CalendarEvent {
 interface TimeEntryCalendarV2Props {
   onSelectTimeEntry: (timeEntry: TimeEntry) => void;
   selectedTimeEntryId?: string;
+  onRangeSelect?: (start: Date, end: Date) => void;
 }
 
 export default function TimeEntryCalendarV2({
   onSelectTimeEntry,
   selectedTimeEntryId,
+  onRangeSelect
 }: TimeEntryCalendarV2Props) {
   const [timeEntries, setTimeEntries] = useState<TimeEntry[]>([]);
   const [loading, setLoading] = useState(true); // Start with loading true
   const [backgroundLoading, setBackgroundLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+
+  const handleRangeSelect = async (start: Date, end: Date) => {
+    try {
+      const response = await fetch('/api/overtime-requests', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          startDate: format(start, 'yyyy-MM-dd'),
+          endDate: format(end, 'yyyy-MM-dd')
+        }),
+        credentials: 'include'
+      });
+      if (response.ok) {
+        console.log('Overtime request saved successfully');
+        // Optionally show success message
+      } else {
+        console.error('Failed to save overtime request');
+        setError('Failed to save overtime request');
+      }
+    } catch (err) {
+      console.error('Error saving overtime request:', err);
+      setError('Error saving overtime request');
+    }
+  };
 
   useEffect(() => {
     fetchTimeEntries();
@@ -132,12 +159,6 @@ export default function TimeEntryCalendarV2({
     }
   };
 
-  const getEntriesForSelectedDate = (): TimeEntry[] => {
-    if (!selectedDate) return [];
-    const dateStr = format(selectedDate, 'yyyy-MM-dd');
-    return timeEntries.filter((entry) => entry.date === dateStr);
-  };
-
   return (
     <div className="space-y-6">
       {error && (
@@ -176,119 +197,12 @@ export default function TimeEntryCalendarV2({
           </div>
 
           {/* Selected Entry Details - Always visible */}
-          <div className="rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
-            <div className="border-b border-gray-200 px-6 py-4 dark:border-gray-800">
-              <h3 className="text-lg font-semibold text-gray-800 dark:text-white/90">
-                {selectedDate ? `Entries for ${format(selectedDate, 'EEEE, MMMM d, yyyy')}` : 'Entry Selection'}
-              </h3>
-            </div>
-            <div className="p-6">
-              {selectedDate ? (
-                (() => {
-                  const selectedDateEntries = getEntriesForSelectedDate();
-                  return selectedDateEntries.length > 0 ? (
-                    <div className="space-y-4">
-                      <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-                        {selectedDateEntries.length} time {selectedDateEntries.length === 1 ? 'entry' : 'entries'} found
-                      </p>
-                      <div className="space-y-3">
-                        {selectedDateEntries.map((entry) => (
-                          <div
-                            key={entry.id}
-                            onClick={() => onSelectTimeEntry(entry)}
-                            className={`cursor-pointer rounded-lg border-2 p-4 transition-all ${
-                              selectedTimeEntryId === entry.id
-                                ? 'border-blue-500 bg-blue-50 dark:border-blue-400 dark:bg-blue-900/20'
-                                : 'border-gray-200 bg-gray-50 hover:border-gray-300 dark:border-gray-700 dark:bg-gray-900/50 dark:hover:border-gray-600'
-                            }`}
-                          >
-                            <div className="flex items-center gap-3">
-                              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-100 dark:bg-blue-900/30">
-                                <svg
-                                  className="h-5 w-5 text-blue-600 dark:text-blue-400"
-                                  fill="none"
-                                  stroke="currentColor"
-                                  viewBox="0 0 24 24"
-                                >
-                                  <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth={2}
-                                    d="M12 8v4l3 2m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                                  />
-                                </svg>
-                              </div>
-                              <div className="flex-1">
-                                <p className="font-semibold text-gray-800 dark:text-white/90">
-                                  {entry.startTime} - {entry.endTime}
-                                </p>
-                                <p className="text-sm text-gray-600 dark:text-gray-400">
-                                  Duration: {entry.duration} hours
-                                </p>
-                              </div>
-                              <div className="text-right">
-                                <p className="text-xs text-gray-500 dark:text-gray-500">
-                                  ID: {entry.id.slice(0, 8)}...
-                                </p>
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="text-center py-8">
-                      <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
-                        <svg
-                          className="w-8 h-8 text-gray-400 dark:text-gray-500"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
-                          />
-                        </svg>
-                      </div>
-                      <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
-                        No entries found for this date
-                      </p>
-                      <p className="text-xs text-gray-500 dark:text-gray-500">
-                        Try selecting a different date
-                      </p>
-                    </div>
-                  );
-                })()
-              ) : (
-                <div className="text-center py-8">
-                  <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
-                    <svg
-                      className="w-8 h-8 text-gray-400 dark:text-gray-500"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
-                      />
-                    </svg>
-                  </div>
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
-                    No date selected
-                  </p>
-                  <p className="text-xs text-gray-500 dark:text-gray-500">
-                    Click on a calendar cell above to view entries for that date
-                  </p>
-                </div>
-              )}
-            </div>
-          </div>
+          <SelectedEntriesSection
+            selectedDate={selectedDate}
+            timeEntries={timeEntries}
+            onSelectTimeEntry={onSelectTimeEntry}
+            selectedTimeEntryId={selectedTimeEntryId}
+          />
         </>
       )}
     </div>

@@ -14,7 +14,8 @@ const DragSelectCalendar = ({
   events = [], 
   disableDragSelect = false, 
   onCellClick,
-  selectedDate
+  selectedDate,
+  onRangeSelect
 }: any) => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selection, setSelection] = useState<{ start: Date | null; end: Date | null }>({
@@ -51,6 +52,9 @@ const DragSelectCalendar = ({
       setIsDragging(false);
       setDragStart(null);
       // Optional: callback for range selection
+      if (selection.start && selection.end) {
+        onRangeSelect?.(selection.start, selection.end);
+      }
       console.log("Range selected:", selection);
     }
   };

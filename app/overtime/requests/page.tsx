@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import PageBreadcrumb from '@/components/common/PageBreadCrumb';
 import PageMeta from '@/components/common/PageMeta';
 import Button from '@/components/ui/button/Button';
@@ -10,7 +10,10 @@ import Select from '@/components/form/Select';
 import Label from '@/components/form/Label';
 import DatePicker from '@/components/form/date-picker';
 import TimeEntrySelectionModal from '@/components/overtime/TimeEntrySelectionModal';
+import TimeInput from '@/components/form/input/TimeInput';
+import DetailsConfirmationModal from '@/components/ui/modal/DetailsConfirmationModal';
 import { AlertCircleIcon, CheckCircleIcon, CalendarIcon } from 'lucide-react';
+import OvertimeStatusCards from '@/components/overtime/OvertimeStatusCards';
 
 export default function OTRequestPage() {
   const [formData, setFormData] = useState({
@@ -27,14 +30,71 @@ export default function OTRequestPage() {
   const [submitStatus, setSubmitStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [showTimeEntryModal, setShowTimeEntryModal] = useState(false);
   const [selectedTimeEntryDisplay, setSelectedTimeEntryDisplay] = useState<{ date: string; time: string } | null>(null);
+  const [showValidationModal, setShowValidationModal] = useState(false);
+
+  // Stats state
+  const [stats, setStats] = useState({
+    pendingRequests: 0,
+    approvedThisMonth: 0,
+    totalApprovedHours: 0,
+  });
+
+  useEffect(() => {
+    fetchOvertimeStats();
+  }, []);
+
+  const fetchOvertimeStats = async () => {
+    try {
+      const response = await fetch('/api/overtime-requests', {
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        console.error('Failed to fetch overtime stats');
+        return;
+      }
+
+      const data = await response.json();
+      const records: Array<{
+        status: string;
+        workDate: string;
+        approvedMinutes: number | null;
+      }> = data.data || [];
+
+      const currentMonth = new Date().toISOString().slice(0, 7); // YYYY-MM
+
+      const stats = records.reduce(
+        (acc, record) => {
+          if (record.status === 'PENDING') {
+            acc.pendingRequests++;
+          } else if (record.status === 'APPROVED') {
+            // Check if workDate is in current month
+            const recordMonth = record.workDate.slice(0, 7);
+            if (recordMonth === currentMonth) {
+              acc.approvedThisMonth++;
+            }
+            // Add approved minutes to total
+            if (record.approvedMinutes) {
+              acc.totalApprovedHours += record.approvedMinutes;
+            }
+          }
+          return acc;
+        },
+        { pendingRequests: 0, approvedThisMonth: 0, totalApprovedHours: 0 }
+      );
+
+      setStats(stats);
+    } catch (error) {
+      console.error('Error fetching overtime stats:', error);
+    }
+  };
 
   const otTypeOptions = [
-    { value: '', label: 'Select OT Type' },
-    { value: 'REGULAR_DAY', label: 'Regular Day' },
-    { value: 'REST_DAY', label: 'Rest Day' },
-    { value: 'EMERGENCY', label: 'Emergency' },
-    { value: 'SPECIAL_HOLIDAY', label: 'Special Non-Working Holiday' },
-    { value: 'REGULAR_HOLIDAY', label: 'Regular Holiday' },
+    { value: 'REGULAR_DAY', label: 'Regular Day Overtime' },
+    { value: 'REST_DAY', label: 'Rest Day Overtime' },
+    { value: 'EMERGENCY', label: 'Emergency Overtime' },
+    { value: 'SPECIAL_HOLIDAY', label: 'Special Holiday Overtime' },
+    { value: 'REGULAR_HOLIDAY', label: 'Regular Holiday Overtime' },
   ];
 
   const isRelatedTimeEntryRequired = () => {
@@ -96,25 +156,55 @@ export default function OTRequestPage() {
       return;
     }
 
-    try {
-      console.log('Submitting OT request:', formData);
-      setSubmitStatus('success');
+    setShowValidationModal(true);
+  };
 
-      setTimeout(() => {
-        setFormData({
-          workDate: '',
-          timeEntryId: '',
-          timeStart: '',
-          timeEnd: '',
-          reason: '',
-          otType: '',
-          remarks: '',
-        });
-        setSubmitStatus('idle');
-      }, 2000);
+  const handleConfirmSubmit = async () => {
+    try {
+      const response = await fetch('/api/overtime-requests', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          workDate: formData.workDate,
+          timeEntryId: formData.timeEntryId || null,
+          timeStart: formData.timeStart,
+          timeEnd: formData.timeEnd,
+          reason: formData.reason,
+          otType: formData.otType,
+          remarks: formData.remarks,
+        }),
+        credentials: 'include',
+      });
+
+      if (response.ok) {
+        console.log('OT request submitted successfully');
+        setSubmitStatus('success');
+        setShowValidationModal(false);
+
+        setTimeout(() => {
+          setFormData({
+            workDate: '',
+            timeEntryId: '',
+            timeStart: '',
+            timeEnd: '',
+            reason: '',
+            otType: '',
+            remarks: '',
+          });
+          setSubmitStatus('idle');
+        }, 2000);
+      } else {
+        const errorData = await response.json().catch(() => ({}));
+        console.error('Failed to submit OT request:', errorData);
+        setSubmitStatus('error');
+        setShowValidationModal(false);
+      }
     } catch (error) {
-      setSubmitStatus('error');
       console.error('Error submitting OT request:', error);
+      setSubmitStatus('error');
+      setShowValidationModal(false);
     }
   };
 
@@ -132,23 +222,11 @@ export default function OTRequestPage() {
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-6">
         <div className="max-w-7xl mx-auto">
           {/* Status Cards - Top Most */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-            <div className="rounded-lg border border-gray-200 bg-white p-6 dark:border-gray-800 dark:bg-gray-900">
-              <h3 className="font-semibold text-gray-900 dark:text-white">Pending Requests</h3>
-              <p className="mt-2 text-3xl font-bold text-brand-600">0</p>
-              <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">Awaiting approval</p>
-            </div>
-            <div className="rounded-lg border border-gray-200 bg-white p-6 dark:border-gray-800 dark:bg-gray-900">
-              <h3 className="font-semibold text-gray-900 dark:text-white">Approved</h3>
-              <p className="mt-2 text-3xl font-bold text-success-600">0</p>
-              <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">This month</p>
-            </div>
-            <div className="rounded-lg border border-gray-200 bg-white p-6 dark:border-gray-800 dark:bg-gray-900">
-              <h3 className="font-semibold text-gray-900 dark:text-white">Total OT Hours</h3>
-              <p className="mt-2 text-3xl font-bold text-brand-600">0</p>
-              <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">Approved hours</p>
-            </div>
-          </div>
+          <OvertimeStatusCards
+            pendingRequests={stats.pendingRequests}
+            approvedThisMonth={stats.approvedThisMonth}
+            totalApprovedHours={stats.totalApprovedHours}
+          />
 
           {/* OT Filing Form Section */}
           <div className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03] lg:p-6">
@@ -388,6 +466,26 @@ export default function OTRequestPage() {
               setShowTimeEntryModal(false);
             }}
             selectedTimeEntryId={formData.timeEntryId}
+          />
+
+          {/* Validation Modal */}
+          <DetailsConfirmationModal
+            isOpen={showValidationModal}
+            onClose={() => setShowValidationModal(false)}
+            onConfirm={handleConfirmSubmit}
+            title="Confirm Overtime Request"
+            description="Please review your overtime request details before submitting."
+            details={[
+              { label: 'Work Date', value: formData.workDate },
+              { label: 'OT Type', value: otTypeOptions.find(opt => opt.value === formData.otType)?.label || formData.otType },
+              { label: 'Time Start', value: formData.timeStart },
+              { label: 'Time End', value: formData.timeEnd },
+              { label: 'Related Time Entry', value: selectedTimeEntryDisplay ? `${selectedTimeEntryDisplay.date} ${selectedTimeEntryDisplay.time}` : 'None' },
+              { label: 'Reason', value: formData.reason },
+              { label: 'Remarks', value: formData.remarks || 'None' },
+            ]}
+            confirmText="Submit Request"
+            cancelText="Cancel"
           />
         </div>
       </div>

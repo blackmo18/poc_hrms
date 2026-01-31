@@ -12,17 +12,17 @@ datasource db {
 /////////////////////////////
 
 model Organization {
-  id             String             @id 
-  name           String
-  email          String?
+  id            String             @id
+  name          String
+  email         String?
   contactNumber String?            @map("contact_number")
-  address        String?
-  logo           String?
-  website        String?
-  description    String?
-  status         OrganizationStatus @default(ACTIVE)
-  createdAt      DateTime           @default(now()) @map("created_at")
-  updatedAt      DateTime           @updatedAt @map("updated_at")
+  address       String?
+  logo          String?
+  website       String?
+  description   String?
+  status        OrganizationStatus @default(ACTIVE)
+  createdAt     DateTime           @default(now()) @map("created_at")
+  updatedAt     DateTime           @updatedAt @map("updated_at")
 
   users                   User[]
   employees               Employee[]
@@ -45,7 +45,7 @@ model Organization {
 }
 
 model User {
-  id             String     @id 
+  id             String     @id
   email          String     @unique
   passwordHash   String?    @map("password_hash")
   status         UserStatus @default(ACTIVE)
@@ -55,14 +55,15 @@ model User {
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   employee     Employee     @relation(fields: [employeeId], references: [id], onDelete: Cascade)
 
-  sessions  Session[]
-  accounts  Account[]
-  auditLogs AuditLog[]
-  userRoles UserRole[]
+  sessions          Session[]
+  accounts          Account[]
+  auditLogs         AuditLog[]
+  userRoles         UserRole[]
   passwordResetLogs UserPasswordResetLog[]
 
-  createdAt  DateTime @default(now()) @map("created_at")
-  updatedAt  DateTime @updatedAt @map("updated_at")
+  createdAt DateTime   @default(now()) @map("created_at")
+  updatedAt DateTime   @updatedAt @map("updated_at")
+  Overtime  Overtime[]
 }
 
 /////////////////////////////
@@ -70,7 +71,7 @@ model User {
 /////////////////////////////
 
 model Employee {
-  id             String  @id 
+  id             String  @id
   organizationId String  @map("organization_id")
   departmentId   String? @map("department_id")
   jobTitleId     String? @map("job_title_id")
@@ -79,13 +80,13 @@ model Employee {
 
   employmentStatus EmploymentStatus @default(ACTIVE) @map("employment_status")
 
-  firstName String @map("first_name")
-  lastName  String @map("last_name")
+  firstName String    @map("first_name")
+  lastName  String    @map("last_name")
   email     String
-  hireDate  DateTime @map("hire_date")
+  hireDate  DateTime  @map("hire_date")
   exitDate  DateTime? @map("exit_date")
 
-  managerId     String? @map("manager_id")
+  managerId     String?    @map("manager_id")
   manager       Employee?  @relation("EmployeeReportsTo", fields: [managerId], references: [id])
   directReports Employee[] @relation("EmployeeReportsTo")
 
@@ -115,7 +116,7 @@ model Employee {
 }
 
 model Department {
-  id             String  @id 
+  id             String  @id
   organizationId String  @map("organization_id")
   name           String
   description    String?
@@ -131,7 +132,7 @@ model Department {
 }
 
 model JobTitle {
-  id             String  @id 
+  id             String  @id
   organizationId String  @map("organization_id")
   name           String
   description    String?
@@ -147,7 +148,7 @@ model JobTitle {
 }
 
 model Calendar {
-  id             String    @id 
+  id             String    @id
   organizationId String    @map("organization_id")
   name           String
   description    String?
@@ -165,7 +166,7 @@ model Calendar {
 }
 
 model CalendarHoliday {
-  id         String @id 
+  id         String @id
   calendarId String @map("calendar_id")
   holidayId  String @map("holiday_id")
 
@@ -180,7 +181,7 @@ model CalendarHoliday {
 /////////////////////////////
 
 model HolidayTemplate {
-  id             String  @id 
+  id             String  @id
   organizationId String  @map("organization_id")
   name           String
   description    String?
@@ -194,7 +195,7 @@ model HolidayTemplate {
 }
 
 model Holiday {
-  id                String      @id 
+  id                String      @id
   organizationId    String      @map("organization_id")
   holidayTemplateId String      @map("holiday_template_id")
   date              DateTime
@@ -218,7 +219,7 @@ model Holiday {
 }
 
 model EmployeeHolidayAssignment {
-  id             String @id 
+  id             String @id
   employeeId     String @map("employee_id")
   holidayId      String @map("holiday_id")
   organizationId String @map("organization_id")
@@ -240,7 +241,7 @@ model EmployeeHolidayAssignment {
 /////////////////////////////
 
 model PayrollRule {
-  id             String       @id 
+  id             String       @id
   organizationId String       @map("organization_id")
   ruleCode       String       @map("rule_code")
   dayType        DayType      @map("day_type")
@@ -260,24 +261,24 @@ model PayrollRule {
 /////////////////////////////
 
 model TimeEntry {
-  id               String          @id 
-  employeeId       String          @map("employee_id")
-  organizationId   String          @map("organization_id")
-  departmentId     String?         @map("department_id")
+  id             String  @id
+  employeeId     String  @map("employee_id")
+  organizationId String  @map("organization_id")
+  departmentId   String? @map("department_id")
 
-  clockInAt        DateTime        @db.Timestamptz(3) @map("clock_in_at")
-  clockOutAt       DateTime?       @db.Timestamptz(3) @map("clock_out_at")
+  clockInAt  DateTime  @map("clock_in_at") @db.Timestamptz(3)
+  clockOutAt DateTime? @map("clock_out_at") @db.Timestamptz(3)
 
-  workDate         DateTime        @db.Date @map("work_date")
-  totalWorkMinutes Int?            @map("total_work_minutes")
+  workDate         DateTime @map("work_date") @db.Date
+  totalWorkMinutes Int?     @map("total_work_minutes")
 
-  status           TimeEntryStatus @default(OPEN)
+  status TimeEntryStatus @default(OPEN)
 
-  createdAt        DateTime        @default(now()) @map("created_at")
-  updatedAt        DateTime        @updatedAt @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
-  employee         Employee        @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  timeBreaks       TimeBreak[]
+  employee   Employee    @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  timeBreaks TimeBreak[]
 
   @@index([organizationId])
   @@index([employeeId])
@@ -287,30 +288,28 @@ model TimeEntry {
 }
 
 model TimeBreak {
-  id             String     @id 
-  timeEntryId    String     @map("time_entry_id")
-  organizationId String     @map("organization_id")
-  employeeId     String     @map("employee_id")
+  id             String @id
+  timeEntryId    String @map("time_entry_id")
+  organizationId String @map("organization_id")
+  employeeId     String @map("employee_id")
 
-  breakStartAt   DateTime   @db.Timestamptz(3) @map("break_start_at")
-  breakEndAt     DateTime?  @db.Timestamptz(3) @map("break_end_at")
+  breakStartAt DateTime  @map("break_start_at") @db.Timestamptz(3)
+  breakEndAt   DateTime? @map("break_end_at") @db.Timestamptz(3)
 
-  breakType      BreakType  @default(REST)
-  isPaid         Boolean    @default(false)
+  breakType BreakType @default(REST)
+  isPaid    Boolean   @default(false)
 
-  createdAt      DateTime   @default(now()) @map("created_at")
+  createdAt DateTime @default(now()) @map("created_at")
 
-  timeEntry      TimeEntry  @relation(fields: [timeEntryId], references: [id], onDelete: Cascade)
+  timeEntry TimeEntry @relation(fields: [timeEntryId], references: [id], onDelete: Cascade)
 
   @@index([organizationId])
   @@index([employeeId])
   @@index([timeEntryId])
 }
 
-
-
 model Payroll {
-  id             String   @id 
+  id             String   @id
   employeeId     String   @map("employee_id")
   organizationId String   @map("organization_id")
   departmentId   String?  @map("department_id")
@@ -334,7 +333,7 @@ model Payroll {
 }
 
 model PayrollEarning {
-  id             String             @id 
+  id             String             @id
   payrollId      String             @map("payroll_id")
   organizationId String             @map("organization_id")
   employeeId     String             @map("employee_id")
@@ -352,7 +351,7 @@ model PayrollEarning {
 }
 
 model Deduction {
-  id             String @id 
+  id             String @id
   payrollId      String @map("payroll_id")
   organizationId String @map("organization_id")
   employeeId     String @map("employee_id")
@@ -375,7 +374,7 @@ model Deduction {
 /////////////////////////////
 
 model Compensation {
-  id             String       @id 
+  id             String       @id
   employeeId     String       @map("employee_id")
   organizationId String       @map("organization_id")
   departmentId   String?      @map("department_id")
@@ -395,7 +394,7 @@ model Compensation {
 }
 
 model Benefit {
-  id             String  @id 
+  id             String  @id
   organizationId String  @map("organization_id")
   name           String
   description    String?
@@ -412,7 +411,7 @@ model Benefit {
 }
 
 model EmployeeBenefit {
-  id             String @id 
+  id             String @id
   employeeId     String @map("employee_id")
   benefitId      String @map("benefit_id")
   organizationId String @map("organization_id")
@@ -433,7 +432,7 @@ model EmployeeBenefit {
 /////////////////////////////
 
 model Document {
-  id                String  @id 
+  id                String  @id
   organizationId    String  @map("organization_id")
   name              String
   fileType          String  @map("file_type")
@@ -445,8 +444,8 @@ model Document {
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
-  createdBy String? @map("created_by")
-  updatedBy String? @map("updated_by")
+  createdBy String?  @map("created_by")
+  updatedBy String?  @map("updated_by")
 
   @@index([organizationId])
   @@index([fileType])
@@ -454,7 +453,7 @@ model Document {
 }
 
 model EmployeeDocument {
-  id             String @id 
+  id             String @id
   employeeId     String @map("employee_id")
   documentId     String @map("document_id")
   organizationId String @map("organization_id")
@@ -473,7 +472,7 @@ model EmployeeDocument {
 }
 
 model LeaveRequest {
-  id             String      @id 
+  id             String      @id
   employeeId     String      @map("employee_id")
   organizationId String      @map("organization_id")
   departmentId   String?     @map("department_id")
@@ -503,7 +502,7 @@ model LeaveRequest {
 /////////////////////////////
 
 model Admin {
-  id             String @id 
+  id             String @id
   organizationId String @map("organization_id")
   name           String
   email          String
@@ -544,7 +543,7 @@ model AuditLog {
 /////////////////////////////
 
 model Session {
-  id           String   @id 
+  id           String   @id
   sessionToken String   @unique @map("session_token")
   userId       String   @map("user_id")
   expires      DateTime
@@ -586,7 +585,7 @@ model Account {
 /////////////////////////////
 
 model Role {
-  id             String @id 
+  id             String @id
   organizationId String @map("organization_id")
   name           String
 
@@ -603,7 +602,7 @@ model Role {
 
 model Permission {
   description    String?
-  id             String  @id 
+  id             String  @id
   organizationId String  @map("organization_id")
   name           String
 
@@ -617,7 +616,7 @@ model Permission {
 }
 
 model UserRole {
-  id     String @id 
+  id     String @id
   userId String @map("user_id")
   roleId String @map("role_id")
 
@@ -633,7 +632,7 @@ model UserRole {
 }
 
 model RolePermission {
-  id           String @id 
+  id           String @id
   roleId       String @map("role_id")
   permissionId String @map("permission_id")
 
@@ -653,10 +652,10 @@ model RolePermission {
 /////////////////////////////
 
 model UserPasswordResetLog {
-  id        String   @id 
-  userId    String   @map("user_id")
-  token     String   @unique
-  expiresAt DateTime @map("expires_at")
+  id        String    @id
+  userId    String    @map("user_id")
+  token     String    @unique
+  expiresAt DateTime  @map("expires_at")
   usedAt    DateTime? @map("used_at")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -672,18 +671,27 @@ model UserPasswordResetLog {
 /////////////////////////////
 
 model Overtime {
-  id                String                  @id 
-  employeeId        String                  @map("employee_id")
-  organizationId    String                  @map("organization_id")
-  workDate          DateTime                @map("work_date")
-  requestedMinutes  Int                     @map("requested_minutes")
-  approvedMinutes   Int?                    @map("approved_minutes")
-  status            OvertimeRequestStatus   @default(PENDING)
-  reason            String?
-  approvedByUserId  String?                 @map("approved_by_user_id")
-  approvedAt        DateTime?               @map("approved_at")
+  id             String   @id
+  employeeId     String   @map("employee_id")
+  organizationId String   @map("organization_id")
+  workDate       DateTime @map("work_date")
 
-  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  timeEntryId String? @map("time_entry_id")
+  timeStart   String? @map("time_start")
+  timeEnd     String? @map("time_end")
+
+  otType OvertimeType @map("ot_type")
+
+  requestedMinutes Int                   @map("requested_minutes")
+  approvedMinutes  Int?                  @map("approved_minutes")
+  status           OvertimeRequestStatus @default(PENDING)
+  reason           String
+  remarks          String?               @map("remarks")
+  approvedByUserId String?               @map("approved_by_user_id")
+  approvedAt       DateTime?             @map("approved_at")
+
+  employee       Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  approvedByUser User?    @relation(fields: [approvedByUserId], references: [id])
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -699,7 +707,7 @@ model Overtime {
 /////////////////////////////
 
 model OrganizationOnboarding {
-  id             String    @id 
+  id             String    @id
   organizationId String    @unique @map("organization_id")
   startedAt      DateTime  @default(now()) @map("started_at")
   completedAt    DateTime? @map("completed_at")
@@ -714,7 +722,7 @@ model OrganizationOnboarding {
 }
 
 model OrganizationOffboarding {
-  id             String    @id 
+  id             String    @id
   organizationId String    @unique @map("organization_id")
   startedAt      DateTime  @default(now()) @map("started_at")
   completedAt    DateTime? @map("completed_at")
@@ -809,7 +817,6 @@ enum OrganizationOnboardingStatus {
   CANCELLED // onboarding abandoned by org or system
 }
 
-
 enum TimeEntryStatus {
   OPEN
   CLOSED
@@ -827,4 +834,12 @@ enum OvertimeRequestStatus {
   APPROVED
   REJECTED
   CANCELLED
+}
+
+enum OvertimeType {
+  REGULAR_DAY
+  REST_DAY
+  EMERGENCY
+  SPECIAL_HOLIDAY
+  REGULAR_HOLIDAY
 }
