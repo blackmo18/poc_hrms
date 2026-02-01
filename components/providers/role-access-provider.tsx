@@ -17,7 +17,45 @@ interface RoleAccessContextType {
 const RoleAccessContext = createContext<RoleAccessContextType | undefined>(undefined);
 
 export function RoleAccessProvider({ children }: { children: ReactNode }) {
-  const { user, roles, permissions, isLoading: authLoading } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
+  const [roles, setRoles] = useState<string[]>([]);
+  const [permissions, setPermissions] = useState<string[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+
+  // Fetch roles and permissions from API when user is authenticated
+  useEffect(() => {
+    if (!user) {
+      setRoles([]);
+      setPermissions([]);
+      return;
+    }
+
+    const fetchRolesAndPermissions = async () => {
+      setIsLoading(true);
+      try {
+        const response = await fetch('/api/auth/roles-permissions', {
+          credentials: 'include'
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          setRoles(data.roles || []);
+          setPermissions(data.permissions || []);
+        } else {
+          setRoles([]);
+          setPermissions([]);
+        }
+      } catch (error) {
+        console.error('Failed to fetch roles and permissions:', error);
+        setRoles([]);
+        setPermissions([]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchRolesAndPermissions();
+  }, [user]);
 
   const hasRole = (role: string) => roles.includes(role);
 
@@ -33,7 +71,7 @@ export function RoleAccessProvider({ children }: { children: ReactNode }) {
     <RoleAccessContext.Provider value={{
       roles,
       permissions,
-      isLoading: authLoading,
+      isLoading: isLoading || authLoading,
       hasRole,
       hasAnyRole,
       hasAllRoles,

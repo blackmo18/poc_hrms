@@ -19,8 +19,8 @@ interface User {
 
 interface AuthContextType {
   user: User | null;
-  roles: string[];
-  permissions: string[];
+  roles: string[]; // Kept for backward compatibility, but not used
+  permissions: string[]; // Kept for backward compatibility, but not used
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   isLoading: boolean;
@@ -47,8 +47,6 @@ export function AuthProvider({
   initialUser?: User | null;
 }) {
   const [user, setUser] = useState<User | null>(initialUser);
-  const [roles, setRoles] = useState<string[]>([]);
-  const [permissions, setPermissions] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true); // Always start loading, let checkAuth handle it
   const [hasCheckedAuth, setHasCheckedAuth] = useState(false);
 
@@ -57,8 +55,6 @@ export function AuthProvider({
   const handleUserNull = () => {
     // Called when session validation fails
     setUser(null);
-    setRoles([]);
-    setPermissions([]);
     // Redirect immediately if not on a public route
     const currentPath = typeof window !== 'undefined' ? window.location.pathname : '';
     const publicRoutes = ["/", "/signin", "/signup", "/login", "/test"];
@@ -76,13 +72,11 @@ export function AuthProvider({
     // Called when 401 response is intercepted
     console.log('Session invalidated via 401 response, logging out');
     setUser(null);
-    setRoles([]);
-    setPermissions([]);
     sessionManager.clearSession();
     router.push('/login');
   };
 
-  const { checkAuth } = useUserCache(setUser, setRoles, setPermissions, setIsLoading, setHasCheckedAuth, {
+  const { checkAuth } = useUserCache(setUser, setIsLoading, setHasCheckedAuth, {
     onUserNull: handleUserNull
   });
 
@@ -92,15 +86,12 @@ export function AuthProvider({
       if (sessionData) {
         if (sessionData.user === null) {
           // Session was invalidated by another tab - logout this tab
-          console.log('Session invalidated by another tab, logging out...');
           setUser(null);
           router.push('/login');
         } else if (sessionData.user && !user) {
           // Another tab logged in - update this tab's state
-          console.log('Session established by another tab, updating state...');
           setUser(sanitizeUser(sessionData.user));
-          setRoles((sessionData.user as any).roles || []);
-          setPermissions((sessionData.user as any).permissions || []);
+          // Roles and permissions will be fetched by RoleAccessProvider via API
         }
       }
     });
@@ -176,23 +167,23 @@ export function AuthProvider({
           id: data.user.id,
           email: data.user.email,
           username: data.user.email,
-          organization_id: data.user.organization_id
+          organization_id: data.user.organizationId
         };
         setUser(userData);
         
-        // Fetch full user data including roles via session endpoint
+        // Fetch full user data via session endpoint for verification
+        // Roles and permissions will be fetched separately via /api/auth/roles-permissions
         await checkAuth();
         
         // Small delay to ensure state updates propagate
         await new Promise(resolve => setTimeout(resolve, 100));
         
-        // Store session in session manager for persistence
+        // Store session in session manager for persistence (only basic user info, no sensitive data)
         sessionManager.setAuthenticatedUser(
           {
             id: data.user.id,
             email: data.user.email,
-            username: data.user.email,
-            role: 'EMPLOYEE'
+            username: data.user.email
           },
           '', // accessToken (managed by cookie)
           ''  // refreshToken (managed by cookie)
@@ -215,19 +206,20 @@ export function AuthProvider({
 
   const logout = async () => {
     try {
+      setIsLoading(true);
+      setUser(null);
+      setIsLoading(false);
+      
       // Notify other tabs about logout and clear session
       sessionManager.clearSession();
 
-      // Call sign-out endpoint to clear server-side cookies
+      // Call sign-out endpoint to clear server-side cookies and database session
       await fetch('/api/auth/sign-out', { method: 'POST', credentials: 'include' });
-
-      setUser(null);
     } catch (error) {
       console.error('Logout failed:', error);
       // Still clear local state even if server logout fails
       setUser(null);
-      setRoles([]);
-      setPermissions([]);
+      setIsLoading(false);
       sessionManager.clearSession();
     }
   };
@@ -240,7 +232,7 @@ export function AuthProvider({
   };
 
   return (
-    <AuthContext.Provider value={{ user, roles, permissions, login, logout, isLoading, getAccessToken, checkAuth }}>
+    <AuthContext.Provider value={{ user, roles: [], permissions: [], login, logout, isLoading, getAccessToken, checkAuth }}>
       {children}
     </AuthContext.Provider>
   );

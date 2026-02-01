@@ -28,8 +28,6 @@ const sanitizeUser = (user: any): User => ({
 
 export function useUserCache(
   setUser: (user: User | null) => void,
-  setRoles: (roles: string[]) => void,
-  setPermissions: (permissions: string[]) => void,
   setIsLoading: (loading: boolean) => void,
   setHasCheckedAuth: (checked: boolean) => void,
   options: UseUserCacheOptions = {}
@@ -72,12 +70,13 @@ export function useUserCache(
 
       if (response.ok) {
         const data = await response.json();
+        
         if (data.user) {
           const sanitized = sanitizeUser(data.user);
           setUser(sanitized);
           setInternalUser(sanitized);
-          setRoles(data.user.roles || []);
-          setPermissions(data.user.permissions || []);
+          // Note: roles and permissions are now fetched via /api/auth/roles-permissions
+          // and managed by RoleAccessProvider, not stored here
         } else {
           // Session endpoint returned no user - invalid session
           setUser(null);
