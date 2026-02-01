@@ -2,11 +2,18 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 
 // API service functions
 const timesheetApi = {
-  async performAction(type: 'clockin' | 'clockout' | 'breakin' | 'breakout') {
+  async performAction(type: 'clockin' | 'clockout' | 'breakin' | 'breakout', payload?: any) {
+    const body: any = { type };
+    
+    // For clock-in, include workDate (client knows local timezone)
+    if (type === 'clockin' && payload?.workDate) {
+      body.workDate = payload.workDate;
+    }
+    
     const response = await fetch('/api/timesheet', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ type }),
+      body: JSON.stringify(body),
     });
     
     if (!response.ok) {
@@ -307,7 +314,11 @@ export const useTimeClock = () => {
       setLoading(true);
       setError(null);
       
-      await timesheetApi.performAction('clockin');
+      // Send workDate to server (client knows local timezone)
+      const today = new Date();
+      const workDate = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+      
+      await timesheetApi.performAction('clockin', { workDate });
       await new Promise(resolve => setTimeout(resolve, 100));
       await fetchStatus();
       

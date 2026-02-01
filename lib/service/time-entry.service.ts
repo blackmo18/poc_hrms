@@ -12,12 +12,19 @@ export class TimeEntryService implements ITimeEntryService {
     employeeId: string;
     organizationId: string;
     clockInAt?: Date;
+    workDate?: Date;
     createdBy?: string;
   }): Promise<TimeEntry> {
-    const clockInAt = data.clockInAt || new Date();
+    // IMPORTANT: Always use server time for clockInAt to prevent client manipulation of work hours
+    // Client cannot trick the system into recording more hours than actually worked
+    const clockInAt = new Date();
 
-    // Create work date in local timezone to avoid timezone issues
-    const workDate = new Date(clockInAt.getFullYear(), clockInAt.getMonth(), clockInAt.getDate());
+    // Use provided workDate (from client, which knows local timezone) or calculate from server time
+    let workDate = data.workDate;
+    if (!workDate) {
+      // Fallback: Create work date in local timezone to avoid timezone issues
+      workDate = new Date(clockInAt.getFullYear(), clockInAt.getMonth(), clockInAt.getDate());
+    }
 
     const createData: CreateTimeEntry = {
       employeeId: data.employeeId,

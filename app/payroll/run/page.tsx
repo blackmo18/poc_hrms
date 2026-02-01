@@ -109,24 +109,31 @@ function PayrollRunContent() {
 
     setIsGeneratingSummary(true);
     try {
+      console.log('Payroll Summary Debug:', {
+        selectedCutoff,
+        selectedOrganization,
+        userOrganizationId: user?.organization_id
+      });
+
       // Parse the selected cutoff to get start and end dates
+      // Format: year-month-startDay-endDay (e.g., "2026-2-1-15")
       const cutoffParts = selectedCutoff.split('-');
       const year = parseInt(cutoffParts[0]);
       const month = parseInt(cutoffParts[1]) - 1; // JavaScript months are 0-based
-      const day = parseInt(cutoffParts[2]);
+      const startDay = parseInt(cutoffParts[2]);
+      const endDay = parseInt(cutoffParts[3]);
 
-      let periodStart: Date;
-      let periodEnd: Date;
+      // Create dates in local timezone to avoid UTC conversion issues
+      const periodStart = new Date(year, month, startDay, 0, 0, 0, 0);
+      const periodEnd = new Date(year, month, endDay, 23, 59, 59, 999); // End of day
 
-      if (cutoffParts[3] === '1-15') {
-        // First half of month
-        periodStart = new Date(year, month, 1);
-        periodEnd = new Date(year, month, 15);
-      } else {
-        // Second half of month (16-end)
-        periodStart = new Date(year, month, 16);
-        periodEnd = new Date(year, month + 1, 0); // Last day of month
-      }
+      // Format dates using local date components to avoid timezone conversion
+      const formatLocalDate = (date: Date) => {
+        const y = date.getFullYear();
+        const m = String(date.getMonth() + 1).padStart(2, '0');
+        const d = String(date.getDate()).padStart(2, '0');
+        return `${y}-${m}-${d}`;
+      };
 
       const response = await fetch('/api/payroll/summary', {
         method: 'POST',
@@ -138,8 +145,8 @@ function PayrollRunContent() {
           organizationId: orgId,
           departmentId: selectedDepartment || undefined,
           cutoffPeriod: {
-            start: periodStart.toISOString().split('T')[0],
-            end: periodEnd.toISOString().split('T')[0],
+            start: formatLocalDate(periodStart),
+            end: formatLocalDate(periodEnd),
           },
         }),
       });

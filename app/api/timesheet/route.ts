@@ -34,9 +34,13 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'Already clocked in' }, { status: 400 });
           }
 
+          // Parse workDate from client (client knows local timezone)
+          const workDate = body.workDate ? new Date(body.workDate) : undefined;
+
           result = await timeEntryService.clockIn({
             employeeId: employee.id,
             organizationId: employee.organizationId,
+            workDate: workDate,
             createdBy: user.id,
           });
           break;

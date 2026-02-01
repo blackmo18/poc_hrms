@@ -19,8 +19,8 @@ export function ProtectedRoute({
   fallbackPath = '/dashboard' 
 }: ProtectedRouteProps) {
   const router = useRouter();
-  const { user, isLoading, roles } = useAuth();
-  const { hasPermission, isLoading: roleLoading } = useRoleAccess();
+  const { user, isLoading } = useAuth();
+  const { roles, hasPermission, isLoading: roleLoading } = useRoleAccess();
 
   useEffect(() => {
     // Don't do anything while loading

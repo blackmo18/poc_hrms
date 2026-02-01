@@ -11,6 +11,7 @@ export interface ITimeEntryService {
     employeeId: string;
     organizationId: string;
     clockInAt?: Date;
+    workDate?: Date;
     createdBy?: string;
   }): Promise<TimeEntry>;
 
