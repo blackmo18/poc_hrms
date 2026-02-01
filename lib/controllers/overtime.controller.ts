@@ -76,15 +76,29 @@ export class OvertimeController {
     });
   }
 
-  static async findOvertimeRequestsByEmployee(employeeId: string) {
-    return prisma.overtime.findMany({
-      where: { employeeId },
-      include: {
-        approvedByUser: {
-          select: {
-            email: true,
-          },
-        },
+  static async getOvertimeRequestsByOrganizationAndPeriod(
+    organizationId: string,
+    departmentId: string | undefined,
+    periodStart: Date,
+    periodEnd: Date
+  ) {
+    const whereClause: any = {
+      employee: {
+        organizationId,
+        ...(departmentId && { departmentId }),
+      },
+      workDate: {
+        gte: periodStart,
+        lte: periodEnd,
+      },
+    };
+
+    return await prisma.overtime.findMany({
+      where: whereClause,
+      select: {
+        id: true,
+        status: true,
+        workDate: true,
       },
       orderBy: { workDate: 'desc' },
     });

@@ -15,7 +15,7 @@ export class TimeEntryService implements ITimeEntryService {
     createdBy?: string;
   }): Promise<TimeEntry> {
     const clockInAt = data.clockInAt || new Date();
-    
+
     // Create work date in local timezone to avoid timezone issues
     const workDate = new Date(clockInAt.getFullYear(), clockInAt.getMonth(), clockInAt.getDate());
 
@@ -34,6 +34,25 @@ export class TimeEntryService implements ITimeEntryService {
     const clockOutTime = clockOutAt || new Date();
 
     return await timeEntryController.clockOut(timeEntryId, clockOutTime);
+  }
+
+  /**
+   * Get time entries by organization, department and date range
+   */
+  async getTimeEntriesByOrganizationAndPeriod(
+    organizationId: string,
+    departmentId: string | undefined,
+    periodStart: Date,
+    periodEnd: Date,
+    status?: string
+  ): Promise<TimeEntry[]> {
+    return await timeEntryController.getByOrganizationAndPeriod(
+      organizationId,
+      departmentId,
+      periodStart,
+      periodEnd,
+      status
+    );
   }
 
   /**
@@ -56,38 +75,27 @@ export class TimeEntryService implements ITimeEntryService {
     return result.data.length > 0 ? result.data[0] : null;
   }
 
-  /**
-   * Check if employee is currently clocked in
-   */
   async isClockedIn(employeeId: string): Promise<boolean> {
     const currentEntry = await this.getCurrentOpenEntry(employeeId);
-    return currentEntry !== null;
+    return !!currentEntry;
   }
 
-  /**
-   * Get time entry by ID
-   */
-  async getById(id: string) {
+  async getById(id: string): Promise<TimeEntry | null> {
     return await timeEntryController.getById(id);
   }
 
-  /**
-   * Get time entries for employee within date range
-   */
-  async getByEmployeeAndDateRange(employeeId: string, startDate: Date, endDate: Date) {
-    return await timeEntryController.getAll({
-      employeeId: employeeId,
+  async getByEmployeeAndDateRange(employeeId: string, startDate: Date, endDate: Date): Promise<TimeEntry[]> {
+    const result = await timeEntryController.getAll({
+      employeeId,
       dateFrom: startDate,
       dateTo: endDate,
     });
+    return result.data;
   }
 }
 
-let timeEntryService: ITimeEntryService;
+export const timeEntryService = new TimeEntryService();
 
 export function getTimeEntryService(): ITimeEntryService {
-  if (!timeEntryService) {
-    timeEntryService = new TimeEntryService();
-  }
   return timeEntryService;
 }

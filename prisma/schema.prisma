@@ -42,6 +42,7 @@ model Organization {
   organizationOffboarding OrganizationOffboarding?
 
   @@index([status])
+  @@map("organizations")
 }
 
 model User {
@@ -64,6 +65,8 @@ model User {
   createdAt DateTime   @default(now()) @map("created_at")
   updatedAt DateTime   @updatedAt @map("updated_at")
   Overtime  Overtime[]
+
+  @@map("users")
 }
 
 /////////////////////////////
@@ -113,6 +116,7 @@ model Employee {
   @@index([organizationId])
   @@index([departmentId])
   @@index([jobTitleId])
+  @@map("employees")
 }
 
 model Department {
@@ -129,6 +133,7 @@ model Department {
 
   @@unique([organizationId, name])
   @@index([organizationId])
+  @@map("departments")
 }
 
 model JobTitle {
@@ -145,6 +150,7 @@ model JobTitle {
 
   @@unique([organizationId, name])
   @@index([organizationId])
+  @@map("job_titles")
 }
 
 model Calendar {
@@ -163,6 +169,7 @@ model Calendar {
   updatedAt DateTime @updatedAt @map("updated_at")
 
   @@index([organizationId])
+  @@map("calendars")
 }
 
 model CalendarHoliday {
@@ -174,6 +181,7 @@ model CalendarHoliday {
   holiday  Holiday  @relation(fields: [holidayId], references: [id], onDelete: Cascade)
 
   @@unique([calendarId, holidayId])
+  @@map("calendar_holidays")
 }
 
 /////////////////////////////
@@ -192,6 +200,7 @@ model HolidayTemplate {
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
+  @@map("holiday_templates")
 }
 
 model Holiday {
@@ -216,6 +225,7 @@ model Holiday {
 
   @@index([date])
   @@index([type])
+  @@map("holidays")
 }
 
 model EmployeeHolidayAssignment {
@@ -234,6 +244,7 @@ model EmployeeHolidayAssignment {
   @@index([organizationId])
   @@index([employeeId])
   @@index([holidayId])
+  @@map("employee_holiday_assignments")
 }
 
 /////////////////////////////
@@ -254,6 +265,7 @@ model PayrollRule {
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@index([organizationId, ruleCode, effectiveFrom])
+  @@map("payroll_rules")
 }
 
 /////////////////////////////
@@ -285,6 +297,7 @@ model TimeEntry {
   @@index([departmentId])
   @@index([workDate])
   @@index([status])
+  @@map("time_entries")
 }
 
 model TimeBreak {
@@ -306,6 +319,7 @@ model TimeBreak {
   @@index([organizationId])
   @@index([employeeId])
   @@index([timeEntryId])
+  @@map("time_breaks")
 }
 
 model Payroll {
@@ -330,6 +344,7 @@ model Payroll {
   @@index([employeeId])
   @@index([departmentId])
   @@index([periodStart, periodEnd])
+  @@map("payrolls")
 }
 
 model PayrollEarning {
@@ -348,6 +363,7 @@ model PayrollEarning {
   @@index([employeeId])
   @@index([payrollId])
   @@index([type])
+  @@map("payroll_earnings")
 }
 
 model Deduction {
@@ -367,6 +383,7 @@ model Deduction {
   @@index([employeeId])
   @@index([payrollId])
   @@index([type])
+  @@map("deductions")
 }
 
 /////////////////////////////
@@ -391,6 +408,7 @@ model Compensation {
   @@index([employeeId])
   @@index([departmentId])
   @@index([effectiveDate])
+  @@map("compensations")
 }
 
 model Benefit {
@@ -408,6 +426,7 @@ model Benefit {
 
   @@index([organizationId])
   @@index([type])
+  @@map("benefits")
 }
 
 model EmployeeBenefit {
@@ -425,6 +444,7 @@ model EmployeeBenefit {
   @@index([organizationId])
   @@index([employeeId])
   @@index([benefitId])
+  @@map("employee_benefits")
 }
 
 /////////////////////////////
@@ -450,6 +470,7 @@ model Document {
   @@index([organizationId])
   @@index([fileType])
   @@index([name])
+  @@map("documents")
 }
 
 model EmployeeDocument {
@@ -469,6 +490,7 @@ model EmployeeDocument {
   @@index([employeeId])
   @@index([documentId])
   @@index([uploadedAt])
+  @@map("employee_documents")
 }
 
 model LeaveRequest {
@@ -495,6 +517,7 @@ model LeaveRequest {
   @@index([status])
   @@index([leaveType])
   @@index([startDate, endDate])
+  @@map("leave_requests")
 }
 
 /////////////////////////////
@@ -516,6 +539,7 @@ model Admin {
   @@index([organizationId])
   @@index([email])
   @@index([role])
+  @@map("admins")
 }
 
 model AuditLog {
@@ -536,6 +560,7 @@ model AuditLog {
   @@index([userId])
   @@index([entityType])
   @@index([timestamp])
+  @@map("audit_logs")
 }
 
 /////////////////////////////
@@ -555,6 +580,7 @@ model Session {
 
   @@index([userId])
   @@index([expires])
+  @@map("sessions")
 }
 
 model Account {
@@ -578,6 +604,7 @@ model Account {
 
   @@unique([provider, providerAccountId])
   @@index([userId])
+  @@map("accounts")
 }
 
 /////////////////////////////
@@ -598,6 +625,7 @@ model Role {
 
   @@unique([organizationId, name])
   @@index([organizationId])
+  @@map("roles")
 }
 
 model Permission {
@@ -613,6 +641,7 @@ model Permission {
   updatedAt DateTime @updatedAt @map("updated_at")
 
   @@index([organizationId])
+  @@map("permissions")
 }
 
 model UserRole {
@@ -629,6 +658,7 @@ model UserRole {
   @@unique([userId, roleId])
   @@index([userId])
   @@index([roleId])
+  @@map("user_roles")
 }
 
 model RolePermission {
@@ -645,6 +675,7 @@ model RolePermission {
   @@unique([roleId, permissionId])
   @@index([roleId])
   @@index([permissionId])
+  @@map("role_permissions")
 }
 
 /////////////////////////////
@@ -664,6 +695,7 @@ model UserPasswordResetLog {
 
   @@index([userId])
   @@index([token])
+  @@map("user_password_reset_logs")
 }
 
 /////////////////////////////
@@ -700,6 +732,7 @@ model Overtime {
   @@index([employeeId])
   @@index([status])
   @@index([workDate])
+  @@map("overtimes")
 }
 
 /////////////////////////////
@@ -719,6 +752,7 @@ model OrganizationOnboarding {
   updatedAt DateTime @updatedAt @map("updated_at")
 
   @@index([status])
+  @@map("organization_onboardings")
 }
 
 model OrganizationOffboarding {
@@ -735,6 +769,7 @@ model OrganizationOffboarding {
   updatedAt DateTime @updatedAt @map("updated_at")
 
   @@index([status])
+  @@map("organization_offboardings")
 }
 
 /////////////////////////////

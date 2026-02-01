@@ -4,6 +4,54 @@ import { generateULID } from '../utils/ulid.service';
 
 export class TimeEntryController {
   /**
+   * Get time entries by organization, department and date range
+   */
+  async getByOrganizationAndPeriod(
+    organizationId: string,
+    departmentId: string | undefined,
+    periodStart: Date,
+    periodEnd: Date,
+    status?: string
+  ) {
+    const whereClause: any = {
+      organizationId,
+      workDate: {
+        gte: periodStart,
+        lte: periodEnd,
+      },
+    };
+
+    if (departmentId) {
+      whereClause.employee = {
+        departmentId,
+      };
+    }
+
+    if (status) {
+      whereClause.status = status;
+    }
+
+    return await prisma.timeEntry.findMany({
+      where: whereClause,
+      include: {
+        employee: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+            organizationId: true,
+            departmentId: true,
+          },
+        },
+      },
+      orderBy: {
+        workDate: 'desc',
+      },
+    });
+  }
+
+  /**
    * Create a new time entry
    */
   async create(data: CreateTimeEntry) {
@@ -119,7 +167,7 @@ export class TimeEntryController {
    */
   async update(id: string, data: UpdateTimeEntry) {
     const updateData: any = {};
-    
+
     if (data.clockOutAt !== undefined) updateData.clockOutAt = data.clockOutAt;
     if (data.totalWorkMinutes !== undefined) updateData.totalWorkMinutes = data.totalWorkMinutes;
     if (data.status !== undefined) updateData.status = data.status;
@@ -204,6 +252,17 @@ export class TimeEntryController {
     });
 
     return timeEntries;
+  }
+
+  /**
+   * Get time entries for an employee within a date range
+   */
+  async getByEmployeeAndDateRange(employeeId: string, startDate: Date, endDate: Date) {
+    return await this.getAll({
+      employeeId,
+      dateFrom: startDate,
+      dateTo: endDate,
+    });
   }
 }
 

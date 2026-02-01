@@ -1,19 +1,19 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
-import PageBreadcrumb from '@/components/common/PageBreadCrumb';
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { ProtectedRoute } from '@/components/protected-route';
-import { ADMINSTRATIVE_ROLES } from '@/lib/constants/roles';
-import Select from '@/components/form/Select';
-import Input from '@/components/form/input/InputField';
+import { useState, useEffect, useCallback } from 'react';
 import OrganizationFilter from '@/components/common/OrganizationFilter';
-import RoleComponentWrapper from '@/components/common/RoleComponentWrapper';
-import { useOrganizationFilter } from '@/hooks/useOrganizationFilter';
-import { usePayrollPeriods } from '@/hooks/usePayrollPeriods';
+import { Card, CardHeader, CardContent } from '@/components/ui/card';
+import { PayrollSelectionPanel } from './components/PayrollSelectionPanel';
+import { PayrollSummaryButton } from './components/PayrollSummaryButton';
+import { PayrollSummaryResults } from './components/PayrollSummaryResults';
+import { ActionButtons } from './components/ActionButtons';
+import { ProtectedRoute } from '@/components/protected-route';
+import PageBreadcrumb from '@/components/common/PageBreadCrumb';
+import { ADMINSTRATIVE_ROLES } from '@/lib/constants/roles';
 import { useAuth } from '@/components/providers/auth-provider';
-import { useRoleAccess } from '@/components/providers/role-access-provider';
+import { usePayrollPeriods } from '@/hooks/usePayrollPeriods';
+import { useOrganizationFilter } from '@/hooks/useOrganizationFilter';
+import RoleComponentWrapper from '@/components/common/RoleComponentWrapper';
 
 function PayrollRunContent() {
   const [selectedCutoff, setSelectedCutoff] = useState('');
@@ -21,8 +21,12 @@ function PayrollRunContent() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [departments, setDepartments] = useState<Array<{ id: string; name: string }>>([]);
   const [isLoadingDepartments, setIsLoadingDepartments] = useState(false);
+  
+  // Payroll summary state
+  const [payrollSummary, setPayrollSummary] = useState<any>(null);
+  const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
+  
   const { user } = useAuth();
-  const { roles } = useRoleAccess();
   
   // Use the payroll periods hook with configurable period lookback/lookahead
   const { periods: payrollPeriods } = usePayrollPeriods({
@@ -82,7 +86,78 @@ function PayrollRunContent() {
   useEffect(() => {
     const orgId = isSuperAdmin ? selectedOrganization : (user?.organization_id || null);
     fetchDepartments(orgId);
+    // Reset payroll summary when organization changes
+    setPayrollSummary(null);
   }, [selectedOrganization, isSuperAdmin, user?.organization_id, fetchDepartments]);
+
+  // Reset payroll summary when department changes
+  useEffect(() => {
+    setPayrollSummary(null);
+  }, [selectedDepartment]);
+
+  const handleGenerateSummary = async () => {
+    if (!selectedCutoff) {
+      alert('Please select a cutoff period');
+      return;
+    }
+
+    const orgId = isSuperAdmin ? selectedOrganization : (user?.organization_id || null);
+    if (!orgId) {
+      alert('Please select an organization');
+      return;
+    }
+
+    setIsGeneratingSummary(true);
+    try {
+      // Parse the selected cutoff to get start and end dates
+      const cutoffParts = selectedCutoff.split('-');
+      const year = parseInt(cutoffParts[0]);
+      const month = parseInt(cutoffParts[1]) - 1; // JavaScript months are 0-based
+      const day = parseInt(cutoffParts[2]);
+
+      let periodStart: Date;
+      let periodEnd: Date;
+
+      if (cutoffParts[3] === '1-15') {
+        // First half of month
+        periodStart = new Date(year, month, 1);
+        periodEnd = new Date(year, month, 15);
+      } else {
+        // Second half of month (16-end)
+        periodStart = new Date(year, month, 16);
+        periodEnd = new Date(year, month + 1, 0); // Last day of month
+      }
+
+      const response = await fetch('/api/payroll/summary', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          organizationId: orgId,
+          departmentId: selectedDepartment || undefined,
+          cutoffPeriod: {
+            start: periodStart.toISOString().split('T')[0],
+            end: periodEnd.toISOString().split('T')[0],
+          },
+        }),
+      });
+
+      if (response.ok) {
+        const summary = await response.json();
+        setPayrollSummary(summary);
+      } else {
+        const error = await response.json();
+        alert(`Failed to generate summary: ${error.error || 'Unknown error'}`);
+      }
+    } catch (error) {
+      console.error('Error generating payroll summary:', error);
+      alert('Failed to generate payroll summary. Please try again.');
+    } finally {
+      setIsGeneratingSummary(false);
+    }
+  };
 
   const handleGeneratePayroll = async () => {
     if (!selectedCutoff || !selectedDepartment) {
@@ -119,65 +194,47 @@ function PayrollRunContent() {
                 />
               </RoleComponentWrapper>
 
-              {/* Cutoff Selection */}
-              <div>
-                <label className="block text-sm font-medium mb-2">Cutoff Period</label>
-                <Select
-                  value={selectedCutoff}
-                  onChange={setSelectedCutoff}
-                  placeholder="Select cutoff period..."
-                  options={payrollPeriods.map(period => ({
-                    value: period.value,
-                    label: period.label
-                  }))}
-                />
-              </div>
+              {/* Payroll Selection Panel */}
+              <PayrollSelectionPanel
+                selectedCutoff={selectedCutoff}
+                onCutoffChange={setSelectedCutoff}
+                payrollPeriods={payrollPeriods.map(period => ({
+                  value: period.value,
+                  label: period.label
+                }))}
+                selectedOrganization={selectedOrganization}
+                organizationOptions={organizationOptions}
+                onOrganizationChange={handleOrganizationChange}
+                isOrganizationFilterLoading={isOrganizationFilterLoading}
+                showAllOption={showAllOption}
+                selectedDepartment={selectedDepartment}
+                onDepartmentChange={setSelectedDepartment}
+                departments={departments}
+                isLoadingDepartments={isLoadingDepartments}
+                userOrganizationId={user?.organization_id}
+              />
 
-              {/* Department Selection */}
-              <div>
-                <label className="block text-sm font-medium mb-2">Department</label>
-                <Select
-                  value={selectedDepartment}
-                  onChange={setSelectedDepartment}
-                  placeholder="Select department..."
-                  options={departments.map(dept => ({
-                    value: dept.id,
-                    label: dept.name
-                  }))}
-                  disabled={!selectedOrganization && !user?.organization_id || isLoadingDepartments}
+              {/* Payroll Summary */}
+              <div className="space-y-3">
+                {/* Generate Summary Button - Always Visible */}
+                <PayrollSummaryButton
+                  onGenerateSummary={handleGenerateSummary}
+                  isGenerating={isGeneratingSummary}
+                  disabled={!selectedCutoff || (!selectedOrganization && !user?.organization_id)}
                 />
-                {(!selectedOrganization && !user?.organization_id) && (
-                  <p className="mt-1 text-xs text-gray-500">Please select an organization first</p>
-                )}
-                {isLoadingDepartments && (
-                  <p className="mt-1 text-xs text-gray-500">Loading departments...</p>
-                )}
-              </div>
 
-              {/* Validation Summary */}
-              <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
-                <h3 className="font-medium text-sm mb-2">Validation Status</h3>
-                <ul className="text-sm space-y-1">
-                  <li>✓ Time entries: 125 records</li>
-                  <li>✓ Attendance: Complete</li>
-                  <li>✓ Overtime: 8 requests approved</li>
-                  <li>⚠ Holidays: 2 employees on holiday</li>
-                </ul>
+                {/* Summary Results - Shown After Generation */}
+                {payrollSummary && (
+                  <PayrollSummaryResults summary={payrollSummary} />
+                )}
               </div>
 
               {/* Action Buttons */}
-              <div className="flex gap-3 pt-4">
-                <Button
-                  onClick={handleGeneratePayroll}
-                  disabled={isGenerating || !selectedCutoff || !selectedDepartment}
-                  className="flex-1"
-                >
-                  {isGenerating ? 'Generating...' : 'Generate Payroll'}
-                </Button>
-                <Button variant="outline" className="flex-1">
-                  Preview
-                </Button>
-              </div>
+              <ActionButtons
+                onGeneratePayroll={handleGeneratePayroll}
+                isGenerating={isGenerating}
+                disabled={!selectedCutoff || !selectedDepartment}
+              />
             </CardContent>
           </Card>
 

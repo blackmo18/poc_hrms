@@ -3,24 +3,33 @@ import { CreatePayroll, UpdatePayroll } from '../models/payroll';
 import { generateULID } from '../utils/ulid.service';
 
 export class PayrollController {
-  async getAll(employeeId?: string, periodStart?: Date, periodEnd?: Date) {
+  async getPayrollsByOrganizationAndPeriod(
+    organizationId: string,
+    departmentId: string | undefined,
+    periodStart: Date,
+    periodEnd: Date
+  ) {
     return await prisma.payroll.findMany({
       where: {
-        ...(employeeId && { employeeId }),
-        ...(periodStart && { periodStart: { gte: periodStart } }),
-        ...(periodEnd && { periodEnd: { lte: periodEnd } }),
-      },
-      include: {
-        employee: {
-          include: {
-            department: true,
-            jobTitle: true,
-          },
+        organizationId,
+        ...(departmentId && { departmentId }),
+        periodStart: {
+          gte: periodStart,
+          lte: periodEnd,
         },
-        deductions: true,
+        periodEnd: {
+          gte: periodStart,
+          lte: periodEnd,
+        },
+      },
+      select: {
+        id: true,
+        processedAt: true,
+        periodStart: true,
+        periodEnd: true,
       },
       orderBy: {
-        createdAt: 'desc',
+        processedAt: 'desc',
       },
     });
   }

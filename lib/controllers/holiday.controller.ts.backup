@@ -34,13 +34,18 @@ export class HolidayController {
   /**
    * Create a holiday template
    */
-  async createHolidayTemplate(organizationID: string, name: string, description?: string, createdBy?: string): Promise<any> {
+  async createHolidayTemplate(data: {
+    organization_id: string;
+    name: string;
+    description?: string;
+    created_by?: string;
+  }): Promise<any> {
     return await prisma.holidayTemplate.create({
       data: {
         id: generateULID(),
-        organizationId: organizationID,
-        name: name,
-        description: description,
+        organizationId: data.organization_id,
+        name: data.name,
+        description: data.description,
       } as any,
     });
   }

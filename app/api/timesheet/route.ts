@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getTimeEntryService } from '@/lib/service/time-entry.service';
 import { timeBreakService } from '@/lib/service/time-break.service';
 import { getEmployeeService } from '@/lib/service/employee.service';
 import { requiresPermissions } from '@/lib/auth/middleware';
+import { getTimeEntryService } from '@/lib/service';
 
 export async function POST(request: NextRequest) {
   return requiresPermissions(request, ['timesheet.own'], async (authRequest) => {
@@ -130,7 +130,7 @@ export async function GET(request: NextRequest) {
       }
 
       return NextResponse.json({
-        todayEntries: todayEntries.data || [],
+        todayEntries: todayEntries || [],
         activeEntry,
         activeBreak,
         isClockedIn: !!activeEntry,
