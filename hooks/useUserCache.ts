@@ -62,7 +62,7 @@ export function useUserCache(
         }
       }
 
-      const response = await fetch('/api/auth/session', {
+      const response = await fetch(`/api/auth/session?_t=${Date.now()}`, {
         credentials: 'include',
         headers: {
           'Cache-Control': 'no-cache',

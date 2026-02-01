@@ -183,6 +183,9 @@ export function AuthProvider({
         // Fetch full user data including roles via session endpoint
         await checkAuth();
         
+        // Small delay to ensure state updates propagate
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
         // Store session in session manager for persistence
         sessionManager.setAuthenticatedUser(
           {

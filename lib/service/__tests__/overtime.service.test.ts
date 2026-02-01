@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { OvertimeService, CreateOvertimeRequestData } from '../overtime.service';
 import { prisma } from '../../db';
 
-// Mock prisma
+// Mock prisma before importing it
 vi.mock('../../db', () => ({
   prisma: {
     timeEntry: {
@@ -15,8 +15,6 @@ vi.mock('../../db', () => ({
     },
   },
 }));
-
-import { prisma } from '../../db';
 
 // Ensure mocks are properly typed
 const mockPrisma = vi.mocked(prisma);
@@ -52,18 +50,18 @@ describe('OvertimeService', () => {
       };
 
       (mockPrisma.timeEntry.findFirst as any).mockResolvedValue(mockTimeEntry);
-      mockPrisma.overtime.create.mockResolvedValue(mockOvertime);
+      (mockPrisma.overtime.create as any).mockResolvedValue(mockOvertime);
 
       const result = await service.createOvertimeRequest(mockData);
 
-      expect(prisma.timeEntry.findFirst).toHaveBeenCalledWith({
+      expect(mockPrisma.timeEntry.findFirst).toHaveBeenCalledWith({
         where: {
           id: 'entry-123',
           employeeId: 'emp-123',
         },
       });
 
-      expect(prisma.overtime.create).toHaveBeenCalledWith({
+      expect(mockPrisma.overtime.create).toHaveBeenCalledWith({
         data: {
           id: expect.any(String),
           employeeId: 'emp-123',
@@ -104,13 +102,13 @@ describe('OvertimeService', () => {
         reason: 'Project deadline',
       };
 
-      (prisma.timeEntry.findFirst as any).mockResolvedValue(null);
+      (mockPrisma.timeEntry.findFirst as any).mockResolvedValue(null);
 
       await expect(service.createOvertimeRequest(mockData)).rejects.toThrow(
         'Time entry not found or does not belong to user'
       );
 
-      expect(prisma.timeEntry.findFirst).toHaveBeenCalledWith({
+      expect(mockPrisma.timeEntry.findFirst).toHaveBeenCalledWith({
         where: {
           id: 'entry-123',
           employeeId: 'emp-123',
@@ -134,12 +132,12 @@ describe('OvertimeService', () => {
         employee: { firstName: 'John', lastName: 'Doe', department: { name: 'IT' } },
       };
 
-      (prisma.overtime.create as any).mockResolvedValue(mockOvertime);
+      (mockPrisma.overtime.create as any).mockResolvedValue(mockOvertime);
 
       const result = await service.createOvertimeRequest(mockData);
 
-      expect(prisma.timeEntry.findFirst).not.toHaveBeenCalled();
-      expect(prisma.overtime.create).toHaveBeenCalledWith({
+      expect(mockPrisma.timeEntry.findFirst).not.toHaveBeenCalled();
+      expect(mockPrisma.overtime.create).toHaveBeenCalledWith({
         data: {
           id: expect.any(String),
           employeeId: 'emp-123',
@@ -178,11 +176,11 @@ describe('OvertimeService', () => {
         { id: 'ot-2', reason: 'Work 2' },
       ];
 
-      (prisma.overtime.findMany as any).mockResolvedValue(mockRequests);
+      (mockPrisma.overtime.findMany as any).mockResolvedValue(mockRequests);
 
       const result = await service.getOvertimeRequestsByEmployee('emp-123');
 
-      expect(prisma.overtime.findMany).toHaveBeenCalledWith({
+      expect(mockPrisma.overtime.findMany).toHaveBeenCalledWith({
         where: { employeeId: 'emp-123' },
         include: {
           approvedByUser: {
@@ -191,7 +189,7 @@ describe('OvertimeService', () => {
             },
           },
         },
-        orderBy: { createdAt: 'desc' },
+        orderBy: { workDate: 'desc' },
       });
 
       expect(result).toEqual(mockRequests);
@@ -202,11 +200,11 @@ describe('OvertimeService', () => {
     it('should get overtime request by id', async () => {
       const mockRequest = { id: 'ot-123', reason: 'Work' };
 
-      (prisma.overtime.findUnique as any).mockResolvedValue(mockRequest);
+      (mockPrisma.overtime.findUnique as any).mockResolvedValue(mockRequest);
 
       const result = await service.getOvertimeRequestById('ot-123');
 
-      expect(prisma.overtime.findUnique).toHaveBeenCalledWith({
+      expect(mockPrisma.overtime.findUnique).toHaveBeenCalledWith({
         where: { id: 'ot-123' },
         include: {
           employee: {

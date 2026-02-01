@@ -3,18 +3,27 @@ import { CreateEmployee, UpdateEmployee } from '../models/employee';
 import { generateULID } from '../utils/ulid.service';
 
 export class EmployeeController {
-  async getAll(organizationId?: string, options?: { page?: number; limit?: number }) {
+  async getAll(organizationId?: string, departmentId?: string, options?: { page?: number; limit?: number }) {
     const { page = 1, limit = 15 } = options || {};
     const skip = (page - 1) * limit;
 
+    // Build where clause based on provided filters
+    const whereClause: any = {};
+    if (organizationId) {
+      whereClause.organizationId = organizationId;
+    }
+    if (departmentId) {
+      whereClause.departmentId = departmentId;
+    }
+
     // First get the total count
     const total = await prisma.employee.count({
-      where: organizationId ? { organizationId } : undefined,
+      where: Object.keys(whereClause).length > 0 ? whereClause : undefined,
     });
 
     // Then fetch the paginated employees
     const employees = await prisma.employee.findMany({
-      where: organizationId ? { organizationId } : undefined,
+      where: Object.keys(whereClause).length > 0 ? whereClause : undefined,
       skip,
       take: limit,
       select: {

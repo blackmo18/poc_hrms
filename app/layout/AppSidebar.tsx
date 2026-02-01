@@ -173,7 +173,7 @@ const othersItems: NavItem[] = [
 const AppSidebar: React.FC = () => {
   const { isExpanded, isMobileOpen, isHovered, setIsHovered } = useSidebar();
   const { user } = useAuth();
-  const { roles } = useRoleAccess();
+  const { roles, isLoading } = useRoleAccess();
   const pathname = usePathname();
 
   const [openSubmenu, setOpenSubmenu] = useState<{
@@ -187,6 +187,7 @@ const AppSidebar: React.FC = () => {
 
   const hasAccessToItem = (itemRoles?: string[]) => {
     if (!itemRoles || itemRoles.length === 0) return true;
+    if (isLoading) return false; // Don't show role-based items while roles are loading
     return itemRoles.some(role => roles.includes(role));
   };
 
@@ -379,6 +380,7 @@ const AppSidebar: React.FC = () => {
 
   return (
     <aside
+      key={`${isLoading}-${roles.join(',')}`}
       className={`fixed mt-16 flex flex-col lg:mt-0 top-0 px-5 left-0 bg-white dark:bg-gray-900 dark:border-gray-800 text-gray-900 h-screen transition-all duration-300 ease-in-out z-50 border-r border-gray-200 
         ${
           isExpanded || isMobileOpen

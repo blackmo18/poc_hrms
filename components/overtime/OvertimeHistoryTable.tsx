@@ -56,63 +56,65 @@ export default function OvertimeHistoryTable({ records }: OvertimeHistoryTablePr
   };
 
   return (
-    <div className="overflow-x-auto">
-      <Table>
-        <TableHeader className="bg-gray-50 dark:bg-gray-800">
-          <TableRow>
-            <TableCell isHeader className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-              Work Date
-            </TableCell>
-            <TableCell isHeader className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-              Requested
-            </TableCell>
-            <TableCell isHeader className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-              Approved
-            </TableCell>
-            <TableCell isHeader className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-              Status
-            </TableCell>
-            <TableCell isHeader className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-              Reason
-            </TableCell>
-            <TableCell isHeader className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-              Approved By
-            </TableCell>
-            <TableCell isHeader className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-              Approved At
-            </TableCell>
-          </TableRow>
-        </TableHeader>
-        <TableBody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
-          {records.map((record) => (
-            <TableRow key={record.id}>
-              <TableCell className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
-                {formatDate(record.workDate)}
+    <div className="hidden lg:block overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03]">
+      <div className="w-full overflow-x-auto">
+        <Table>
+          <TableHeader className="bg-gray-50 dark:bg-gray-800">
+            <TableRow>
+              <TableCell isHeader className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                Work Date
               </TableCell>
-              <TableCell className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                {record.requestedMinutes}
+              <TableCell isHeader className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                Requested
               </TableCell>
-              <TableCell className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                {record.approvedMinutes || 'N/A'}
+              <TableCell isHeader className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                Approved
               </TableCell>
-              <TableCell className="px-6 py-4 whitespace-nowrap">
-                <Badge color={getStatusBadgeColor(record.status)}>
-                  {getDisplayStatus(record.status)}
-                </Badge>
+              <TableCell isHeader className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                Status
               </TableCell>
-              <TableCell className="px-6 py-4 text-sm text-gray-900 dark:text-white max-w-xs truncate">
-                {record.reason}
+              <TableCell isHeader className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                Reason
               </TableCell>
-              <TableCell className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                {formatApprovedBy(record.approvedByUser)}
+              <TableCell isHeader className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                Approved By
               </TableCell>
-              <TableCell className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                {record.approvedAt ? formatDate(record.approvedAt) : 'N/A'}
+              <TableCell isHeader className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                Approved At
               </TableCell>
             </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+          </TableHeader>
+          <TableBody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
+            {records.map((record) => (
+              <TableRow key={record.id}>
+                <TableCell className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
+                  {formatDate(record.workDate)}
+                </TableCell>
+                <TableCell className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                  {record.requestedMinutes}
+                </TableCell>
+                <TableCell className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                  {record.approvedMinutes || 'N/A'}
+                </TableCell>
+                <TableCell className="px-6 py-4 whitespace-nowrap">
+                  <Badge color={getStatusBadgeColor(record.status)}>
+                    {getDisplayStatus(record.status)}
+                  </Badge>
+                </TableCell>
+                <TableCell className="px-6 py-4 text-sm text-gray-900 dark:text-white max-w-xs truncate">
+                  {record.reason}
+                </TableCell>
+                <TableCell className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                  {formatApprovedBy(record.approvedByUser)}
+                </TableCell>
+                <TableCell className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                  {record.approvedAt ? formatDate(record.approvedAt) : 'N/A'}
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
     </div>
   );
 }

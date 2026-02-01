@@ -8,6 +8,7 @@ export async function GET(request: NextRequest) {
     // Parse query parameters
     const { searchParams } = new URL(request.url);
     const organizationId = searchParams.get('organizationId');
+    const departmentId = searchParams.get('departmentId');
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '15');
 
@@ -33,14 +34,15 @@ export async function GET(request: NextRequest) {
       // Super Admin can see all employees across all organizations
       result = await employeeController.getAll(
         organizationId ? organizationId : undefined,
+        departmentId ? departmentId : undefined,
         { page, limit }
       );
     } else if (isAdmin) {
       // Admin can see employees in their organization only
-      result = await employeeController.getAll(user.organizationId, { page, limit });
+      result = await employeeController.getAll(user.organizationId, departmentId ? departmentId : undefined, { page, limit });
     } else if (isHRManager) {
       // HR Manager can only see employees from their own organization
-      result = await employeeController.getAll(user.organizationId, { page, limit });
+      result = await employeeController.getAll(user.organizationId, departmentId ? departmentId : undefined, { page, limit });
     } else {
       // Regular employees might have limited access or no access
       return NextResponse.json(
