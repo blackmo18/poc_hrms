@@ -4,7 +4,6 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
 /////////////////////////////
@@ -297,6 +296,7 @@ model TimeEntry {
   @@index([departmentId])
   @@index([workDate])
   @@index([status])
+  @@unique([employeeId, workDate])
   @@map("time_entries")
 }
 
