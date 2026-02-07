@@ -14,10 +14,10 @@ import LoadingSkeleton from '@/components/ui/LoadingSkeleton';
 import { PencilIcon } from '@/icons';
 
 interface Organization {
-  id: number;
+  id: string;
   name: string;
   email?: string;
-  contact_number?: string;
+  contactNumber?: string;
   address?: string;
   status: 'ACTIVE' | 'INACTIVE' | 'SUSPENDED';
 }
@@ -48,7 +48,7 @@ const OrganizationTableBody = memo(function OrganizationTableBody({ organization
             {org.email || 'N/A'}
           </TableCell>
           <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
-            {org.contact_number || 'N/A'}
+            {org.contactNumber || 'N/A'}
           </TableCell>
           <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
             {org.address || 'N/A'}

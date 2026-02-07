@@ -32,17 +32,17 @@ export async function GET(request: NextRequest) {
       result = { data: employees, pagination: null };
     } else {
       // Get all employees with pagination
-      result = await employeeController.getAll(organizationId, { page, limit });
+      result = await employeeController.getAll(organizationId, undefined, { page, limit });
     }
 
     const data = result.data.map(employee => ({
       id: employee.id,
-      first_name: employee.first_name,
-      last_name: employee.last_name,
+      firstName: employee.firstName,
+      lastName: employee.lastName,
       email: employee.email,
-      custom_id: employee.custom_id,
+      customId: employee.customId,
       job_title: employee.jobTitle?.name || '',
-      employment_status: employee.employment_status || 'ACTIVE',
+      employmentStatus: employee.employmentStatus || 'ACTIVE',
     }));
 
     const pagination = result.pagination || {

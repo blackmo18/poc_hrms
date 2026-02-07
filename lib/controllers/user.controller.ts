@@ -1,4 +1,4 @@
-import { prisma } from '../db';
+import { prisma } from '@/lib/db';
 import { generateULID } from '../utils/ulid.service';
 import { CreateUser, UpdateUser } from '../models/user';
 import bcrypt from 'bcryptjs';
@@ -10,12 +10,12 @@ export class UserController {
 
     // First get the total count
     const total = await prisma.user.count({
-      where: organizationId ? { organization_id: organizationId } : undefined,
+      where: organizationId ? { organizationId: organizationId } : undefined,
     });
 
     // Then fetch the paginated users
     const users = await prisma.user.findMany({
-      where: organizationId ? { organization_id: organizationId } : undefined,
+      where: organizationId ? { organizationId: organizationId } : undefined,
       skip,
       take: limit,
       include: {
@@ -37,14 +37,13 @@ export class UserController {
         employee: {
           select: {
             id: true,
-            first_name: true,
-            last_name: true,
-            custom_id: true
+            firstName: true,
+            lastName: true
           }
         }
       },
       orderBy: {
-        created_at: 'desc'
+        createdAt: 'desc'
       }
     });
 
@@ -74,9 +73,8 @@ export class UserController {
         employee: {
           select: {
             id: true,
-            first_name: true,
-            last_name: true,
-            custom_id: true,
+            firstName: true,
+            lastName: true,
           },
         },
         userRoles: {
@@ -94,11 +92,11 @@ export class UserController {
 
   async create(data: CreateUser) {
     // Hash the generated password
-    const hashedPassword = await bcrypt.hash(data.generated_password || 'defaultPassword123', 10);
+    const hashedPassword = await bcrypt.hash(data.generatedPassword || 'defaultPassword123', 10);
     
     // Get employee to determine organization
     const employee = await prisma.employee.findUnique({
-      where: { id: data.employee_id },
+      where: { id: data.employeeId },
       include: { organization: true }
     });
 
@@ -107,19 +105,17 @@ export class UserController {
     }
 
     // Create user with employee's organization
-    const userData = {
-      id: generateULID(),
-      email: data.email,
-      password_hash: hashedPassword,
-      organization_id: employee.organization_id,
-      employee_id: data.employee_id,
-      status: data.status || 'ACTIVE',
-    };
-
     let user;
     try {
       user = await prisma.user.create({
-        data: userData,
+        data: {
+          id: generateULID(),
+          email: data.email,
+          passwordHash: hashedPassword,
+          organizationId: employee.organizationId,
+          employeeId: data.employeeId,
+          status: data.status || 'ACTIVE',
+        } as any,
         include: {
           organization: {
             select: {
@@ -130,9 +126,8 @@ export class UserController {
           employee: {
             select: {
               id: true,
-              first_name: true,
-              last_name: true,
-              custom_id: true,
+              firstName: true,
+              lastName: true,
             },
           },
           userRoles: {
@@ -151,12 +146,14 @@ export class UserController {
     }
 
     // Assign roles to user
-    if (data.role_ids && data.role_ids.length > 0) {
+    if (data.roleIds && data.roleIds.length > 0) {
       await prisma.userRole.createMany({
-        data: data.role_ids.map(roleId => ({
+        data: data.roleIds.map(roleId => ({
           id: generateULID(),
-          user_id: user.id,
-          role_id: roleId,
+          userId: user.id,
+          roleId: roleId,
+          createdAt: new Date(),
+          updatedAt: new Date(),
         }))
       });
 
@@ -173,9 +170,8 @@ export class UserController {
           employee: {
             select: {
               id: true,
-              first_name: true,
-              last_name: true,
-              custom_id: true,
+              firstName: true,
+              lastName: true,
             },
           },
           userRoles: {
@@ -194,16 +190,16 @@ export class UserController {
     let updateData: any = { ...data };
     
     // Handle password updates
-    if (data.generated_password) {
-      updateData.password_hash = await bcrypt.hash(data.generated_password, 10);
-      delete updateData.generated_password; // Remove this field as it's not in the schema
-    } else if (data.password_hash) {
-      updateData.password_hash = await bcrypt.hash(data.password_hash, 10);
+    if (data.generatedPassword) {
+      updateData.passwordHash = await bcrypt.hash(data.generatedPassword, 10);
+      delete updateData.generatedPassword; // Remove this field as it's not in the schema
+    } else if (data.passwordHash) {
+      updateData.passwordHash = await bcrypt.hash(data.passwordHash, 10);
     }
     
-    // Remove role_ids from direct update as it needs separate handling
-    const roleIds = data.role_ids;
-    delete updateData.role_ids;
+    // Remove roleIds from direct update as it needs separate handling
+    const roleIds = data.roleIds;
+    delete updateData.roleIds;
     
     // Update user
     const user = await prisma.user.update({
@@ -219,9 +215,8 @@ export class UserController {
         employee: {
           select: {
             id: true,
-            first_name: true,
-            last_name: true,
-            custom_id: true,
+            firstName: true,
+            lastName: true,
           },
         },
         userRoles: {
@@ -236,7 +231,7 @@ export class UserController {
     if (roleIds !== undefined) {
       // Delete existing roles
       await prisma.userRole.deleteMany({
-        where: { user_id: id }
+        where: { userId: id }
       });
 
       // Add new roles
@@ -244,8 +239,10 @@ export class UserController {
         await prisma.userRole.createMany({
           data: roleIds.map(roleId => ({
             id: generateULID(),
-            user_id: id,
-            role_id: roleId,
+            userId: id,
+            roleId: roleId,
+            createdAt: new Date(),
+            updatedAt: new Date(),
           }))
         });
       }
@@ -263,9 +260,8 @@ export class UserController {
           employee: {
             select: {
               id: true,
-              first_name: true,
-              last_name: true,
-              custom_id: true,
+              firstName: true,
+              lastName: true,
             },
           },
           userRoles: {
@@ -299,9 +295,8 @@ export class UserController {
         employee: {
           select: {
             id: true,
-            first_name: true,
-            last_name: true,
-            custom_id: true,
+            firstName: true,
+            lastName: true,
           },
         },
         userRoles: {
@@ -330,7 +325,7 @@ export class UserController {
       return null;
     }
 
-    const isValid = await bcrypt.compare(password, user.password_hash || '');
+    const isValid = await bcrypt.compare(password, user.passwordHash || '');
     
     if (!isValid) {
       return null;
@@ -343,11 +338,11 @@ export class UserController {
     const user = await this.getById(userId);
     if (!user) return [];
     
-    const roleIds = user.userRoles.map(ur => ur.role_id);
+    const roleIds = user.userRoles.map(ur => ur.roleId);
     
     const rolePermissions = await prisma.rolePermission.findMany({
       where: {
-        role_id: {
+        roleId: {
           in: roleIds
         }
       },

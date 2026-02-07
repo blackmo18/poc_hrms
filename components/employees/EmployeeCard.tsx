@@ -37,13 +37,13 @@ const EmployeeCard: React.FC<EmployeeCardProps> = ({
             <div className="flex-1 min-w-0 space-y-2">
               <div>
                 <h3 className="font-semibold text-gray-900 dark:text-white text-lg">
-                  {employee.first_name} {employee.last_name}
+                  {employee.firstName} {employee.lastName}
                 </h3>
               </div>
 
               <div>
-                <Badge size="sm" color={getStatusColor(employee.employment_status)}>
-                  {employee.employment_status}
+                <Badge size="sm" color={getStatusColor(employee.employmentStatus)}>
+                  {employee.employmentStatus}
                 </Badge>
               </div>
 
@@ -88,7 +88,7 @@ const EmployeeCard: React.FC<EmployeeCardProps> = ({
                   Manager
                 </span>
                 <p className="text-sm text-gray-900 dark:text-white mt-1">
-                  {employee.manager.first_name} {employee.manager.last_name}
+                  {employee.manager.firstName} {employee.manager.lastName}
                 </p>
               </div>
             )}
@@ -98,7 +98,7 @@ const EmployeeCard: React.FC<EmployeeCardProps> = ({
                 Hire Date
               </span>
               <p className="text-sm text-gray-900 dark:text-white mt-1">
-                {new Date(employee.hire_date).toLocaleDateString()}
+                {new Date(employee.hireDate).toLocaleDateString()}
               </p>
             </div>
 

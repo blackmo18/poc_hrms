@@ -9,12 +9,12 @@ export class JobTitleController {
 
     // First get the total count
     const total = await prisma.jobTitle.count({
-      where: organizationId ? { organization_id: organizationId } : undefined,
+      where: organizationId ? { organizationId: organizationId } : undefined,
     });
 
     // Then fetch the paginated job titles
     const jobTitles = await prisma.jobTitle.findMany({
-      where: organizationId ? { organization_id: organizationId } : undefined,
+      where: organizationId ? { organizationId: organizationId } : undefined,
       skip,
       take: limit,
       include: {
@@ -51,7 +51,7 @@ export class JobTitleController {
 
   async create(data: CreateJobTitle) {
     return await prisma.jobTitle.create({
-      data: {id: generateULID(), ...data},
+      data: {id: generateULID(), ...data} as any,
       include: {
         organization: true,
         employees: true,

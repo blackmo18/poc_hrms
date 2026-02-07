@@ -8,10 +8,10 @@ export class PasswordResetLogController {
       return await prisma.userPasswordResetLog.create({
         data: {
           id: generateULID(),
-          user_id: data.user_id,
-          requested_by: data.requested_by,
-          action: data.action,
-        },
+          userId: data.user_id,
+          token: data.token || generateULID(),
+          expiresAt: data.expiresAt || new Date(Date.now() + 24 * 60 * 60 * 1000),
+        } as any,
       });
     } catch (error) {
       // Log the error but don't throw to prevent breaking the main flow
@@ -22,28 +22,20 @@ export class PasswordResetLogController {
 
   async getLogsByUserId(userId: string): Promise<UserPasswordResetLog[]> {
     return await prisma.userPasswordResetLog.findMany({
-      where: { user_id: userId },
-      orderBy: { created_at: 'desc' },
+      where: { userId },
+      orderBy: { createdAt: 'desc' },
     });
   }
 
-  async getLogsByRequestedBy(requestedBy: string): Promise<UserPasswordResetLog[]> {
-    return await prisma.userPasswordResetLog.findMany({
-      where: { requested_by: requestedBy },
-      orderBy: { created_at: 'desc' },
-    });
-  }
-
-  async getLogsByAction(action: string): Promise<UserPasswordResetLog[]> {
-    return await prisma.userPasswordResetLog.findMany({
-      where: { action },
-      orderBy: { created_at: 'desc' },
+  async getLogsByToken(token: string): Promise<UserPasswordResetLog | null> {
+    return await prisma.userPasswordResetLog.findUnique({
+      where: { token },
     });
   }
 
   async getAllLogs(limit: number = 100, offset: number = 0): Promise<UserPasswordResetLog[]> {
     return await prisma.userPasswordResetLog.findMany({
-      orderBy: { created_at: 'desc' },
+      orderBy: { createdAt: 'desc' },
       take: limit,
       skip: offset,
     });
@@ -61,7 +53,7 @@ export class PasswordResetLogController {
 
   async deleteLogsByUserId(userId: string): Promise<{ count: number }> {
     const result = await prisma.userPasswordResetLog.deleteMany({
-      where: { user_id: userId },
+      where: { userId },
     });
     return { count: result.count };
   }
@@ -72,7 +64,7 @@ export class PasswordResetLogController {
 
     const result = await prisma.userPasswordResetLog.deleteMany({
       where: {
-        created_at: { lt: cutoffDate },
+        createdAt: { lt: cutoffDate },
       },
     });
 

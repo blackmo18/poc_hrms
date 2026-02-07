@@ -16,15 +16,17 @@ export class JWTUtils {
     const serializablePayload: Omit<JWTSerializablePayload, 'type'> = {
       userId: payload.userId.toString(),
       email: payload.email,
-      organizationId: payload.organization_id,
+      organizationId: payload.organizationId,
       roleIds: payload.roleIds.map(id => id.toString()),
       username: payload.username
     };
     
+    const expiresInMinutes = parseInt(process.env.JWT_EXPIRES_IN_MINUTES || "10080"); // Default 7 days
+    
     return jwt.sign(
       { ...serializablePayload, type: 'access' },
       JWT_SECRET,
-      { expiresIn: '15m' } // Short-lived access token
+      { expiresIn: expiresInMinutes * 60 } // Convert minutes to seconds
     );
   }
 
@@ -36,7 +38,7 @@ export class JWTUtils {
     const serializablePayload: Omit<JWTSerializablePayload, 'type'> = {
       userId: payload.userId.toString(),
       email: payload.email,
-      organizationId: payload.organization_id,
+      organizationId: payload.organizationId,
       roleIds: payload.roleIds.map(id => id.toString()),
       username: payload.username
     };
@@ -78,7 +80,7 @@ export class JWTUtils {
       const payload: Omit<JWTPayload, 'type'> = {
         userId: user.id,
         email: user.email,
-        organization_id: user.organization_id,
+        organizationId: user.organizationId,
         roleIds,
         username: user.email // Use email as username for now
       };
@@ -94,9 +96,11 @@ export class JWTUtils {
           id: user.id.toString(),
           email: user.email,
           name: user.name,
+          firstName: user.firstName,
+          lastName: user.lastName,
           role: roles[0]?.name || 'EMPLOYEE',
           permissions,
-          organization_id: user.organization_id
+          organizationId: user.organizationId
         },
         accessToken,
         refreshToken
@@ -121,7 +125,7 @@ export class JWTUtils {
       return {
         userId: decoded.userId,  // Keep as string
         email: decoded.email,
-        organization_id: decoded.organizationId,
+        organizationId: decoded.organizationId,
         roleIds: decoded.roleIds,  // Keep as string[]
         username: decoded.username,
         type: 'access'
@@ -149,7 +153,7 @@ export class JWTUtils {
     const newAccessToken = this.generateAccessToken({
       userId: user.id,
       email: user.email,
-      organization_id: user.organization_id,
+      organizationId: user.organizationId,
       username: user.email,
       roleIds
     });
@@ -157,7 +161,7 @@ export class JWTUtils {
     const newRefreshToken = this.generateRefreshToken({
       userId: user.id,
       email: user.email,
-      organization_id: user.organization_id,
+      organizationId: user.organizationId,
       username: user.email,
       roleIds
     });
@@ -172,9 +176,11 @@ export class JWTUtils {
         id: user.id,
         email: user.email,
         name: user.name,
+        firstName: user.firstName,
+        lastName: user.lastName,
         role: roles[0]?.name || 'EMPLOYEE',
         permissions,
-        organization_id: user.organization_id
+        organizationId: user.organizationId
       }
     };
 
@@ -198,7 +204,7 @@ export class JWTUtils {
       return {
         userId: decoded.userId,  // Keep as string
         email: decoded.email,
-        organization_id: decoded.organizationId,
+        organizationId: decoded.organizationId,
         roleIds: decoded.roleIds,  // Keep as string[]
         username: decoded.username,
         type: 'refresh'
@@ -269,7 +275,7 @@ export class JWTUtils {
       return {
         userId: decoded.userId,  // Keep as string
         email: decoded.email,
-        organization_id: decoded.organizationId,
+        organizationId: decoded.organizationId,
         roleIds: decoded.roleIds,  // Keep as string[]
         username: decoded.username,
         type: decoded.type
@@ -301,7 +307,7 @@ export class JWTUtils {
    */
   static extractOrganizationId(token: string): string | null {
     const decoded = this.decodeToken(token);
-    return decoded?.organization_id || null;
+    return decoded?.organizationId || null;
   }
 
   /**

@@ -43,10 +43,10 @@ export async function GET(request: NextRequest) {
       id: permission.id,
       name: permission.name,
       description: permission.description,
-      organization_id: permission.organization_id,
+      organizationId: permission.organizationId,
       rolePermissions: permission.rolePermissions,
-      created_at: permission.created_at.toISOString(),
-      updated_at: permission.updated_at.toISOString(),
+      createdAt: permission.createdAt.toISOString(),
+      updatedAt: permission.updatedAt.toISOString(),
     }));
 
     return NextResponse.json({
@@ -66,7 +66,7 @@ export async function POST(request: NextRequest) {
   return requiresPermissions(request, ['users.create'], async (authRequest) => {
     try {
       const body = await request.json();
-      const { name, description, organization_id } = body;
+      const { name, description, organizationId } = body;
 
       // Validate required fields
       if (!name) {
@@ -87,12 +87,10 @@ export async function POST(request: NextRequest) {
       }
 
       // Create permission using service
-      const permission = await getPermissionService().create({
+      const permission = await  (getPermissionService().create as any)({
         name,
         description,
-        organization_id: organization_id || null,
-        created_by: authRequest.user!.id,
-        updated_by: authRequest.user!.id,
+        organizationId: organizationId || null,
       });
 
       // Fetch the created permission with relations using service
@@ -107,10 +105,10 @@ export async function POST(request: NextRequest) {
         id: fullPermission.id,
         name: fullPermission.name,
         description: fullPermission.description,
-        organization_id: fullPermission.organization_id,
+        organizationId: fullPermission.organizationId,
         rolePermissions: fullPermission.rolePermissions || [],
-        created_at: fullPermission.created_at.toISOString(),
-        updated_at: fullPermission.updated_at.toISOString(),
+        createdAt: fullPermission.createdAt.toISOString(),
+        updatedAt: fullPermission.updatedAt.toISOString(),
       };
 
       return NextResponse.json({

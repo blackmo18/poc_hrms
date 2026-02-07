@@ -7,6 +7,8 @@ interface User {
   username: string;
   role?: string;
   organization_id?: string;
+  firstName?: string;
+  lastName?: string;
 }
 
 interface UseUserCacheOptions {
@@ -19,13 +21,13 @@ const sanitizeUser = (user: any): User => ({
   id: user.id,
   email: user.email,
   username: user.username,
-  organization_id: user.organization_id
+  organization_id: user.organization_id,
+  firstName: user.firstName,
+  lastName: user.lastName
 });
 
 export function useUserCache(
   setUser: (user: User | null) => void,
-  setRoles: (roles: string[]) => void,
-  setPermissions: (permissions: string[]) => void,
   setIsLoading: (loading: boolean) => void,
   setHasCheckedAuth: (checked: boolean) => void,
   options: UseUserCacheOptions = {}
@@ -42,8 +44,12 @@ export function useUserCache(
   // Check auth with caching logic
   const checkAuth = async (forceRefresh = false) => {
     try {
-      // First, try to get cached user data for immediate display
-      if (!forceRefresh) {
+      // Always validate session with server first on initial load
+      // Only use cache for subsequent revalidations
+      const isInitialCheck = !forceRefresh && user === null;
+      
+      if (!isInitialCheck && !forceRefresh) {
+        // For revalidations (not initial check), show cached data while fetching
         const sessionData = sessionManager.getSessionData();
         const cachedUser = sessionData?.user;
         if (cachedUser) {
@@ -54,7 +60,7 @@ export function useUserCache(
         }
       }
 
-      const response = await fetch('/api/auth/session', {
+      const response = await fetch(`/api/auth/session?_t=${Date.now()}`, {
         credentials: 'include',
         headers: {
           'Cache-Control': 'no-cache',
@@ -62,22 +68,23 @@ export function useUserCache(
         }
       });
 
-      console.log('Auth response: ', response);
-
       if (response.ok) {
         const data = await response.json();
+        
         if (data.user) {
           const sanitized = sanitizeUser(data.user);
           setUser(sanitized);
           setInternalUser(sanitized);
-          setRoles(data.user.roles || []);
-          setPermissions(data.user.permissions || []);
+          // Note: roles and permissions are now fetched via /api/auth/roles-permissions
+          // and managed by RoleAccessProvider, not stored here
         } else {
+          // Session endpoint returned no user - invalid session
           setUser(null);
           setInternalUser(null);
           onUserNull?.();
         }
       } else {
+        // Session endpoint returned error - invalid session
         setUser(null);
         setInternalUser(null);
         onUserNull?.();
@@ -96,7 +103,6 @@ export function useUserCache(
 
   // Periodic session revalidation
   useEffect(() => {
-    console.log('Revalidating session...');
     if (!enabled || isRevalidating) return;
 
     const interval = setInterval(async () => {

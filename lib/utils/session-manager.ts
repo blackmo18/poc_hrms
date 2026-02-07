@@ -4,8 +4,6 @@ interface User {
   id: string;
   email: string;
   username: string;
-  role?: string;
-  permissions?: string[];
 }
 
 interface SessionData {

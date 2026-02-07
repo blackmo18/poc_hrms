@@ -6,7 +6,14 @@ export async function proxy(req: Request) {
   const url = new URL(req.url);
   const pathname = url.pathname;
 
-  const publicRoutes = ["/", "/signin", "/signup", "/api/auth"];
+  // Read public routes from environment variable
+  const DEFAULT_PUBLIC_ROUTES = ["/", "/signin", "/signup", "/api/auth"];
+  const publicRoutesEnv = process.env.PUBLIC_ROUTES;
+
+  const publicRoutes = publicRoutesEnv 
+    ? publicRoutesEnv.split(',').map(route => route.trim()).filter(route => route.length > 0)
+    : DEFAULT_PUBLIC_ROUTES; // fallback to default
+  
   const isPublic = publicRoutes.some((p) => pathname === p || pathname.startsWith(p));
 
   if (isPublic) return NextResponse.next();

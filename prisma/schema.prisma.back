@@ -1,0 +1,623 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+/// =======================
+/// ENUMS
+/// =======================
+
+enum OrganizationStatus {
+  ACTIVE
+  SUSPENDED
+  CLOSED
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+}
+
+enum EmploymentStatus {
+  ACTIVE
+  RESIGNED
+  TERMINATED
+  RETIRED
+}
+
+enum PayFrequency {
+  MONTHLY
+  SEMI_MONTHLY
+  BI_WEEKLY
+  WEEKLY
+}
+
+enum LeaveType {
+  VACATION
+  SICK
+  EMERGENCY
+  BEREAVEMENT
+  UNPAID
+}
+
+enum LeaveStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+enum HolidayType {
+  REGULAR
+  SPECIAL_NON_WORKING
+  COMPANY
+  LGU
+}
+
+/// =======================
+/// ORGANIZATION
+/// =======================
+
+model Organization {
+  id             String             @id
+  name           String
+  email          String?
+  contact_number String?
+  address        String?
+  logo           String?
+  website        String?
+  description    String?
+  status         OrganizationStatus @default(ACTIVE)
+
+  created_at DateTime @default(now()) @db.Timestamp(3)
+  updated_at DateTime @updatedAt @db.Timestamp(3)
+  created_by String?
+  updated_by String?
+
+  users            User[]
+  employees        Employee[]
+  admins           Admin[]
+  departments      Department[]
+  jobTitles        JobTitle[]
+  benefits         Benefit[]
+  documents        Document[]
+  permissions      Permission[]
+  roles            Role[]
+  auditLogs        AuditLog[]
+  calendars        Calendar[]
+  holidayTemplates HolidayTemplate[]
+
+  organizationOnboarding  OrganizationOnboarding?
+  organizationOffboarding OrganizationOffboarding?
+  Holiday                 Holiday[]
+
+  @@index([status])
+  @@map("organizations")
+}
+
+/// =======================
+/// ORG LIFECYCLE
+/// =======================
+
+model OrganizationOnboarding {
+  id              String    @id
+  organization_id String    @unique
+  started_at      DateTime  @default(now())
+  completed_at    DateTime?
+  status          String    @default("PENDING")
+
+  created_at DateTime @default(now()) @db.Timestamp(3)
+  updated_at DateTime @updatedAt @db.Timestamp(3)
+
+  organization Organization @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+
+  @@index([status])
+  @@map("organization_onboarding")
+}
+
+model OrganizationOffboarding {
+  id              String    @id
+  organization_id String    @unique
+  started_at      DateTime  @default(now())
+  completed_at    DateTime?
+  reason          String?
+  status          String    @default("PENDING")
+
+  created_at DateTime @default(now()) @db.Timestamp(3)
+  updated_at DateTime @updatedAt @db.Timestamp(3)
+
+  organization Organization @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+
+  @@index([status])
+  @@map("organization_offboarding")
+}
+
+/// =======================
+/// DEPARTMENT & JOB
+/// =======================
+
+model Department {
+  id              String  @id
+  organization_id String
+  name            String
+  description     String?
+
+  organization Organization @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+  employees    Employee[]
+
+  @@unique([organization_id, name])
+  @@index([organization_id])
+  @@map("departments")
+}
+
+model JobTitle {
+  id              String  @id
+  organization_id String
+  name            String
+  description     String?
+
+  organization Organization @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+  employees    Employee[]
+
+  @@unique([organization_id, name])
+  @@index([organization_id])
+  @@map("job_titles")
+}
+
+/// =======================
+/// USER & AUTH
+/// =======================
+
+model User {
+  id            String     @id
+  email         String     @unique
+  password_hash String?
+  status        UserStatus @default(ACTIVE)
+
+  organization_id String
+  employee_id     String? @unique
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  organization Organization @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+  employee     Employee?    @relation("UserEmployee", fields: [employee_id], references: [id])
+
+  userRoles UserRole[]
+  sessions  Session[]
+  accounts  Account[]
+  AuditLog  AuditLog[]
+
+  @@index([organization_id])
+  @@index([status])
+  @@map("users")
+}
+
+/// =======================
+/// EMPLOYEE
+/// =======================
+
+model Employee {
+  id              String  @id
+  organization_id String
+  department_id   String
+  job_title_id    String
+  manager_id      String?
+
+  first_name String
+  last_name  String
+  email      String
+
+  employment_status EmploymentStatus @default(ACTIVE)
+  hire_date         DateTime
+  exit_date         DateTime?
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  organization Organization @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+  department   Department   @relation(fields: [department_id], references: [id])
+  jobTitle     JobTitle     @relation(fields: [job_title_id], references: [id])
+
+  manager       Employee?  @relation("EmployeeReportsTo", fields: [manager_id], references: [id])
+  directReports Employee[] @relation("EmployeeReportsTo")
+
+  user User? @relation("UserEmployee")
+
+  compensations    Compensation[]
+  leaveRequests    LeaveRequest[]
+  payrolls         Payroll[]
+  employeeBenefits EmployeeBenefit[]
+  EmployeeDocument EmployeeDocument[]
+
+  @@unique([organization_id, email])
+  @@index([organization_id])
+  @@index([department_id])
+  @@index([job_title_id])
+  @@index([manager_id])
+  @@index([employment_status])
+  @@map("employees")
+}
+
+/// =======================
+/// COMPENSATION & BENEFITS
+/// =======================
+
+model Compensation {
+  id             String       @id
+  employee_id    String
+  base_salary    Decimal
+  pay_frequency  PayFrequency
+  effective_date DateTime
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  employee Employee @relation(fields: [employee_id], references: [id], onDelete: Cascade)
+
+  @@index([employee_id])
+  @@index([effective_date])
+  @@map("compensations")
+}
+
+model Benefit {
+  id              String  @id
+  organization_id String
+  name            String
+  description     String?
+  type            String
+
+  organization     Organization      @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+  employeeBenefits EmployeeBenefit[]
+
+  @@index([organization_id])
+  @@index([type])
+  @@map("benefits")
+}
+
+model EmployeeBenefit {
+  id           String   @id
+  employee_id  String
+  benefit_id   String
+  contribution Decimal
+  enrolled_at  DateTime @default(now())
+
+  employee Employee @relation(fields: [employee_id], references: [id], onDelete: Cascade)
+  benefit  Benefit  @relation(fields: [benefit_id], references: [id], onDelete: Cascade)
+
+  @@index([employee_id])
+  @@index([benefit_id])
+  @@map("employee_benefits")
+}
+
+/// =======================
+/// DOCUMENTS
+/// =======================
+
+model Document {
+  id                 String  @id
+  organization_id    String
+  name               String
+  file_type          String
+  storage_path       String
+  requires_signature Boolean @default(false)
+
+  organization      Organization       @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+  employeeDocuments EmployeeDocument[]
+
+  created_at DateTime @default(now()) @db.Timestamp(3)
+  updated_at DateTime @updatedAt @db.Timestamp(3)
+  created_by String?
+  updated_by String?
+
+  @@index([organization_id])
+  @@index([file_type])
+  @@index([name])
+  @@map("documents")
+}
+
+model EmployeeDocument {
+  id          String    @id
+  employee_id String
+  document_id String
+  version     String
+  uploaded_at DateTime  @default(now())
+  signed_at   DateTime?
+
+  employee Employee @relation(fields: [employee_id], references: [id], onDelete: Cascade)
+  document Document @relation(fields: [document_id], references: [id], onDelete: Cascade)
+
+  @@index([employee_id])
+  @@index([document_id])
+  @@index([uploaded_at])
+  @@map("employee_documents")
+}
+
+/// =======================
+/// LEAVE
+/// =======================
+
+model LeaveRequest {
+  id            String      @id
+  employee_id   String
+  leave_type    LeaveType
+  start_date    DateTime
+  end_date      DateTime
+  total_minutes Int?
+  is_paid       Boolean     @default(true)
+  status        LeaveStatus @default(PENDING)
+  remarks       String?
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  employee Employee @relation(fields: [employee_id], references: [id], onDelete: Cascade)
+
+  @@index([employee_id])
+  @@index([status])
+  @@index([leave_type])
+  @@index([start_date, end_date])
+  @@map("leave_requests")
+}
+
+/// =======================
+/// HOLIDAYS & CALENDAR
+/// =======================
+
+model HolidayTemplate {
+  id              String  @id
+  organization_id String
+  name            String
+  is_default      Boolean @default(false)
+
+  organization Organization @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+  holidays     Holiday[]
+
+  @@index([organization_id])
+  @@map("holiday_templates")
+}
+
+model Holiday {
+  id                  String      @id
+  organization_id     String
+  holiday_template_id String
+  date                DateTime
+  name                String
+  type                HolidayType
+
+  is_paid_if_not_worked Boolean
+  counts_toward_ot      Boolean
+  rate_multiplier       Decimal
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  organization     Organization      @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+  holidayTemplate  HolidayTemplate   @relation(fields: [holiday_template_id], references: [id], onDelete: Cascade)
+  calendarHolidays CalendarHoliday[]
+
+  @@index([organization_id])
+  @@index([holiday_template_id])
+  @@index([date])
+  @@index([type])
+  @@map("holidays")
+}
+
+model Calendar {
+  id              String    @id
+  organization_id String
+  name            String
+  effective_from  DateTime
+  effective_to    DateTime?
+
+  organization     Organization      @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+  calendarHolidays CalendarHoliday[]
+
+  @@index([organization_id])
+  @@index([effective_from])
+  @@map("calendars")
+}
+
+model CalendarHoliday {
+  id          String @id
+  calendar_id String
+  holiday_id  String
+
+  calendar Calendar @relation(fields: [calendar_id], references: [id], onDelete: Cascade)
+  holiday  Holiday  @relation(fields: [holiday_id], references: [id], onDelete: Cascade)
+
+  @@unique([calendar_id, holiday_id])
+  @@index([calendar_id])
+  @@index([holiday_id])
+  @@map("calendar_holidays")
+}
+
+/// =======================
+/// PAYROLL
+/// =======================
+
+model Payroll {
+  id           String   @id
+  employee_id  String
+  period_start DateTime
+  period_end   DateTime
+  gross_salary Decimal
+  net_salary   Decimal
+  processed_at DateTime @default(now())
+
+  employee   Employee    @relation(fields: [employee_id], references: [id], onDelete: Cascade)
+  deductions Deduction[]
+
+  @@index([employee_id])
+  @@index([period_start, period_end])
+  @@map("payrolls")
+}
+
+model Deduction {
+  id         String  @id
+  payroll_id String
+  type       String
+  amount     Decimal
+
+  payroll Payroll @relation(fields: [payroll_id], references: [id], onDelete: Cascade)
+
+  @@index([payroll_id])
+  @@index([type])
+  @@map("deductions")
+}
+
+/// =======================
+/// RBAC
+/// =======================
+
+model Role {
+  id              String @id
+  organization_id String
+  name            String
+
+  organization    Organization     @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+  userRoles       UserRole[]
+  rolePermissions RolePermission[]
+
+  @@unique([organization_id, name])
+  @@index([organization_id])
+  @@map("roles")
+}
+
+model Permission {
+  id              String @id
+  organization_id String
+  name            String
+
+  organization    Organization     @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+  rolePermissions RolePermission[]
+
+  @@index([organization_id])
+  @@map("permissions")
+}
+
+model UserRole {
+  id      String @id
+  user_id String
+  role_id String
+
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  role Role @relation(fields: [role_id], references: [id], onDelete: Cascade)
+
+  @@unique([user_id, role_id])
+  @@index([user_id])
+  @@index([role_id])
+  @@map("user_roles")
+}
+
+model RolePermission {
+  id            String @id
+  role_id       String
+  permission_id String
+
+  role       Role       @relation(fields: [role_id], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permission_id], references: [id], onDelete: Cascade)
+
+  @@unique([role_id, permission_id])
+  @@index([role_id])
+  @@index([permission_id])
+  @@map("role_permissions")
+}
+
+/// =======================
+/// AUTH
+/// =======================
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  user_id      String
+  expires      DateTime
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
+  @@index([expires])
+  @@map("sessions")
+}
+
+model Account {
+  id                  String @id
+  user_id             String
+  provider            String
+  provider_account_id String
+
+  access_token  String?
+  refresh_token String?
+  expires_at    Int?
+  token_type    String?
+  scope         String?
+  id_token      String?
+  session_state String?
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@unique([provider, provider_account_id])
+  @@index([user_id])
+  @@map("accounts")
+}
+
+/// =======================
+/// AUDIT & ADMIN
+/// =======================
+
+model AuditLog {
+  id              Int      @id @default(autoincrement())
+  organization_id String
+  user_id         String
+  action_type     String
+  entity_type     String
+  entity_id       String?
+  old_data        Json?
+  new_data        Json?
+  timestamp       DateTime @default(now())
+
+  organization Organization @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [user_id], references: [id])
+
+  @@index([organization_id])
+  @@index([user_id])
+  @@index([entity_type])
+  @@index([timestamp])
+  @@map("audit_logs")
+}
+
+model Admin {
+  id              String @id
+  organization_id String
+  name            String
+  email           String
+  role            String
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  organization Organization @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+
+  @@index([organization_id])
+  @@index([email])
+  @@index([role])
+  @@map("admins")
+}

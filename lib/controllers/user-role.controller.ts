@@ -15,19 +15,19 @@ export class UserRoleController {
 
   async getByUserId(userId: string) {
     return await prisma.userRole.findMany({
-      where: { user_id: userId }
+      where: { userId: userId }
     });
   }
 
   async getByRoleId(roleId: string) {
     return await prisma.userRole.findMany({
-      where: { role_id: roleId }
+      where: { roleId: roleId }
     });
   }
 
   async create(data: CreateUserRole) {
     return await prisma.userRole.create({
-      data: { id: generateULID(), ...data }
+      data: { id: generateULID(), ...data } as any
     });
   }
 
@@ -40,8 +40,8 @@ export class UserRoleController {
   async deleteByUserAndRole(userId: string, roleId: string) {
     const result = await prisma.userRole.deleteMany({
       where: {
-        user_id: userId,
-        role_id: roleId
+        userId: userId,
+        roleId: roleId
       }
     });
     return result.count;

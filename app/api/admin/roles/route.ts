@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
         return NextResponse.json(role);
       } else {
         // Get all roles for the organization
-        const organizationId = authRequest.user!.organization_id;
+        const organizationId = authRequest.user!.organizationId;
         const roles = await roleController.getAll(organizationId);
         return NextResponse.json(roles);
       }
@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
       }
 
       // Check if role already exists in the organization
-      const existingRole = await roleController.getAll(authRequest.user!.organization_id);
+      const existingRole = await roleController.getAll(authRequest.user!.organizationId);
       const roleExists = existingRole.data.some(role => role.name.toLowerCase() === name.toLowerCase());
 
       if (roleExists) {
@@ -53,7 +53,7 @@ export async function POST(request: NextRequest) {
       const role = await roleController.create({
         name,
         description,
-        organization_id: authRequest.user!.organization_id
+        organizationId: authRequest.user!.organizationId
       });
 
       // Assign permissions if provided
@@ -94,7 +94,7 @@ export async function PUT(request: NextRequest) {
 
       // Check if role exists and belongs to the organization
       const existingRole = await roleController.getById(id);
-      if (!existingRole || existingRole.organization_id !== authRequest.user!.organization_id) {
+      if (!existingRole || existingRole.organizationId !== authRequest.user!.organizationId) {
         return NextResponse.json({ error: 'Role not found' }, { status: 404 });
       }
 
@@ -147,7 +147,7 @@ export async function DELETE(request: NextRequest) {
 
       // Check if role exists and belongs to the organization
       const role = await roleController.getById(roleId);
-      if (!role || role.organization_id !== authRequest.user!.organization_id) {
+      if (!role || role.organizationId !== authRequest.user!.organizationId) {
         return NextResponse.json({ error: 'Role not found' }, { status: 404 });
       }
 

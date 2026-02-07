@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useUserCache } from '@/hooks/useUserCache';
 import { useIdleTimeout } from '@/hooks/useIdleTimeout';
 import { sessionManager } from '@/lib/utils/session-manager';
+import { setupFetchInterceptor, registerSessionInvalidationCallback } from '@/lib/utils/fetch-interceptor';
 
 interface User {
   id: string;
@@ -12,12 +13,14 @@ interface User {
   username: string;
   role?: string;
   organization_id?: string;
+  firstName?: string;
+  lastName?: string;
 }
 
 interface AuthContextType {
   user: User | null;
-  roles: string[];
-  permissions: string[];
+  roles: string[]; // Kept for backward compatibility, but not used
+  permissions: string[]; // Kept for backward compatibility, but not used
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   isLoading: boolean;
@@ -31,7 +34,9 @@ const sanitizeUser = (user: any): User => ({
   id: user.id,
   email: user.email,
   username: user.username,
-  organization_id: user.organization_id
+  organization_id: user.organization_id,
+  firstName: user.first_name,
+  lastName: user.last_name
 });
 
 export function AuthProvider({
@@ -42,14 +47,38 @@ export function AuthProvider({
   initialUser?: User | null;
 }) {
   const [user, setUser] = useState<User | null>(initialUser);
-  const [roles, setRoles] = useState<string[]>([]);
-  const [permissions, setPermissions] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true); // Always start loading, let checkAuth handle it
   const [hasCheckedAuth, setHasCheckedAuth] = useState(false);
 
   const router = useRouter();
 
-  const { checkAuth } = useUserCache(setUser, setRoles, setPermissions, setIsLoading, setHasCheckedAuth);
+  const handleUserNull = () => {
+    // Called when session validation fails
+    setUser(null);
+    // Redirect immediately if not on a public route
+    const currentPath = typeof window !== 'undefined' ? window.location.pathname : '';
+    const publicRoutes = ["/", "/signin", "/signup", "/login", "/test"];
+    const isPublicRoute = publicRoutes.some((route) =>
+      currentPath === route || currentPath.startsWith(route)
+    );
+    
+    if (!isPublicRoute && typeof window !== 'undefined') {
+      console.log('Session validation failed, redirecting to login from:', currentPath);
+      router.push('/login');
+    }
+  };
+
+  const handleSessionInvalidation = () => {
+    // Called when 401 response is intercepted
+    console.log('Session invalidated via 401 response, logging out');
+    setUser(null);
+    sessionManager.clearSession();
+    router.push('/login');
+  };
+
+  const { checkAuth } = useUserCache(setUser, setIsLoading, setHasCheckedAuth, {
+    onUserNull: handleUserNull
+  });
 
   // Cross-tab session synchronization
   useEffect(() => {
@@ -57,21 +86,24 @@ export function AuthProvider({
       if (sessionData) {
         if (sessionData.user === null) {
           // Session was invalidated by another tab - logout this tab
-          console.log('Session invalidated by another tab, logging out...');
           setUser(null);
           router.push('/login');
         } else if (sessionData.user && !user) {
           // Another tab logged in - update this tab's state
-          console.log('Session established by another tab, updating state...');
           setUser(sanitizeUser(sessionData.user));
-          setRoles((sessionData.user as any).roles || []);
-          setPermissions((sessionData.user as any).permissions || []);
+          // Roles and permissions will be fetched by RoleAccessProvider via API
         }
       }
     });
 
     return unsubscribe;
   }, [user, router]);
+
+  // Setup fetch interceptor for 401 responses
+  useEffect(() => {
+    setupFetchInterceptor();
+    registerSessionInvalidationCallback(handleSessionInvalidation);
+  }, []);
 
   // Idle timeout functionality - auto logout after 30 minutes of inactivity
   useEffect(() => {
@@ -84,12 +116,39 @@ export function AuthProvider({
     checkAuth();
   }, [hasCheckedAuth]);
 
-  // Redirect to login if user is null after auth check
+  // Redirect to login if user is null after auth check (skip for public routes)
   useEffect(() => {
     if (!user && hasCheckedAuth) {
-      router.push('/login');
+      // Check if current route is public
+      const currentPath = window.location.pathname;
+      const publicRoutes = ["/", "/signin", "/signup", "/login", "/test"];
+
+      const isPublicRoute = publicRoutes.some((route) =>
+        currentPath === route || currentPath.startsWith(route)
+      );
+
+      if (!isPublicRoute) {
+        console.log('Session invalid or expired, redirecting to login from:', currentPath);
+        router.push('/login');
+      }
     }
   }, [user, hasCheckedAuth, router]);
+
+  // Immediate redirect on session validation failure (before hasCheckedAuth is set)
+  useEffect(() => {
+    if (isLoading === false && !user && hasCheckedAuth) {
+      const currentPath = window.location.pathname;
+      const publicRoutes = ["/", "/signin", "/signup", "/login", "/test"];
+      const isPublicRoute = publicRoutes.some((route) =>
+        currentPath === route || currentPath.startsWith(route)
+      );
+      
+      if (!isPublicRoute) {
+        console.log('Immediate redirect triggered for:', currentPath);
+        router.push('/login');
+      }
+    }
+  }, [isLoading, user, hasCheckedAuth, router]);
 
 
   const login = async (email: string, password: string) => {
@@ -103,19 +162,35 @@ export function AuthProvider({
       });
 
       if (response.ok) {
-        const session = await response.json();
-        setUser({
-          id: session.user.id,
-          email: session.user.email,
-          username: session.user.username,
-          organization_id: session.user.organization_id
-        });
-        setRoles(session.user.roles || []);
-        setPermissions(session.user.permissions || []);
-        // Store complete session with tokens in session manager
-        sessionManager.setAuthenticatedUser(session.user, session.accessToken, session.refreshToken);
-        // Fetch full user data including roles
+        const data = await response.json();
+        const userData = {
+          id: data.user.id,
+          email: data.user.email,
+          username: data.user.email,
+          organization_id: data.user.organizationId
+        };
+        setUser(userData);
+        
+        // Fetch full user data via session endpoint for verification
+        // Roles and permissions will be fetched separately via /api/auth/roles-permissions
         await checkAuth();
+        
+        // Small delay to ensure state updates propagate
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+        // Store session in session manager for persistence (only basic user info, no sensitive data)
+        sessionManager.setAuthenticatedUser(
+          {
+            id: data.user.id,
+            email: data.user.email,
+            username: data.user.email
+          },
+          '', // accessToken (managed by cookie)
+          ''  // refreshToken (managed by cookie)
+        );
+        
+        // Redirect to dashboard after successful login
+        router.push('/dashboard');
       } else {
         const error = await response.json();
         throw new Error(error.error || 'Login failed');
@@ -131,102 +206,33 @@ export function AuthProvider({
 
   const logout = async () => {
     try {
+      setIsLoading(true);
+      setUser(null);
+      setIsLoading(false);
+      
       // Notify other tabs about logout and clear session
       sessionManager.clearSession();
 
-      // Call sign-out endpoint to clear server-side cookies
+      // Call sign-out endpoint to clear server-side cookies and database session
       await fetch('/api/auth/sign-out', { method: 'POST', credentials: 'include' });
-
-      setUser(null);
     } catch (error) {
       console.error('Logout failed:', error);
       // Still clear local state even if server logout fails
       setUser(null);
-      setRoles([]);
-      setPermissions([]);
+      setIsLoading(false);
       sessionManager.clearSession();
     }
   };
 
-  // Token refresh logic
-  const refreshAccessToken = async (): Promise<boolean> => {
-    try {
-      const refreshToken = sessionManager.getRefreshToken();
-      if (!refreshToken) {
-        // No refresh token means user needs to login again
-        logout();
-        return false;
-      }
-
-      const response = await fetch('/api/auth/refresh', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ refreshToken }),
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        // Update access token in session manager
-        sessionManager.updateAccessToken(data.accessToken);
-        setUser(sanitizeUser(data.user));
-        setRoles(data.user.roles || []);
-        setPermissions(data.user.permissions || []);
-        return true;
-      } else if (response.status === 401) {
-        // 401 means refresh token is invalid/expired - user must login again
-        console.error('Refresh token expired - requires login');
-        logout();
-        return false;
-      } else {
-        // Other errors (500, network issues, etc.) - don't logout immediately
-        console.error('Token refresh failed with status:', response.status);
-        return false;
-      }
-    } catch (error) {
-      // Network errors or other issues - don't logout immediately
-      console.error('Token refresh network error:', error);
-      return false;
-    }
-  };
-
-  // Get access token with auto-refresh
+  // Get access token - Better-Auth manages tokens via cookies
   const getAccessToken = async (): Promise<string | null> => {
-    let token = sessionManager.getAccessToken();
-
-    if (!token) return null;
-
-    // Check if token is expired
-    try {
-      const payload = JSON.parse(atob(token.split('.')[1]));
-      const now = Date.now() / 1000;
-
-      // If token expires in less than 5 minutes, refresh it
-      if (payload.exp - now < 300) {
-        const refreshed = await refreshAccessToken();
-        if (refreshed) {
-          token = sessionManager.getAccessToken();
-        } else {
-          // Refresh failed but don't return null immediately
-          // Return the existing token and let the API handle auth
-          return token;
-        }
-      }
-    } catch {
-      // Token is malformed, return null
-      return null;
-    }
-
-    useIdleTimeout(logout, user, {
-      timeout: 12 * 60 * 1000, // 12 minutes
-      promptBefore: 2 * 60 * 1000, // Warn 2 minutes before logout
-      enabled: !!user // Only enable when user is logged in
-    });
-
-    return token;
+    // Better-Auth manages session via HTTP-only cookies
+    // No need to manually handle tokens
+    return null;
   };
 
   return (
-    <AuthContext.Provider value={{ user, roles, permissions, login, logout, isLoading, getAccessToken, checkAuth }}>
+    <AuthContext.Provider value={{ user, roles: [], permissions: [], login, logout, isLoading, getAccessToken, checkAuth }}>
       {children}
     </AuthContext.Provider>
   );

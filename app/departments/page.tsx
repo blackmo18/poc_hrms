@@ -351,12 +351,16 @@ export default function DepartmentsPage() {
           </div>
 
           {/* Desktop Table View */}
-          <DepartmentTable departments={state.departments} onDelete={handleDeleteClick} currentPage={state.pagination?.page} limit={state.pagination?.limit} loading={state.initialLoading || state.loading || isOrganizationFilterLoading} />
+          {state.departments.length > 0 && (
+            <DepartmentTable departments={state.departments} onDelete={handleDeleteClick} currentPage={state.pagination?.page} limit={state.pagination?.limit} loading={state.initialLoading || state.loading || isOrganizationFilterLoading} />
+          )}
 
           {/* Mobile Card View */}
-          <div className={isOrganizationFilterLoading ? 'opacity-50 pointer-events-none' : ''}>
-            <DepartmentCardList departments={state.departments} onDelete={handleDeleteClick} />
-          </div>
+          {state.departments.length > 0 && (
+            <div className={isOrganizationFilterLoading ? 'opacity-50 pointer-events-none' : ''}>
+              <DepartmentCardList departments={state.departments} onDelete={handleDeleteClick} />
+            </div>
+          )}
 
           {/* Empty State */}
           {!isOrganizationFilterLoading && state.departments.length === 0 && (

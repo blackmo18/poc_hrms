@@ -7,20 +7,20 @@ import { useRoleAccess } from './providers/role-access-provider';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
-  requiredRole?: string;
+  requiredRoles?: string[];
   requiredPermission?: string;
   fallbackPath?: string;
 }
 
 export function ProtectedRoute({ 
   children, 
-  requiredRole, 
+  requiredRoles, 
   requiredPermission,
   fallbackPath = '/dashboard' 
 }: ProtectedRouteProps) {
   const router = useRouter();
   const { user, isLoading } = useAuth();
-  const { hasPermission, isLoading: roleLoading } = useRoleAccess();
+  const { roles, hasPermission, isLoading: roleLoading } = useRoleAccess();
 
   useEffect(() => {
     // Don't do anything while loading
@@ -33,7 +33,7 @@ export function ProtectedRoute({
     }
 
     // Check role requirements
-    if (requiredRole && user.role !== requiredRole) {
+    if (requiredRoles && !requiredRoles.some(role => roles.includes(role))) {
       // Redirect to fallback path instead of 404 to avoid aggressive auth checks
       router.push(fallbackPath);
       return;
@@ -45,7 +45,7 @@ export function ProtectedRoute({
       router.push(fallbackPath);
       return;
     }
-  }, [user, isLoading, roleLoading, router, requiredRole, requiredPermission, fallbackPath, hasPermission]);
+  }, [user, isLoading, roleLoading, router, requiredRoles, requiredPermission, fallbackPath, hasPermission, roles]);
 
   // Show loading state
   if (isLoading || roleLoading) {
@@ -62,7 +62,7 @@ export function ProtectedRoute({
   }
 
   // Check role requirements
-  if (requiredRole && user.role !== requiredRole) {
+  if (requiredRoles && !requiredRoles.some(role => roles.includes(role))) {
     return null;
   }
 

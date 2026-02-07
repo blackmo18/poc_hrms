@@ -6,7 +6,7 @@ export class LeaveRequestController {
   async getAll(employeeId?: string, status?: string) {
     return await prisma.leaveRequest.findMany({
       where: {
-        ...(employeeId && { employee_id: employeeId }),
+        ...(employeeId && { employeeId: employeeId }),
         ...(status && { status: status as any }),
       },
       include: {
@@ -18,7 +18,7 @@ export class LeaveRequestController {
         },
       },
       orderBy: {
-        created_at: 'desc',
+        createdAt: 'desc',
       },
     });
   }
@@ -40,7 +40,7 @@ export class LeaveRequestController {
 
   async create(data: CreateLeaveRequest) {
     return await prisma.leaveRequest.create({
-      data: { id: generateULID(), ...data },
+      data: { id: generateULID(), ...data } as any,
       include: {
         employee: {
           include: {

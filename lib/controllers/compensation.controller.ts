@@ -16,13 +16,21 @@ export class CompensationController {
 
   async findByEmployeeId(employeeId: string) {
     return await prisma.compensation.findMany({
-      where: { employee_id: employeeId }
+      where: { employeeId }
     });
   }
 
   async create(data: CreateCompensation) {
     return await prisma.compensation.create({
-      data: { id: generateULID(), ...data }
+      data: {
+        id: generateULID(),
+        employeeId: data.employeeId,
+        organizationId: data.organizationId,
+        departmentId: data.departmentId,
+        baseSalary: data.baseSalary,
+        payFrequency: data.payFrequency,
+        effectiveDate: data.effectiveDate,
+      } as any
     });
   }
 

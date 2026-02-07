@@ -48,8 +48,8 @@ export async function GET(
       description: permission.description,
       organization: permission.organization,
       rolePermissions: permission.rolePermissions,
-      created_at: permission.created_at.toISOString(),
-      updated_at: permission.updated_at.toISOString(),
+      createdAt: permission.createdAt.toISOString(),
+      updatedAt: permission.updatedAt.toISOString(),
     };
 
     return NextResponse.json({
@@ -114,8 +114,7 @@ export async function PUT(
       data: {
         name,
         description,
-        organization_id: organization_id || null, // null for global permissions
-        updated_by: userContext.id,
+        organizationId: organization_id || null, // null for global permissions
       },
       include: {
         organization: true,
@@ -144,8 +143,8 @@ export async function PUT(
       description: updatedPermission.description,
       organization: updatedPermission.organization,
       rolePermissions: updatedPermission.rolePermissions,
-      created_at: updatedPermission.created_at.toISOString(),
-      updated_at: updatedPermission.updated_at.toISOString(),
+      createdAt: updatedPermission.createdAt.toISOString(),
+      updatedAt: updatedPermission.updatedAt.toISOString(),
     };
 
     return NextResponse.json({

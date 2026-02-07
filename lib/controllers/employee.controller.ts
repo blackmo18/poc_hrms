@@ -3,21 +3,40 @@ import { CreateEmployee, UpdateEmployee } from '../models/employee';
 import { generateULID } from '../utils/ulid.service';
 
 export class EmployeeController {
-  async getAll(organizationId?: string, options?: { page?: number; limit?: number }) {
+  async getAll(organizationId?: string, departmentId?: string, options?: { page?: number; limit?: number }) {
     const { page = 1, limit = 15 } = options || {};
     const skip = (page - 1) * limit;
 
+    // Build where clause based on provided filters
+    const whereClause: any = {};
+    if (organizationId) {
+      whereClause.organizationId = organizationId;
+    }
+    if (departmentId) {
+      whereClause.departmentId = departmentId;
+    }
+
     // First get the total count
     const total = await prisma.employee.count({
-      where: organizationId ? { organization_id: organizationId } : undefined,
+      where: Object.keys(whereClause).length > 0 ? whereClause : undefined,
     });
 
     // Then fetch the paginated employees
     const employees = await prisma.employee.findMany({
-      where: organizationId ? { organization_id: organizationId } : undefined,
+      where: Object.keys(whereClause).length > 0 ? whereClause : undefined,
       skip,
       take: limit,
-      include: {
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        email: true,
+        employeeId: true,
+        employmentStatus: true,
+        hireDate: true,
+        exitDate: true,
+        createdAt: true,
+        updatedAt: true,
         organization: {
           select: {
             id: true,
@@ -38,7 +57,7 @@ export class EmployeeController {
         },
       },
       orderBy: {
-        created_at: 'desc'
+        createdAt: 'desc'
       }
     });
 
@@ -70,7 +89,7 @@ export class EmployeeController {
             benefit: true,
           },
         },
-        timesheets: true,
+        timeEntries: true,
         leaveRequests: true,
         payrolls: {
           include: {
@@ -83,7 +102,19 @@ export class EmployeeController {
 
   async create(data: CreateEmployee) {
     return await prisma.employee.create({
-      data: {id: generateULID(), ...data},
+      data: {
+        id: generateULID(),
+        email: data.email,
+        firstName: data.firstName,
+        lastName: data.lastName,
+        hireDate: data.hireDate,
+        exitDate: data.exitDate,
+        employmentStatus: data.employmentStatus,
+        organization: { connect: { id: data.organizationId } },
+        department: { connect: { id: data.departmentId } },
+        jobTitle: { connect: { id: data.jobTitleId } },
+        updatedAt: new Date(),
+      },
       include: {
         organization: true,
         department: true,
@@ -116,7 +147,7 @@ export class EmployeeController {
 
   async getByDepartment(departmentId: string) {
     return await prisma.employee.findMany({
-      where: { department_id: departmentId },
+      where: { departmentId },
       include: {
         department: true,
         jobTitle: true,
@@ -127,7 +158,7 @@ export class EmployeeController {
 
   async getByManager(managerId: string) {
     return await prisma.employee.findMany({
-      where: { manager_id: managerId },
+      where: { managerId },
       include: {
         department: true,
         jobTitle: true,
@@ -139,11 +170,10 @@ export class EmployeeController {
   async search(organizationId: string, query: string, limit: number = 10) {
     return await prisma.employee.findMany({
       where: {
-        organization_id: organizationId,
+        organizationId,
         OR: [
-          { first_name: { startsWith: query, mode: 'insensitive' as const } },
-          { last_name: { startsWith: query, mode: 'insensitive' as const } },
-          { custom_id: { startsWith: query, mode: 'insensitive' as const } },
+          { firstName: { startsWith: query, mode: 'insensitive' as const } },
+          { lastName: { startsWith: query, mode: 'insensitive' as const } },
           { email: { startsWith: query, mode: 'insensitive' as const } },
         ],
       },
@@ -155,19 +185,19 @@ export class EmployeeController {
   }
 
   async getByUserId(userId: string) {
-    // First get the user to find their employee_id
+    // First get the user to find their employeeId
     const user = await prisma.user.findUnique({
       where: { id: userId },
-      select: { employee_id: true },
+      select: { employeeId: true },
     });
 
-    if (!user || !user.employee_id) {
+    if (!user || !user.employeeId) {
       return null;
     }
 
-    // Then fetch the employee using the employee_id
+    // Then fetch the employee using the employeeId
     return await prisma.employee.findUnique({
-      where: { id: user.employee_id },
+      where: { id: user.employeeId },
       include: {
         organization: true,
         department: true,
@@ -180,7 +210,7 @@ export class EmployeeController {
             benefit: true,
           },
         },
-        timesheets: true,
+        timeEntries: true,
         leaveRequests: true,
         payrolls: {
           include: {
@@ -194,7 +224,7 @@ export class EmployeeController {
   // Simple repository methods for internal use
   async findByDepartmentId(departmentId: string) {
     return await prisma.employee.findMany({
-      where: { department_id: departmentId }
+      where: { departmentId }
     });
   }
 }

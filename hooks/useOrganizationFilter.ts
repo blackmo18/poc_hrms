@@ -26,11 +26,13 @@ export interface UseOrganizationFilterOptions {
   defaultPageSize?: number;
   onDataFetch?: (orgId?: string, page?: number, isOrgChange?: boolean) => Promise<void>;
   enabled?: boolean;
+  showAllOption?: boolean; // Whether to show "All Organizations" option
 }
 
 export interface UseOrganizationFilterReturn extends OrganizationFilterState, OrganizationFilterActions {
   isSuperAdmin: boolean;
   organizationOptions: Array<{ value: string; label: string }>;
+  showAllOption: boolean;
 }
 
 /**
@@ -38,7 +40,7 @@ export interface UseOrganizationFilterReturn extends OrganizationFilterState, Or
  * Handles state management, API calls, and UI logic for organization-based filtering
  */
 export function useOrganizationFilter(options: UseOrganizationFilterOptions): UseOrganizationFilterReturn {
-  const { apiEndpoint, defaultPageSize = 15, onDataFetch, enabled = true } = options;
+  const { apiEndpoint, defaultPageSize = 15, onDataFetch, enabled = true, showAllOption = true } = options;
   const { user, isLoading: authLoading } = useAuth();
   const { roles } = useRoleAccess();
 
@@ -156,5 +158,6 @@ export function useOrganizationFilter(options: UseOrganizationFilterOptions): Us
     // Computed
     isSuperAdmin,
     organizationOptions,
+    showAllOption,
   };
 }

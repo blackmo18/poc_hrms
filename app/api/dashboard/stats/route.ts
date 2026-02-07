@@ -1,18 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
+import { validateSession } from '@/lib/auth/session-validator';
 import { getEmployeeService, getDepartmentService, getPayrollService, getLeaveRequestService } from '@/lib/service';
 
 export async function GET(request: NextRequest) {
   try {
-    // Get authenticated session
-    const session = await auth.api.getSession({ headers: request.headers });
+    // Validate session
+    const session = await validateSession();
 
-    if (!session?.user?.id) {
+    if (!session) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
       );
     }
+
+    const userId = session.userId;
 
     const employeeService = getEmployeeService();
     const departmentService = getDepartmentService();
@@ -31,9 +33,9 @@ export async function GET(request: NextRequest) {
       leaveRequestService.getAll()
     ]);
 
-    const totalEmployees = allEmployees.data.filter(e => e.employment_status === 'ACTIVE').length;
+    const totalEmployees = allEmployees.data.filter(e => e.employmentStatus === 'ACTIVE').length;
     const totalDepartments = allDepartments.data.length;
-    const totalPayroll = allPayrolls.data.reduce((sum, p) => sum + p.net_salary, 0);
+    const totalPayroll = allPayrolls.data.reduce((sum, p) => sum + p.netPay, 0);
     const pendingLeaveRequests = allLeaveRequests.data.filter(lr => lr.status === 'PENDING').length;
 
     const stats = {

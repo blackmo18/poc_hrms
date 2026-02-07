@@ -4,7 +4,9 @@ export interface User {
   name: string;
   passwordHash: string;
   enabled: boolean;
-  organization_id: string;
+  organizationId: string;
+  firstName?: string;
+  lastName?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -17,7 +19,7 @@ export interface Role {
   id: string;  // Changed from number to string (CUID)
   name: string;
   description: string;
-  organization_id: string;
+  organizationId: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -39,12 +41,13 @@ export interface AuthenticatedUser {
   username: string;
   roleIds: string[];  // Changed from number[] to string[] (CUID)
   permissions: string[];
+  organizationId: string;
 }
 
 export interface JWTPayload {
   userId: string;  // Updated to string to match CUID IDs
   email: string;
-  organization_id: string;
+  organizationId: string;
   roleIds: string[];  // Updated to string[] to match CUID IDs
   username: string;
   type: 'access' | 'refresh';
@@ -53,7 +56,7 @@ export interface JWTPayload {
     email: string;
     name: string;
     role: string;
-    organization_id?: string;
+    organizationId?: string;
   };
 }
 
@@ -70,6 +73,6 @@ export interface JWTSerializablePayload {
     email: string;
     name: string;
     role: string;
-    organization_id?: string;
+    organizationId?: string;
   };
 }

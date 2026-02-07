@@ -1,12 +1,15 @@
 import { z } from 'zod';
 
 export const CompensationSchema = z.object({
-  id: z.number().optional(),
-  employee_id: z.string().min(1, 'Employee ID is required'),
-  base_salary: z.number().min(0, 'Base salary must be positive'),
-  pay_frequency: z.enum(['HOURLY', 'WEEKLY', 'BIWEEKLY', 'MONTHLY', 'YEARLY']),
-  effective_date: z.date(),
-  created_at: z.date().optional(),
+  id: z.string().optional(),
+  employeeId: z.string().min(1, 'Employee ID is required'),
+  organizationId: z.string().min(1, 'Organization ID is required'),
+  departmentId: z.string().optional(),
+  baseSalary: z.number().min(0, 'Base salary must be positive'),
+  payFrequency: z.enum(['MONTHLY', 'SEMI_MONTHLY', 'BI_WEEKLY', 'WEEKLY']),
+  effectiveDate: z.date(),
+  createdAt: z.date().optional(),
+  updatedAt: z.date().optional(),
 });
 
 export type Compensation = z.infer<typeof CompensationSchema>;

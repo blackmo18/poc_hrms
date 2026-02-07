@@ -32,7 +32,7 @@ export default function UserCard({ user, isExpanded, onToggle, getStatusColor, o
             <div className="flex-1 min-w-0 space-y-2">
               <div>
                 <h3 className="font-semibold text-gray-900 dark:text-white text-lg">
-                  {`${user.employee.last_name}, ${user.employee.first_name}` || 'N/A'}
+                  {`${user.employee.lastName}, ${user.employee.firstName}` || 'N/A'}
                 </h3>
               </div>
 
@@ -82,7 +82,7 @@ export default function UserCard({ user, isExpanded, onToggle, getStatusColor, o
                 Created At
               </span>
               <p className="text-sm text-gray-900 dark:text-white mt-1">
-                {new Date(user.created_at).toLocaleDateString()}
+                {new Date(user.createdAt).toLocaleDateString()}
               </p>
             </div>
 

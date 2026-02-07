@@ -15,19 +15,19 @@ export class EmployeeService {
 
   async getByOrganizationId(organizationId: string): Promise<Employee[]> {
     const result = await employeeController.getAll(organizationId);
-    return result.data;
+    return result.data as any;
   }
 
   async getByDepartmentId(departmentId: string): Promise<Employee[]> {
     return await employeeController.getByDepartment(departmentId);
   }
 
-  async getAll(options?: PaginationOptions): Promise<PaginatedResponse<Employee>> {
+  async getAll(organizationId?: string, departmentId?: string, options?: PaginationOptions): Promise<PaginatedResponse<Employee>> {
     const page = options?.page || 1;
     const limit = options?.limit || 10;
-    const result = await employeeController.getAll(undefined, { page, limit });
+    const result = await employeeController.getAll(organizationId, departmentId, { page, limit });
     return {
-      data: result.data,
+      data: result.data as any,
       total: result.pagination.total,
       page: result.pagination.page,
       limit: result.pagination.limit,

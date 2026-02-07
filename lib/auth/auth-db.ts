@@ -21,14 +21,18 @@ export const findUserByEmail = async (email: string): Promise<User | null> => {
 
   // Get employee name if available
   let userName = '';
-  if (user.employee_id) {
+  let firstName = '';
+  let lastName = '';
+  if (user.employeeId) {
     const { prisma } = await import('@/lib/db');
     const employee = await prisma.employee.findUnique({
-      where: { id: user.employee_id },
-      select: { first_name: true, last_name: true }
+      where: { id: user.employeeId },
+      select: { firstName: true, lastName: true }
     });
     if (employee) {
-      userName = `${employee.first_name} ${employee.last_name}`;
+      userName = `${employee.firstName} ${employee.lastName}`;
+      firstName = employee.firstName;
+      lastName = employee.lastName;
     }
   }
 
@@ -36,11 +40,13 @@ export const findUserByEmail = async (email: string): Promise<User | null> => {
     id: user.id,  // Return CUID string ID
     email: user.email,
     name: userName,
-    passwordHash: user.password_hash || '',
+    firstName: firstName,
+    lastName: lastName,
+    passwordHash: user.passwordHash || '',
     enabled: user.status === 'ACTIVE',
-    organization_id: user.organization_id,
-    createdAt: user.created_at,
-    updatedAt: user.updated_at
+    organizationId: user.organizationId,
+    createdAt: user.createdAt,
+    updatedAt: user.updatedAt
   };
 };
 
@@ -52,14 +58,18 @@ export const findUserById = async (userId: string): Promise<User | null> => {
 
   // Get employee name if available
   let userName = '';
-  if (user.employee_id) {
+  let firstName = '';
+  let lastName = '';
+  if (user.employeeId) {
     const { prisma } = await import('@/lib/db');
     const employee = await prisma.employee.findUnique({
-      where: { id: user.employee_id },
-      select: { first_name: true, last_name: true }
+      where: { id: user.employeeId },
+      select: { firstName: true, lastName: true }
     });
     if (employee) {
-      userName = `${employee.first_name} ${employee.last_name}`;
+      userName = `${employee.firstName} ${employee.lastName}`;
+      firstName = employee.firstName;
+      lastName = employee.lastName;
     }
   }
 
@@ -67,11 +77,13 @@ export const findUserById = async (userId: string): Promise<User | null> => {
     id: user.id,  // Return CUID string ID
     email: user.email,
     name: userName,
-    passwordHash: user.password_hash || '',
+    firstName: firstName,
+    lastName: lastName,
+    passwordHash: user.passwordHash || '',
     enabled: user.status === 'ACTIVE',
-    organization_id: user.organization_id,
-    createdAt: user.created_at,
-    updatedAt: user.updated_at
+    organizationId: user.organizationId,
+    createdAt: user.createdAt,
+    updatedAt: user.updatedAt
   };
 };
 
@@ -82,15 +94,15 @@ export const getUserRoles = async (userId: string): Promise<Role[]> => {
   const roleService = getRoleService();
   const roles = await Promise.all(
     userRoles.map(async (userRole) => {
-      const role = await roleService.getById(userRole.role_id);
+      const role = await roleService.getById(userRole.roleId);
       if (!role) return null;
       return {
         id: role.id,
         name: role.name,
-        description: role.description || '',
-        organization_id: role.organization_id,
-        createdAt: role.created_at,
-        updatedAt: role.updated_at
+        description: (role as any).description || '',
+        organizationId: role.organizationId,
+        createdAt: role.createdAt,
+        updatedAt: role.updatedAt
       };
     })
   );
@@ -129,11 +141,11 @@ export const createUser = async (
   const userService = getUserService();
   const user = await userService.create({
     email,
-    organization_id: organizationId,
+    organizationId: organizationId,
     status: 'ACTIVE',
-    employee_id: null, // Will be set later when employee is created
-    role_ids: [], // Will be assigned separately
-    generated_password: hash
+    employeeId: null, // Will be set later when employee is created
+    roleIds: [], // Will be assigned separately
+    generatedPassword: hash
   });
 
   return user.id;  // Return CUID string ID instead of internal_id
@@ -142,8 +154,8 @@ export const createUser = async (
 export const assignRoleToUser = async (userId: string, roleId: string): Promise<void> => {
   const userRoleService = getUserRoleService();
   await userRoleService.create({
-    user_id: userId,
-    role_id: roleId
+    userId: userId,
+    roleId: roleId
   });
 };
 
@@ -158,7 +170,7 @@ export const updateUserPassword = async (
 ): Promise<void> => {
   const hash = await bcrypt.hash(newPassword, 12);
   const userService = getUserService();
-  await userService.update(userId, { password_hash: hash });
+  await userService.update(userId, { passwordHash: hash });
 };
 
 export const updateUser = async (
@@ -192,11 +204,11 @@ export const listUsers = async (organizationId: string): Promise<UserWithRole[]>
         id: user.id,  // Return CUID string ID
         email: user.email,
         name: '', // Name is now derived from employee, will be set separately if needed
-        passwordHash: user.password_hash || '',
+        passwordHash: user.passwordHash || '',
         enabled: user.status === 'ACTIVE',
-        organization_id: user.organization_id,
-        createdAt: user.created_at,
-        updatedAt: user.updated_at,
+        organizationId: user.organizationId,
+        createdAt: user.createdAt,
+        updatedAt: user.updatedAt,
         roles: roles
       };
     })
@@ -218,10 +230,10 @@ export const getRoleById = async (roleId: string): Promise<Role | null> => {
   return {
     id: role.id,  // Return CUID string ID
     name: role.name,
-    description: role.description || '',
-    organization_id: role.organization_id,
-    createdAt: role.created_at,
-    updatedAt: role.updated_at
+    description: '',
+    organizationId: role.organizationId,
+    createdAt: role.createdAt,
+    updatedAt: role.updatedAt
   };
 };
 
@@ -229,15 +241,15 @@ export const getRoleByName = async (name: string, organizationId: string): Promi
   const roleService = getRoleService();
   const role = await roleService.getByName(name);
 
-  if (!role || role.organization_id !== organizationId) return null;
+  if (!role || role.organizationId !== organizationId) return null;
 
   return {
     id: role.id,  // Return CUID string ID
     name: role.name,
-    description: role.description || '',
-    organization_id: role.organization_id,
-    createdAt: role.created_at,
-    updatedAt: role.updated_at
+    description: '',
+    organizationId: role.organizationId,
+    createdAt: role.createdAt,
+    updatedAt: role.updatedAt
   };
 };
 
@@ -248,10 +260,10 @@ export const getAllRoles = async (organizationId: string): Promise<Role[]> => {
   return roles.map(role => ({
     id: role.id,  // Return CUID string ID
     name: role.name,
-    description: role.description || '',
-    organization_id: role.organization_id,
-    createdAt: role.created_at,
-    updatedAt: role.updated_at
+    description: '',
+    organizationId: role.organizationId,
+    createdAt: role.createdAt,
+    updatedAt: role.updatedAt
   }));
 };
 
@@ -262,14 +274,14 @@ export const getRolePermissions = async (roleId: string): Promise<Permission[]> 
   const permissionService = getPermissionService();
   const permissions = await Promise.all(
     rolePermissions.map(async (rolePermission) => {
-      const permission = await permissionService.getById(rolePermission.permission_id);
+      const permission = await permissionService.getById(rolePermission.permissionId);
       if (!permission) return null;
       return {
         id: permission.id,  // Return CUID string ID
         name: permission.name,
         description: permission.description || '',
-        createdAt: permission.created_at,
-        updatedAt: permission.updated_at
+        createdAt: permission.createdAt,
+        updatedAt: permission.updatedAt
       };
     })
   );
@@ -313,16 +325,16 @@ export const getAllPermissions = async (): Promise<Permission[]> => {
     id: permission.id,  // Return CUID string ID
     name: permission.name,
     description: permission.description || '',
-    createdAt: permission.created_at,
-    updatedAt: permission.updated_at
+    createdAt: permission.createdAt,
+    updatedAt: permission.updatedAt
   }));
 };
 
 export const assignPermissionToRole = async (roleId: string, permId: string): Promise<void> => {
   const rolePermissionService = getRolePermissionService();
   await rolePermissionService.create({
-    role_id: roleId,
-    permission_id: permId
+    roleId: roleId,
+    permissionId: permId
   });
 };
 
