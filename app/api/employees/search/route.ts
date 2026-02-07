@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
       result = { data: employees, pagination: null };
     } else {
       // Get all employees with pagination
-      result = await employeeController.getAll(organizationId, { page, limit });
+      result = await employeeController.getAll(organizationId, undefined, { page, limit });
     }
 
     const data = result.data.map(employee => ({

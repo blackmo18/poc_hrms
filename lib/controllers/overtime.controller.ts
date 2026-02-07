@@ -163,7 +163,23 @@ export class OvertimeController {
 
   async getOvertimeRequests(employeeId: string) {
     try {
-      const overtimeRequests = await overtimeService.getOvertimeRequestsByEmployee(employeeId);
+      const overtimeRequests = await prisma.overtime.findMany({
+        where: { employeeId },
+        include: {
+          employee: {
+            select: {
+              firstName: true,
+              lastName: true,
+              department: {
+                select: {
+                  name: true,
+                },
+              },
+            },
+          },
+        },
+        orderBy: { workDate: 'desc' },
+      });
 
       return NextResponse.json({
         success: true,
@@ -180,7 +196,17 @@ export class OvertimeController {
 
   async getOvertimeRequestById(id: string) {
     try {
-      const overtimeRequest = await overtimeService.getOvertimeRequestById(id);
+      const overtimeRequest = await prisma.overtime.findUnique({
+        where: { id },
+        include: {
+          employee: {
+            select: {
+              firstName: true,
+              lastName: true,
+            },
+          },
+        },
+      });
 
       if (!overtimeRequest) {
         return NextResponse.json(

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getTimeEntryService } from '@/lib/service/time-entry.service';
 import { getEmployeeService } from '@/lib/service/employee.service';
 import { requiresPermissions } from '@/lib/auth/middleware';
+import { getUserPermissionsForUser } from '@/lib/auth/middleware';
 
 const WORK_HOURS_PER_DAY = 8;
 const NIGHT_SHIFT_START = 22; // 10 PM
@@ -50,18 +51,37 @@ function determineEntryType(clockInAt: Date, lateHours: number, otHours: number)
 }
 
 export async function GET(request: NextRequest) {
-  return requiresPermissions(request, ['timesheet.own.read'], async (authRequest) => {
+  return requiresPermissions(request, ['timesheet.own.read', 'timesheet.admin.read'], async (authRequest) => {
     try {
       const user = authRequest.user!;
       const { searchParams } = new URL(request.url);
       const startDate = searchParams.get('startDate');
       const endDate = searchParams.get('endDate');
+      const employeeIdParam = searchParams.get('employeeId');
 
-      // Get employee to get organization_id
+      // Get employee service
       const employeeService = getEmployeeService();
-      const employee = await employeeService.getByUserId(user.id);
-      if (!employee) {
-        return NextResponse.json({ error: 'Employee not found' }, { status: 404 });
+      let targetEmployee;
+
+      if (employeeIdParam) {
+        // Admin viewing another employee's data
+        // Check if user has admin permissions for timesheets
+        const userPermissions = await getUserPermissionsForUser(user.id);
+        const hasAdminPermission = userPermissions.includes('timesheet.admin.read');
+        if (!hasAdminPermission) {
+          return NextResponse.json({ error: 'Insufficient permissions to view other employees\' time entries' }, { status: 403 });
+        }
+        
+        targetEmployee = await employeeService.getById(employeeIdParam);
+        if (!targetEmployee) {
+          return NextResponse.json({ error: 'Employee not found' }, { status: 404 });
+        }
+      } else {
+        // User viewing their own data
+        targetEmployee = await employeeService.getByUserId(user.id);
+        if (!targetEmployee) {
+          return NextResponse.json({ error: 'Employee not found' }, { status: 404 });
+        }
       }
 
       const timeEntryService = getTimeEntryService();
@@ -90,7 +110,7 @@ export async function GET(request: NextRequest) {
 
       // Get time entries for the cutoff period
       const result = await timeEntryService.getByEmployeeAndDateRange(
-        employee.id,
+        targetEmployee.id,
         start,
         new Date(end.getTime() + 86400000) // Add 1 day to include end date
       );

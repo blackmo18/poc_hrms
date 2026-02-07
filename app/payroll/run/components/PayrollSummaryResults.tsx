@@ -23,9 +23,10 @@ interface PayrollSummaryResultsProps {
       warnings: string[];
     };
   };
+  onMissingAttendanceClick?: () => void;
 }
 
-export function PayrollSummaryResults({ summary }: PayrollSummaryResultsProps) {
+export function PayrollSummaryResults({ summary, onMissingAttendanceClick }: PayrollSummaryResultsProps) {
   return (
     <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4">
       <h3 className="font-medium text-sm mb-3 flex items-center">
@@ -67,9 +68,12 @@ export function PayrollSummaryResults({ summary }: PayrollSummaryResultsProps) {
       {/* Attendance Issues */}
       {!summary.attendance.complete && (
         <div className="mb-3 p-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded">
-          <p className="text-xs text-red-800 dark:text-red-200">
+          <button
+            onClick={onMissingAttendanceClick}
+            className="text-xs text-red-800 dark:text-red-200 hover:text-red-600 dark:hover:text-red-300 cursor-pointer underline focus:outline-none focus:ring-2 focus:ring-red-500 rounded px-1 py-0.5"
+          >
             ❌ {summary.attendance.missingEmployeesCount} employees missing attendance records
-          </p>
+          </button>
         </div>
       )}
 

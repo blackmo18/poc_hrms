@@ -13,12 +13,12 @@ export class HolidayService implements IHolidayService {
     created_by?: string;
   }): Promise<any> {
     try {
-      const template = await holidayController.createHolidayTemplate({
-        organization_id: data.organizationId,
-        name: data.name,
-        description: data.description,
-        created_by: data.created_by,
-      });
+      const template = await holidayController.createHolidayTemplate(
+        data.organizationId,
+        data.name,
+        data.description,
+        data.created_by
+      );
       return {
         success: true,
         message: 'Holiday template created successfully',

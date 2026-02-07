@@ -299,7 +299,7 @@ async function seedDatabase() {
     { name: 'leave.approve', description: 'Approve leave requests', organizationId: organization.id },
     { name: 'timesheet.own', description: 'Manage own timesheet', organizationId: organization.id },
     { name: 'timesheet.own.read', description: 'Read own timesheet', organizationId: organization.id },
-    { name: 'timesheet.manage', description: 'Manage all timesheets', organizationId: organization.id },
+    { name: 'timesheet.admin.read', description: 'Read all timesheets', organizationId: organization.id },
     { name: 'overtime.request', description: 'File overtime request', organizationId: organization.id },
     { name: 'overtime.approve', description: 'Approve/reject overtime requests', organizationId: organization.id },
     { name: 'timeoff.request', description: 'File time off request', organizationId: organization.id },

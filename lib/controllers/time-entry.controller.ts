@@ -146,8 +146,8 @@ export class TimeEntryController {
         timeBreaks: true,
       },
       orderBy: [
-        { workDate: 'desc' },
-        { clockInAt: 'desc' }
+        { workDate: 'asc' },
+        { clockInAt: 'asc' }
       ],
     });
 

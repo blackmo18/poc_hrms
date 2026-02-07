@@ -22,10 +22,10 @@ export class EmployeeService {
     return await employeeController.getByDepartment(departmentId);
   }
 
-  async getAll(options?: PaginationOptions): Promise<PaginatedResponse<Employee>> {
+  async getAll(organizationId?: string, departmentId?: string, options?: PaginationOptions): Promise<PaginatedResponse<Employee>> {
     const page = options?.page || 1;
     const limit = options?.limit || 10;
-    const result = await employeeController.getAll(undefined, { page, limit });
+    const result = await employeeController.getAll(organizationId, departmentId, { page, limit });
     return {
       data: result.data as any,
       total: result.pagination.total,

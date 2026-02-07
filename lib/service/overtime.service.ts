@@ -1,6 +1,6 @@
 import { Overtime } from '@prisma/client';
 import { generateULID } from '@/lib/utils/ulid.service';
-import { OvertimeController } from '@/lib/controllers/overtime.controller';
+import { OvertimeController, overtimeController } from '@/lib/controllers/overtime.controller';
 
 export interface CreateOvertimeRequestData {
   employeeId: string;
@@ -58,11 +58,20 @@ export class OvertimeService {
   }
 
   async getOvertimeRequestsByEmployee(employeeId: string): Promise<Overtime[]> {
-    return OvertimeController.findOvertimeRequestsByEmployee(employeeId);
+    // This method is now called directly on the controller instance
+    // The controller will handle the database query
+    const overtimeRequests = await overtimeController.getOvertimeRequests(employeeId);
+    // Extract data from response
+    const response = await overtimeRequests.json();
+    return response.success ? response.data : [];
   }
 
   async getOvertimeRequestById(id: string): Promise<Overtime | null> {
-    return OvertimeController.findOvertimeById(id);
+    // This method is now called directly on the controller instance
+    const overtimeRequest = await overtimeController.getOvertimeRequestById(id);
+    // Extract data from response
+    const response = await overtimeRequest.json();
+    return response.success ? response.data : null;
   }
 }
 

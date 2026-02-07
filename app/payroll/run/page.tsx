@@ -7,6 +7,7 @@ import { PayrollSelectionPanel } from './components/PayrollSelectionPanel';
 import { PayrollSummaryButton } from './components/PayrollSummaryButton';
 import { PayrollSummaryResults } from './components/PayrollSummaryResults';
 import { ActionButtons } from './components/ActionButtons';
+import { MissingAttendanceModal } from './components/MissingAttendanceModal';
 import { ProtectedRoute } from '@/components/protected-route';
 import PageBreadcrumb from '@/components/common/PageBreadCrumb';
 import { ADMINSTRATIVE_ROLES } from '@/lib/constants/roles';
@@ -25,6 +26,10 @@ function PayrollRunContent() {
   // Payroll summary state
   const [payrollSummary, setPayrollSummary] = useState<any>(null);
   const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
+  
+  // Modal state
+  const [isMissingAttendanceModalOpen, setIsMissingAttendanceModalOpen] = useState(false);
+  const [selectedEmployeeForAttendance, setSelectedEmployeeForAttendance] = useState<string | null>(null);
   
   const { user } = useAuth();
   
@@ -166,6 +171,16 @@ function PayrollRunContent() {
     }
   };
 
+  const handleMissingAttendanceClick = () => {
+    setIsMissingAttendanceModalOpen(true);
+  };
+
+  const handleViewEmployeeAttendance = (employeeId: string) => {
+    // Open employee attendance page in new tab
+    const attendanceUrl = `/employees/${employeeId}/attendance`;
+    window.open(attendanceUrl, '_blank');
+  };
+
   const handleGeneratePayroll = async () => {
     if (!selectedCutoff || !selectedDepartment) {
       alert('Please select both cutoff period and department');
@@ -232,7 +247,7 @@ function PayrollRunContent() {
 
                 {/* Summary Results - Shown After Generation */}
                 {payrollSummary && (
-                  <PayrollSummaryResults summary={payrollSummary} />
+                  <PayrollSummaryResults summary={payrollSummary} onMissingAttendanceClick={handleMissingAttendanceClick} />
                 )}
               </div>
 
@@ -270,6 +285,19 @@ function PayrollRunContent() {
           </Card>
         </div>
       </div>
+
+      {/* Missing Attendance Modal */}
+      <MissingAttendanceModal
+        isOpen={isMissingAttendanceModalOpen}
+        onClose={() => setIsMissingAttendanceModalOpen(false)}
+        organizationId={isSuperAdmin ? selectedOrganization : (user?.organization_id || null)}
+        departmentId={selectedDepartment || undefined}
+        cutoffPeriod={payrollSummary ? {
+          start: payrollSummary.cutoffPeriod.start,
+          end: payrollSummary.cutoffPeriod.end,
+        } : null}
+        onViewAttendance={handleViewEmployeeAttendance}
+      />
     </>
   );
 }
