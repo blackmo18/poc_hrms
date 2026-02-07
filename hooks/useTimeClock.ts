@@ -72,13 +72,124 @@ export const useTimeClock = () => {
   };
 
   // Helper function to save logs to localStorage
-  const saveLogsToStorage = (logsToSave: ClockLog[]) => {
+  const saveLogsToStorage = useCallback((logsToSave: ClockLog[]) => {
     if (typeof window === 'undefined') return;
     try {
       localStorage.setItem('timeClock_logs', JSON.stringify(logsToSave));
     } catch (error) {
       console.error('Failed to save logs to storage:', error);
     }
+  }, []);
+
+  // Helper function to generate logs from API response
+  const generateLogsFromAPI = (apiResponse: any): ClockLog[] => {
+    const logs: ClockLog[] = [];
+    const { todayEntries = [], activeEntry, activeBreak } = apiResponse;
+
+    // Add logs for today's entries (sorted by time descending)
+    const sortedEntries = [...todayEntries].sort((a, b) => 
+      new Date(b.clockInAt).getTime() - new Date(a.clockInAt).getTime()
+    );
+
+    sortedEntries.forEach(entry => {
+      const clockInDate = new Date(entry.clockInAt);
+      const clockInTime = clockInDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+      logs.push({
+        type: 'Clock In',
+        time: clockInTime,
+        date: clockInDate.toLocaleDateString()
+      });
+
+      // Add breaks
+      if (entry.timeBreaks) {
+        entry.timeBreaks.forEach((breakItem: any) => {
+          if (breakItem.breakStartAt) {
+            const breakStartDate = new Date(breakItem.breakStartAt);
+            const breakStartTime = breakStartDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            logs.push({
+              type: 'Break Start',
+              time: breakStartTime,
+              date: breakStartDate.toLocaleDateString()
+            });
+          }
+          if (breakItem.breakEndAt) {
+            const breakEndDate = new Date(breakItem.breakEndAt);
+            const breakEndTime = breakEndDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            logs.push({
+              type: 'Break End',
+              time: breakEndTime,
+              date: breakEndDate.toLocaleDateString()
+            });
+          }
+        });
+      }
+
+      if (entry.clockOutAt) {
+        const clockOutDate = new Date(entry.clockOutAt);
+        const clockOutTime = clockOutDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        
+        // Calculate work and break times for summary
+        const totalElapsed = Math.floor((clockOutDate.getTime() - clockInDate.getTime()) / 1000);
+        let breakTimeSeconds = 0;
+        if (entry.timeBreaks) {
+          entry.timeBreaks.forEach((breakItem: any) => {
+            if (breakItem.breakStartAt && breakItem.breakEndAt) {
+              const breakStart = new Date(breakItem.breakStartAt);
+              const breakEnd = new Date(breakItem.breakEndAt);
+              breakTimeSeconds += Math.floor((breakEnd.getTime() - breakStart.getTime()) / 1000);
+            }
+          });
+        }
+        const workTime = totalElapsed - breakTimeSeconds;
+        
+        const workHours = Math.floor(workTime / 3600);
+        const workMinutes = Math.floor((workTime % 3600) / 60);
+        const workSeconds = Math.floor(workTime % 60);
+        const breakHours = Math.floor(breakTimeSeconds / 3600);
+        const breakMinutes = Math.floor((breakTimeSeconds % 3600) / 60);
+        const breakSeconds = Math.floor(breakTimeSeconds % 60);
+        
+        const summaryText = `Work: ${workHours.toString().padStart(2, '0')}:${workMinutes.toString().padStart(2, '0')}:${workSeconds.toString().padStart(2, '0')} | Break: ${breakHours.toString().padStart(2, '0')}:${breakMinutes.toString().padStart(2, '0')}:${breakSeconds.toString().padStart(2, '0')}`;
+        
+        logs.push({
+          type: 'Session Summary',
+          time: summaryText,
+          date: clockOutDate.toLocaleDateString()
+        });
+        
+        logs.push({
+          type: 'Clock Out',
+          time: clockOutTime,
+          date: clockOutDate.toLocaleDateString()
+        });
+      }
+    });
+
+    // Add current active break if exists
+    if (activeBreak?.breakStartAt) {
+      const breakStartDate = new Date(activeBreak.breakStartAt);
+      const breakStartTime = breakStartDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      logs.unshift({
+        type: 'Break Start',
+        time: breakStartTime,
+        date: breakStartDate.toLocaleDateString()
+      });
+    }
+
+    // Sort logs by time descending
+    logs.sort((a, b) => {
+      const timeA = new Date(`${a.date} ${a.time}`).getTime();
+      const timeB = new Date(`${b.date} ${b.time}`).getTime();
+      return timeB - timeA;
+    });
+
+    // Filter unique logs to prevent duplicates
+    const uniqueLogs = logs.filter((log, index, arr) => 
+      arr.findIndex(l => l.type === log.type && l.time === log.time && l.date === log.date) === index
+    );
+
+    return uniqueLogs;
   };
 
   // Initialize state with defaults
@@ -132,6 +243,11 @@ export const useTimeClock = () => {
       
       // Validate logs against API response
       validateLogsAgainstAPI(status);
+      
+      // Generate logs from API response
+      const generatedLogs = generateLogsFromAPI(status);
+      setLogs(generatedLogs);
+      saveLogsToStorage(generatedLogs);
       
       // Update ref to track clocked in status for interval checks
       isClockedInRef.current = status.isClockedIn;
@@ -257,6 +373,17 @@ export const useTimeClock = () => {
     initialize();
   }, [fetchStatus]);
 
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'timeClock_logs') {
+        const loaded = loadLogsFromStorage();
+        setLogs(loaded);
+      }
+    };
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, []);
+
   const currentBreakDuration = useMemo(() => {
     if (!isOnBreak || !breakStartTime) return 0;
     return Math.floor((new Date().getTime() - breakStartTime.getTime()) / 1000);
@@ -321,19 +448,6 @@ export const useTimeClock = () => {
       await timesheetApi.performAction('clockin', { workDate });
       await new Promise(resolve => setTimeout(resolve, 100));
       await fetchStatus();
-      
-      const now = new Date();
-      const timestamp = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-      
-      setLogs(prev => {
-        const newLogs = [{
-          type: 'Clock In',
-          time: timestamp,
-          date: now.toLocaleDateString()
-        }, ...prev];
-        saveLogsToStorage(newLogs);
-        return newLogs;
-      });
 
       window.dispatchEvent(new CustomEvent('timeClock:clockIn'));
     } catch (err) {
@@ -371,27 +485,6 @@ export const useTimeClock = () => {
       const breakTimeText = `Break: ${totalBreakHours.toString().padStart(2, '0')}:${totalBreakMinutes.toString().padStart(2, '0')}:${totalBreakSeconds.toString().padStart(2, '0')}`;
       const summaryText = `${workTimeText} | ${breakTimeText}`;
       
-      const now = new Date();
-      const timestamp = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-      
-      setLogs(prev => {
-        const newLogs = [
-          {
-            type: 'Session Summary',
-            time: summaryText,
-            date: now.toLocaleDateString()
-          },
-          {
-            type: 'Clock Out',
-            time: timestamp,
-            date: now.toLocaleDateString()
-          },
-          ...prev
-        ];
-        saveLogsToStorage(newLogs);
-        return newLogs;
-      });
-
       await new Promise(resolve => setTimeout(resolve, 100));
       await fetchStatus();
 
@@ -416,19 +509,6 @@ export const useTimeClock = () => {
       
       const action = isOnBreak ? 'breakout' : 'breakin';
       await timesheetApi.performAction(action);
-      
-      const now = new Date();
-      const timestamp = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-      
-      setLogs(prev => {
-        const newLogs = [{
-          type: isOnBreak ? 'Break End' : 'Break Start',
-          time: timestamp,
-          date: now.toLocaleDateString()
-        }, ...prev];
-        saveLogsToStorage(newLogs);
-        return newLogs;
-      });
       
       await new Promise(resolve => setTimeout(resolve, 100));
       await fetchStatus();

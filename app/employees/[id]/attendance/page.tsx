@@ -5,7 +5,7 @@ import { useParams } from 'next/navigation';
 import EmployeeDetailsSection from '@/components/employees/attendance/EmployeeDetailsSection';
 import PeriodSelectionSection from '@/components/employees/attendance/PeriodSelectionSection';
 import AttendanceRecordsSection from '@/components/employees/attendance/AttendanceRecordsSection';
-import { usePayrollPeriods } from '@/hooks/usePayrollPeriods';
+import { usePayrollPeriods as usePayrollPeriodsHook } from '@/hooks/usePayrollPeriods';
 import { useAuth } from '@/components/providers/auth-provider';
 import { ProtectedRoute } from '@/components/protected-route';
 import { ADMINSTRATIVE_ROLES } from '@/lib/constants/roles';
@@ -47,7 +47,7 @@ export default function EmployeeAttendancePage() {
   const [error, setError] = useState<string | null>(null);
 
   // Period selection state
-  const { periods: payrollPeriods, currentPeriod } = usePayrollPeriods({
+  const { periods: payrollPeriods, currentPeriod } = usePayrollPeriodsHook({
     lookbackPeriods: 2, // Include 2 periods back
     lookaheadPeriods: 2, // Include 2 periods forward
     includeCurrentPeriod: true // Include current period
@@ -154,77 +154,17 @@ export default function EmployeeAttendancePage() {
         const result = await response.json();
         const timeEntries = result.data || [];
         
-        // Generate all dates in the period
-        const allPeriodDates = generateCutoffPeriodDates();
-        
-        // Create a map of entries by date for quick lookup
-        const entriesByDate = new Map();
-        timeEntries.forEach((entry: any) => {
-          entriesByDate.set(entry.date, entry);
-        });
-        
-        // Merge entries with all period dates
-        const attendanceRecords = allPeriodDates.map((dateStr: string) => {
-          const existingEntry = entriesByDate.get(dateStr);
-          
-          if (existingEntry) {
-            // Entry exists - check status
-            let status = existingEntry.status;
-            if (status !== 'CLOSED') {
-              status = 'INCOMPLETE';
-            }
-            
-            return {
-              id: existingEntry.id,
-              date: dateStr,
-              clockInAt: existingEntry.startTime,
-              clockOutAt: existingEntry.endTime,
-              totalWorkMinutes: existingEntry.duration ? Math.round(existingEntry.duration * 60) : 0,
-              status: status,
-              type: status,
-              otHours: 0,
-              nightDifferential: 0,
-              lateHours: 0,
-              isAbsent: false,
-            };
-          } else {
-            // No entry - check if weekend
-            const date = new Date(dateStr);
-            const dayOfWeek = date.getDay(); // 0 = Sunday, 6 = Saturday
-            
-            if (dayOfWeek === 0 || dayOfWeek === 6) {
-              // Weekend - day off
-              return {
-                id: `weekend-${dateStr}`,
-                date: dateStr,
-                clockInAt: null,
-                clockOutAt: null,
-                totalWorkMinutes: 0,
-                status: 'DAY_OFF',
-                type: 'DAY_OFF',
-                otHours: 0,
-                nightDifferential: 0,
-                lateHours: 0,
-                isAbsent: false,
-              };
-            } else {
-              // Weekday with no entry - absent
-              return {
-                id: `absent-${dateStr}`,
-                date: dateStr,
-                clockInAt: null,
-                clockOutAt: null,
-                totalWorkMinutes: 0,
-                status: 'ABSENT',
-                type: 'ABSENT',
-                otHours: 0,
-                nightDifferential: 0,
-                lateHours: 0,
-                isAbsent: true,
-              };
-            }
-          }
-        });
+        // Map time entries to attendance record format
+        const attendanceRecords = timeEntries.map((entry: any) => ({
+          id: entry.id,
+          date: entry.date,
+          clockInAt: entry.startTime,
+          clockOutAt: entry.endTime,
+          totalWorkMinutes: entry.duration ? Math.round(entry.duration * 60) : 0, // Convert hours to minutes
+          status: entry.status,
+          type: entry.status,
+          isAbsent: false,
+        }));
         
         setAttendanceRecords(attendanceRecords);
       } else {
@@ -352,15 +292,10 @@ export default function EmployeeAttendancePage() {
 
   const getStatusColor = (status: string): BadgeColor => {
     switch (status.toLowerCase()) {
-      case 'closed':
       case 'present':
         return 'success';
       case 'absent':
         return 'error';
-      case 'incomplete':
-        return 'warning';
-      case 'day_off':
-        return 'info';
       case 'late':
         return 'warning';
       default:

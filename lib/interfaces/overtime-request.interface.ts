@@ -35,6 +35,21 @@ export interface IOvertimeRequestService {
   cancelOvertimeRequest(id: string, updatedBy?: string): Promise<any>;
 
   /**
+   * Approve overtime request (short alias)
+   */
+  approve(
+    id: string,
+    approvedMinutes: number,
+    approvedByUserId: string,
+    updatedBy?: string
+  ): Promise<any>;
+
+  /**
+   * Reject overtime request (short alias)
+   */
+  reject(id: string, updatedBy?: string): Promise<any>;
+
+  /**
    * Get overtime request by ID
    */
   getById(id: string): Promise<any>;

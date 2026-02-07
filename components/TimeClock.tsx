@@ -26,7 +26,9 @@ const TimeClock: React.FC<TimeClockProps> = ({
     clockOut,
     toggleBreak,
     formatElapsedTime,
+    formattedEntries,
   } = useTimeClock();
+
 
   // Update clock every second
   useEffect(() => {

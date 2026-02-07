@@ -1,40 +1,174 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import PageBreadcrumb from '@/components/common/PageBreadCrumb';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { DownloadIcon, FilterIcon } from 'lucide-react';
+import AttendanceRecordsSection from '@/components/employees/attendance/AttendanceRecordsSection';
+import { useAuth } from '@/components/providers/auth-provider';
+import Badge, { BadgeColor } from '@/components/ui/badge/Badge';
+import PeriodSelectionSection from '@/components/employees/attendance/PeriodSelectionSection';
+import { usePayrollPeriods } from '@/hooks/usePayrollPeriods';
+
+interface AttendanceRecord {
+  id: string;
+  date: string;
+  clockInAt: string;
+  clockOutAt: string;
+  totalWorkMinutes: number;
+  status: string;
+  type: string;
+  otHours: number;
+  nightDifferential: number;
+  lateHours: number;
+  isAbsent?: boolean;
+  isIncomplete?: boolean;
+}
 
 export default function TimesheetViewPage() {
-  const timesheetEntries = [
-    {
-      id: 1,
-      date: 'Jan 22, 2024',
-      clockIn: '08:00 AM',
-      clockOut: '05:00 PM',
-      breakTime: '1 hour',
-      totalHours: 8,
-      status: 'Closed',
-    },
-    {
-      id: 2,
-      date: 'Jan 21, 2024',
-      clockIn: '08:15 AM',
-      clockOut: '05:00 PM',
-      breakTime: '1 hour',
-      totalHours: 7.75,
-      status: 'Closed',
-    },
-    {
-      id: 3,
-      date: 'Jan 20, 2024',
-      clockIn: '08:00 AM',
-      clockOut: '08:00 PM',
-      breakTime: '1 hour',
-      totalHours: 11,
-      status: 'Closed',
-    },
-  ];
+  const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const { user } = useAuth();
+
+  // Period selection state
+  const { periods: payrollPeriods, currentPeriod } = usePayrollPeriods({
+    lookbackPeriods: 2, // Include 2 periods back
+    lookaheadPeriods: 2, // Include 2 periods forward
+    includeCurrentPeriod: true // Include current period
+  });
+
+  const [selectedCutoff, setSelectedCutoff] = useState(currentPeriod?.value || '');
+
+  useEffect(() => {
+    if (user) {
+      fetchAttendanceData();
+    }
+  }, [user]);
+
+  // Recalculate attendance data when period changes
+  useEffect(() => {
+    if (selectedCutoff && user) {
+      fetchAttendanceData();
+    }
+  }, [selectedCutoff, user]);
+
+  const createSimpleDate = (year: number, month: number, day: number) => {
+    return `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
+  }
+
+  const fetchAttendanceData = async () => {
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      let apiUrl = `/api/timesheets?`;
+
+      if (selectedCutoff) {
+        const cutoffParts = selectedCutoff.split('-');
+        const year = parseInt(cutoffParts[0]);
+        const month = parseInt(cutoffParts[1]);
+        const startDay = parseInt(cutoffParts[2]);
+        const endDay = parseInt(cutoffParts[3]);
+
+        const startDateStr = createSimpleDate(year, month, startDay);
+        const endDateStr = createSimpleDate(year, month, endDay);
+
+        apiUrl += `&startDate=${startDateStr}&endDate=${endDateStr}`;
+      }
+
+      const response = await fetch(apiUrl, {
+        credentials: 'include',
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        const timeEntries = result.data || [];
+
+        // Map time entries to attendance record format
+        const attendanceRecords = timeEntries.map((entry: any) => ({
+          id: entry.id,
+          date: entry.date,
+          clockInAt: entry.startTime,
+          clockOutAt: entry.endTime,
+          totalWorkMinutes: entry.duration ? Math.round(entry.duration * 60) : 0, // Convert hours to minutes
+          status: entry.status,
+          type: entry.status,
+          otHours: 0,
+          nightDifferential: 0,
+          lateHours: 0,
+          isAbsent: false,
+          isIncomplete: false,
+        }));
+
+        setAttendanceRecords(attendanceRecords);
+      } else {
+        const errorData = await response.json();
+        setError(errorData.error || 'Failed to fetch time entries');
+      }
+    } catch (error) {
+      console.error('Error fetching attendance data:', error);
+      setError('Failed to fetch attendance data. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const formatDuration = (minutes: number) => {
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    return `${hours}h ${mins}m`;
+  };
+
+  const getStatusColor = (status: string): BadgeColor => {
+    switch (status.toLowerCase()) {
+      case 'present':
+        return 'success';
+      case 'absent':
+        return 'error';
+      case 'late':
+        return 'warning';
+      default:
+        return 'info';
+    }
+  };
+
+  const onEditAttendance = (record: AttendanceRecord) => {
+    // TODO: Implement edit functionality
+    console.log('Edit attendance record:', record);
+    alert(`Edit functionality for ${record.date} - Status: ${record.status}`);
+  };
+
+  // Calculate summary stats
+  const totalHours = attendanceRecords.reduce((total, record) => {
+    if (!record.isAbsent) {
+      return total + record.totalWorkMinutes;
+    }
+    return total;
+  }, 0) / 60; // Convert to hours
+
+  const overtimeHours = attendanceRecords.reduce((total, record) => {
+    if (!record.isAbsent && record.totalWorkMinutes > 8 * 60) {
+      return total + (record.totalWorkMinutes - 8 * 60);
+    }
+    return total;
+  }, 0) / 60; // Convert to hours
+
+  const onTimeEntries = attendanceRecords.filter(record => {
+    if (!record.clockInAt || record.isAbsent) return false;
+    const clockInTime = new Date(`1970-01-01 ${record.clockInAt}`).getTime();
+    const eightAM = new Date('1970-01-01 08:00:00').getTime();
+    return clockInTime <= eightAM;
+  }).length;
+
+  const lateArrivals = attendanceRecords.filter(record => {
+    if (!record.clockInAt || record.isAbsent) return false;
+    const clockInTime = new Date(`1970-01-01 ${record.clockInAt}`).getTime();
+    const eightAM = new Date('1970-01-01 08:00:00').getTime();
+    return clockInTime > eightAM;
+  }).length;
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-8">
@@ -57,75 +191,52 @@ export default function TimesheetViewPage() {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-        <Card>
-          <CardContent className="pt-6">
-            <p className="text-sm text-gray-600 dark:text-gray-400">Total Hours This Week</p>
-            <p className="text-2xl font-bold mt-2">34.75 hrs</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <p className="text-sm text-gray-600 dark:text-gray-400">Overtime Hours</p>
-            <p className="text-2xl font-bold mt-2">2.75 hrs</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <p className="text-sm text-gray-600 dark:text-gray-400">On Time Entries</p>
-            <p className="text-2xl font-bold mt-2">2 of 3</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <p className="text-sm text-gray-600 dark:text-gray-400">Late Arrivals</p>
-            <p className="text-2xl font-bold mt-2">1</p>
-          </CardContent>
-        </Card>
-      </div>
 
-      {/* Timesheet Table */}
-      <Card>
-        <CardHeader>
-          <h2 className="text-lg font-semibold">Time Entries</h2>
-        </CardHeader>
-        <CardContent>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b">
-                  <th className="text-left py-3 px-4">Date</th>
-                  <th className="text-center py-3 px-4">Clock In</th>
-                  <th className="text-center py-3 px-4">Clock Out</th>
-                  <th className="text-center py-3 px-4">Break Time</th>
-                  <th className="text-center py-3 px-4">Total Hours</th>
-                  <th className="text-center py-3 px-4">Status</th>
-                  <th className="text-center py-3 px-4">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {timesheetEntries.map((entry) => (
-                  <tr key={entry.id} className="border-b hover:bg-gray-50 dark:hover:bg-gray-800">
-                    <td className="py-3 px-4 font-medium">{entry.date}</td>
-                    <td className="py-3 px-4 text-center">{entry.clockIn}</td>
-                    <td className="py-3 px-4 text-center">{entry.clockOut}</td>
-                    <td className="py-3 px-4 text-center">{entry.breakTime}</td>
-                    <td className="py-3 px-4 text-center font-semibold">{entry.totalHours} hrs</td>
-                    <td className="py-3 px-4 text-center">
-                      <span className="text-xs bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 px-2 py-1 rounded">
-                        {entry.status}
-                      </span>
-                    </td>
-                    <td className="py-3 px-4 text-center">
-                      <Button variant="outline" size="sm">View</Button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </CardContent>
-      </Card>
+      <div className="space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+          <Card>
+            <CardContent className="pt-6">
+              <p className="text-sm text-gray-600 dark:text-gray-400">Total Hours This Week</p>
+              <p className="text-2xl font-bold mt-2">{totalHours.toFixed(2)} hrs</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6">
+              <p className="text-sm text-gray-600 dark:text-gray-400">Overtime Hours</p>
+              <p className="text-2xl font-bold mt-2">{overtimeHours.toFixed(2)} hrs</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6">
+              <p className="text-sm text-gray-600 dark:text-gray-400">On Time Entries</p>
+              <p className="text-2xl font-bold mt-2">{onTimeEntries} of {attendanceRecords.length}</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6">
+              <p className="text-sm text-gray-600 dark:text-gray-400">Late Arrivals</p>
+              <p className="text-2xl font-bold mt-2">{lateArrivals}</p>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Period Selection */}
+        <PeriodSelectionSection
+          selectedCutoff={selectedCutoff}
+          onCutoffChange={setSelectedCutoff}
+          payrollPeriods={payrollPeriods}
+        />
+
+        {/* Attendance Records */}
+        <AttendanceRecordsSection
+          attendanceRecords={attendanceRecords}
+          isLoading={isLoading}
+          error={error}
+          onEditAttendance={onEditAttendance}
+          formatDuration={formatDuration}
+          getStatusColor={getStatusColor}
+        />
+      </div>
     </div>
   );
 }

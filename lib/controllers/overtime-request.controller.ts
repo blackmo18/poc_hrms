@@ -29,6 +29,17 @@ export class OvertimeRequestController {
             firstName: true,
             lastName: true,
             email: true,
+            department: true,
+          },
+        },
+        approvedByUser: {
+          include: {
+            employee: {
+              select: {
+                firstName: true,
+                lastName: true,
+              },
+            },
           },
         },
       },

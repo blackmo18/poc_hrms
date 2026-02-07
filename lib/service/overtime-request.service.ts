@@ -186,6 +186,25 @@ export class OvertimeRequestService implements IOvertimeRequestService {
   }
 
   /**
+   * Approve overtime request (alias for approveOvertimeRequest)
+   */
+  async approve(
+    id: string,
+    approvedMinutes: number,
+    approvedByUserId: string,
+    updatedBy?: string
+  ): Promise<any> {
+    return await this.approveOvertimeRequest(id, approvedMinutes, approvedByUserId, updatedBy);
+  }
+
+  /**
+   * Reject overtime request (alias for rejectOvertimeRequest)
+   */
+  async reject(id: string, updatedBy?: string): Promise<any> {
+    return await this.rejectOvertimeRequest(id, updatedBy);
+  }
+
+  /**
    * Calculate raw worked minutes from time entry (clock out - clock in - unpaid breaks)
    */
   private calculateRawWorkedMinutes(timeEntry: any): number {
