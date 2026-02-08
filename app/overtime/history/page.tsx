@@ -11,6 +11,7 @@ import InitialLoadingScreen from '@/components/common/InitialLoadingScreen';
 interface OvertimeRecord {
   id: string;
   workDate: string;
+  otType: string;
   requestedMinutes: number;
   approvedMinutes: number | null;
   status: string;

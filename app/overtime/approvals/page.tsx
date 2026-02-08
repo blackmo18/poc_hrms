@@ -177,75 +177,82 @@ function OvertimeApprovalsContent() {
         {/* OT Requests Table */}
         <ComponentCard title="Overtime Requests">
           <div className="space-y-4">
-            {filteredRequests.map((request) => (
-              <div
-                key={request.id}
-                className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:bg-gray-50 dark:hover:bg-gray-800 transition"
-              >
-                <div className="flex justify-between items-start mb-3">
-                  <div>
-                    <p className="font-semibold">{request.employee}</p>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">{orgMap[request.organization] || request.organization}</p>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">{request.department}</p>
+            {filteredRequests.length === 0 ? (
+              <p className="text-gray-600 dark:text-gray-400 text-center py-8">No data retrieved</p>
+            ) : (
+              filteredRequests.map((request) => (
+                <div
+                  key={request.id}
+                  className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:bg-gray-50 dark:hover:bg-gray-800 transition"
+                >
+                  <div className="flex justify-between items-start mb-3">
+                    <div>
+                      <p className="font-semibold">{request.employee}</p>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">{orgMap[request.organization] || request.organization}</p>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">{request.department}</p>
+                    </div>
+                    <Badge
+                      color={request.status === 'pending' ? 'warning' : 'success'}
+                      variant="light"
+                    >
+                      {request.status === 'pending' ? 'Pending' : 'Approved'}
+                    </Badge>
                   </div>
-                  <Badge
-                    color={request.status === 'pending' ? 'warning' : 'success'}
-                    variant="light"
-                  >
-                    {request.status === 'pending' ? 'Pending' : 'Approved'}
-                  </Badge>
-                </div>
-                {request.status === 'approved' && request.approvedBy && (
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                    Approved by: {request.approvedBy}
-                  </p>
-                )}
-                <div className="grid grid-cols-3 md:grid-cols-5 gap-4 mb-4 text-sm">
-                  <div>
-                    <p className="text-gray-600 dark:text-gray-400">Date</p>
-                    <p className="font-medium text-gray-900 dark:text-white">{request.date}</p>
+                  {request.status === 'approved' && request.approvedBy && (
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                      Approved by: {request.approvedBy}
+                    </p>
+                  )}
+                  <div className="grid grid-cols-3 md:grid-cols-6 gap-4 mb-4 text-sm">
+                    <div>
+                      <p className="text-gray-600 dark:text-gray-400">Date</p>
+                      <p className="font-medium text-gray-900 dark:text-white">{request.date}</p>
+                    </div>
+                    <div>
+                      <p className="text-gray-600 dark:text-gray-400">OT Type</p>
+                      <p className="font-medium text-gray-900 dark:text-white">{request.otType}</p>
+                    </div>
+                    <div>
+                      <p className="text-gray-600 dark:text-gray-400">Hours Requested</p>
+                      <p className="font-medium text-gray-900 dark:text-white">{request.requestedHours} hrs</p>
+                    </div>
+                    <div>
+                      <p className="text-gray-600 dark:text-gray-400">Reason</p>
+                      <p className="font-medium text-gray-900 dark:text-white">{request.reason}</p>
+                    </div>
+                    <div>
+                      <p className="text-gray-600 dark:text-gray-400">Submitted</p>
+                      <p className="font-medium text-gray-900 dark:text-white">{request.submittedDate}</p>
+                    </div>
+                    <div>
+                      <p className="text-gray-600 dark:text-gray-400">Approved By</p>
+                      <p className="font-medium text-gray-900 dark:text-white">{request.approvedBy || ''}</p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-gray-600 dark:text-gray-400">Hours Requested</p>
-                    <p className="font-medium text-gray-900 dark:text-white">{request.requestedHours} hrs</p>
-                  </div>
-                  <div>
-                    <p className="text-gray-600 dark:text-gray-400">Reason</p>
-                    <p className="font-medium text-gray-900 dark:text-white">{request.reason}</p>
-                  </div>
-                  <div>
-                    <p className="text-gray-600 dark:text-gray-400">Submitted</p>
-                    <p className="font-medium text-gray-900 dark:text-white">{request.submittedDate}</p>
-                  </div>
-                  <div>
-                    <p className="text-gray-600 dark:text-gray-400">Approved By</p>
-                    <p className="font-medium text-gray-900 dark:text-white">{request.approvedBy || ''}</p>
-                  </div>
-                </div>
 
-                {request.status === 'pending' && (
-                  <div className="flex gap-2 pt-3 border-t border-gray-200 dark:border-gray-700">
-                    <Button
-                      size="sm"
-                      onClick={() => handleApprove(request.id)}
-                      className="flex items-center gap-2 bg-blue-500 hover:bg-blue-600"
-                    >
-                      <CheckIcon className="w-4 h-4" />
-                      Approve
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      onClick={() => handleReject(request.id)}
-                      className="flex items-center gap-2 bg-red-100 hover:bg-red-200 text-red-700 border-red-200 dark:bg-red-900 dark:hover:bg-red-800 dark:text-red-300 dark:border-red-800"
-                    >
-                      <XIcon className="w-4 h-4" />
-                      Reject
-                    </Button>
-                  </div>
-                )}
-              </div>
-            ))}
+                  {request.status === 'pending' && (
+                    <div className="flex gap-2 pt-3 border-t border-gray-200 dark:border-gray-700">
+                      <Button
+                        size="sm"
+                        onClick={() => handleApprove(request.id)}
+                        className="flex items-center gap-2 bg-blue-500 hover:bg-blue-600"
+                      >
+                        <CheckIcon className="w-4 h-4" />
+                        Approve
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => handleReject(request.id)}
+                        className="flex items-center gap-2 bg-red-100 hover:bg-red-200 text-red-700 border-red-200 dark:bg-red-900 dark:hover:bg-red-800 dark:text-red-300 dark:border-red-800"
+                      >
+                        <XIcon className="w-4 h-4" />
+                        Reject
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              )))}
           </div>
         </ComponentCard>
       </div>

@@ -4,6 +4,7 @@ import { Table, TableHeader, TableBody, TableRow, TableCell } from '@/components
 interface OvertimeRecord {
   id: string;
   workDate: string;
+  otType: string;
   requestedMinutes: number;
   approvedMinutes: number | null;
   status: string;
@@ -65,6 +66,9 @@ export default function OvertimeHistoryTable({ records }: OvertimeHistoryTablePr
                 Work Date
               </TableCell>
               <TableCell isHeader className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                OT Type
+              </TableCell>
+              <TableCell isHeader className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                 Requested
               </TableCell>
               <TableCell isHeader className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
@@ -77,9 +81,6 @@ export default function OvertimeHistoryTable({ records }: OvertimeHistoryTablePr
                 Reason
               </TableCell>
               <TableCell isHeader className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                Approved By
-              </TableCell>
-              <TableCell isHeader className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                 Approved At
               </TableCell>
             </TableRow>
@@ -89,6 +90,9 @@ export default function OvertimeHistoryTable({ records }: OvertimeHistoryTablePr
               <TableRow key={record.id}>
                 <TableCell className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
                   {formatDate(record.workDate)}
+                </TableCell>
+                <TableCell className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                  {record.otType}
                 </TableCell>
                 <TableCell className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
                   {record.requestedMinutes}
@@ -103,9 +107,6 @@ export default function OvertimeHistoryTable({ records }: OvertimeHistoryTablePr
                 </TableCell>
                 <TableCell className="px-6 py-4 text-sm text-gray-900 dark:text-white max-w-xs truncate">
                   {record.reason}
-                </TableCell>
-                <TableCell className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                  {formatApprovedBy(record.approvedByUser)}
                 </TableCell>
                 <TableCell className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
                   {record.approvedAt ? formatDate(record.approvedAt) : 'N/A'}
