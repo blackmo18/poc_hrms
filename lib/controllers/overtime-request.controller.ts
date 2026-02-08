@@ -22,7 +22,18 @@ export class OvertimeRequestController {
       where,
       skip,
       take: limit,
-      include: {
+      select: {
+        id: true,
+        workDate: true,
+        requestedMinutes: true,
+        approvedMinutes: true,
+        status: true,
+        reason: true,
+        approvedByUserId: true,
+        approvedAt: true,
+        createdAt: true,
+        organizationId: true,
+        otType: true,
         employee: {
           select: {
             id: true,

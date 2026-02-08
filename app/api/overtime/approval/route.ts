@@ -69,6 +69,7 @@ export async function GET(request: NextRequest) {
         department: item.employee.department?.name || 'N/A',
         organization: item.organizationId,
         date: item.workDate.toISOString().split('T')[0],
+        otType: item.otType,
         requestedHours: item.requestedMinutes / 60,
         reason: item.reason,
         status: item.status.toLowerCase(),
