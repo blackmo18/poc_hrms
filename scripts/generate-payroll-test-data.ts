@@ -92,6 +92,12 @@ async function generatePayrollTestData() {
     // Create government info
     await createGovernmentInfo(employee.id, organization.id);
     
+    // Create work schedule
+    await createWorkSchedule(employee.id, organization.id);
+    
+    // Create late deduction policies
+    await createLateDeductionPolicies(organization.id);
+    
     // Generate time entries for the month
     const timeEntries = await generateTimeEntries(employee.id, organization.id, department.id, targetMonth);
     
@@ -134,15 +140,18 @@ async function getOrCreateOrganization() {
       }
     });
     console.log('✓ Created test organization');
-    
-    // Seed government contribution rates for the test organization
-    console.log('📊 Seeding government contribution rates...');
-    await seedTaxBrackets(prisma, generateULID, org);
-    await seedPhilhealthContributions(prisma, generateULID, org);
-    await seedSSSContributions(prisma, generateULID, org);
-    await seedPagibigContributions(prisma, generateULID, org);
-    console.log('✅ Government contribution rates seeded');
+  } else {
+    console.log('✓ Found existing test organization');
   }
+  
+  // Always seed government contribution rates for the test organization
+  // This ensures they exist even if the organization was already created
+  console.log('📊 Seeding government contribution rates...');
+  await seedTaxBrackets(prisma, generateULID, org);
+  await seedPhilhealthContributions(prisma, generateULID, org);
+  await seedSSSContributions(prisma, generateULID, org);
+  await seedPagibigContributions(prisma, generateULID, org);
+  console.log('✅ Government contribution rates seeded');
   
   return org;
 }
@@ -215,10 +224,16 @@ async function createTestEmployee(organizationId: string, departmentId: string, 
   
   const employeeId = `TEST-${Date.now().toString().slice(-4)}`;
   
-  // Check if employee already exists
+  // Check if employee already exists (in any organization)
   let employee = await prisma.employee.findFirst({
-    where: { email, organizationId }
+    where: { email }
   });
+  
+  if (employee && employee.organizationId !== organizationId) {
+    console.log(`⚠️  Employee exists in different organization (${employee.organizationId})`);
+    console.log('  Creating new employee in test organization...');
+    employee = null; // Force creation of new employee
+  }
   
   if (!employee) {
     employee = await prisma.employee.create({
@@ -306,6 +321,107 @@ async function createGovernmentInfo(employeeId: string, organizationId: string) 
   console.log('✓ Set government information');
 }
 
+async function createWorkSchedule(employeeId: string, organizationId: string) {
+  console.log('📅 Creating work schedule for employee...');
+  
+  // Get the employee's compensation
+  const compensation = await prisma.compensation.findFirst({
+    where: { employeeId },
+  });
+  
+  if (!compensation) {
+    throw new Error(`No compensation found for employee ${employeeId}`);
+  }
+  
+  console.log(`  ✓ Found compensation: ₱${compensation.baseSalary.toLocaleString()}/month`);
+  
+  // Check if work schedule already exists
+  const existingSchedule = await prisma.workSchedule.findFirst({
+    where: { compensationId: compensation.id },
+  });
+  
+  if (existingSchedule) {
+    console.log('  ⚠️  Work schedule already exists - skipping');
+    return;
+  }
+  
+  // Create the work schedule
+  const schedule = await prisma.workSchedule.create({
+    data: {
+      id: generateULID(),
+      compensationId: compensation.id,
+      organizationId,
+      scheduleType: 'FIXED',
+      defaultStart: '09:00',
+      defaultEnd: '18:00',
+      workDays: ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY'],
+      restDays: ['SATURDAY', 'SUNDAY'],
+      overtimeRate: 1.25,
+      restDayRate: 1.30,
+      holidayRate: 1.30,
+      specialHolidayRate: 1.30,
+      doubleHolidayRate: 2.00,
+      nightShiftStart: '22:00',
+      nightShiftEnd: '06:00',
+      nightDiffRate: 0.10,
+      isMonthlyRate: true,
+      monthlyRate: compensation.baseSalary,
+      dailyRate: compensation.baseSalary / 22,
+      hourlyRate: compensation.baseSalary / 22 / 8,
+      gracePeriodMinutes: 10,
+      requiredWorkMinutes: 480,
+      maxRegularHours: 8,
+      maxOvertimeHours: 3,
+      allowLateDeduction: true,
+      maxDeductionPerDay: 500,
+      maxDeductionPerMonth: 2000,
+    },
+  });
+  
+  console.log(`  ✓ Created work schedule: ${schedule.defaultStart} - ${schedule.defaultEnd}`);
+  console.log(`  ✓ Work days: ${schedule.workDays.join(', ')}`);
+  console.log(`  ✓ Hourly rate: ₱${schedule.hourlyRate.toFixed(2)}`);
+  console.log('✓ Work schedule created successfully');
+}
+
+async function createLateDeductionPolicies(organizationId: string) {
+  console.log('\n📋 Creating late deduction policies...');
+  
+  // Check if policies already exist
+  const existingPolicies = await prisma.lateDeductionPolicy.findMany({
+    where: { organizationId }
+  });
+  
+  if (existingPolicies.length > 0) {
+    console.log('  ⚠️  Late deduction policies already exist - skipping');
+    return;
+  }
+  
+  // Create LATE policy
+  const latePolicy = await prisma.lateDeductionPolicy.create({
+    data: {
+      id: generateULID(),
+      organizationId,
+      name: 'Standard Late Deduction',
+      policyType: 'LATE',
+      deductionMethod: 'HOURLY_RATE',
+      minimumLateMinutes: 1,
+      gracePeriodMinutes: 10,
+      fixedAmount: null,
+      percentageRate: null,
+      hourlyRateMultiplier: 1.0,
+      maxDeductionPerDay: 500,
+      maxDeductionPerCutoff: 2000,
+      isActive: true,
+      effectiveDate: new Date(new Date().getFullYear() - 1, 0, 1),
+      endDate: null,
+    } as any
+  });
+  
+  console.log(`  ✓ Created LATE policy: ₱${latePolicy.maxDeductionPerDay} max/day`);
+  console.log('✓ Late deduction policies created successfully');
+}
+
 function generateTimeEntryForDay(date: Date): TimeEntryData | null {
   // Skip weekends
   if (isWeekend(date)) {
@@ -360,16 +476,36 @@ function generateTimeEntryForDay(date: Date): TimeEntryData | null {
 }
 
 async function generateTimeEntries(employeeId: string, organizationId: string, departmentId: string, targetMonth: Date) {
+  console.log(`\n📋 Generating time entries for ${targetMonth.toLocaleDateString('default', { month: 'long', year: 'numeric' })}...`);
+
+  // Delete existing time entries for this employee and month
+  const startDate = new Date(targetMonth.getFullYear(), targetMonth.getMonth(), 1);
+  const endDate = new Date(targetMonth.getFullYear(), targetMonth.getMonth() + 1, 0);
+
+  const deletedEntries = await prisma.timeEntry.deleteMany({
+    where: {
+      employeeId,
+      workDate: {
+        gte: startDate,
+        lte: endDate,
+      },
+    },
+  });
+
+  if (deletedEntries.count > 0) {
+    console.log(`  🗑️  Deleted ${deletedEntries.count} existing time entries`);
+  }
+
   const timeEntries: any[] = [];
   let currentDate = new Date(targetMonth.getFullYear(), targetMonth.getMonth(), 1);
-  const endDate = new Date(targetMonth.getFullYear(), targetMonth.getMonth() + 1, 0);
-  
+
   let totalLateDays = 0;
   let totalOvertimeDays = 0;
   let totalAbsentDays = 0;
-  
+
   while (currentDate <= endDate) {
     const timeEntryData = generateTimeEntryForDay(currentDate);
+
     
     if (timeEntryData) {
       const timeEntry = await prisma.timeEntry.create({
@@ -421,6 +557,26 @@ async function generateTimeEntries(employeeId: string, organizationId: string, d
 }
 
 async function generateOvertimeRequests(employeeId: string, organizationId: string, timeEntries: any[], targetMonth: Date) {
+  console.log(`\n⏰ Generating overtime requests...`);
+  
+  // Delete existing overtime requests for this employee and month
+  const startDate = new Date(targetMonth.getFullYear(), targetMonth.getMonth(), 1);
+  const endDate = new Date(targetMonth.getFullYear(), targetMonth.getMonth() + 1, 0);
+  
+  const deletedOT = await prisma.overtime.deleteMany({
+    where: {
+      employeeId,
+      workDate: {
+        gte: startDate,
+        lte: endDate,
+      },
+    },
+  });
+  
+  if (deletedOT.count > 0) {
+    console.log(`  🗑️  Deleted ${deletedOT.count} existing overtime requests`);
+  }
+  
   let overtimeRequestsCreated = 0;
   
   for (const entry of timeEntries) {
@@ -457,6 +613,26 @@ async function generateOvertimeRequests(employeeId: string, organizationId: stri
 }
 
 async function generateLeaveRequests(employeeId: string, organizationId: string, departmentId: string, targetMonth: Date) {
+  console.log(`\n🏖️ Generating leave requests...`);
+  
+  // Delete existing leave requests for this employee and month
+  const startDate = new Date(targetMonth.getFullYear(), targetMonth.getMonth(), 1);
+  const endDate = new Date(targetMonth.getFullYear(), targetMonth.getMonth() + 1, 0);
+  
+  const deletedLeave = await prisma.leaveRequest.deleteMany({
+    where: {
+      employeeId,
+      startDate: {
+        gte: startDate,
+        lte: endDate,
+      },
+    },
+  });
+  
+  if (deletedLeave.count > 0) {
+    console.log(`  🗑️  Deleted ${deletedLeave.count} existing leave requests`);
+  }
+  
   // Generate 1-2 sick leave requests for the month
   const numLeaves = Math.floor(Math.random() * 2) + 1;
   

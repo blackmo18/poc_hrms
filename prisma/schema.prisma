@@ -540,10 +540,10 @@ model WorkSchedule {
   coreHoursEnd      String? @map("core_hours_end")
   totalHoursPerWeek Float?  @map("total_hours_per_week") // Total required hours per week
 
-  // Daily rate computation (PH requirement for wage deductions)
+  // Daily rate computation (standard Philippine practice)
   isMonthlyRate Boolean @default(true) @map("is_monthly_rate")
   monthlyRate   Float?  @map("monthly_rate") // Monthly salary for daily rate calc
-  dailyRate     Float?  @map("daily_rate") // Computed: Monthly × 12 ÷ 313
+  dailyRate     Float?  @map("daily_rate") // Computed: Monthly ÷ 22
   hourlyRate    Float?  @map("hourly_rate") // Computed: Daily ÷ 8
 
   // Grace period and required hours

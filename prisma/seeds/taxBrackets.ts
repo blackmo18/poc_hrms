@@ -58,6 +58,7 @@ export async function seedTaxBrackets(
         baseTax: bracket.baseTax,
         rate: bracket.rate,
         effectiveFrom: new Date('2024-01-01'),
+        effectiveTo: null,
       },
     });
   }

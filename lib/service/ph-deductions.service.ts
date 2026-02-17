@@ -61,10 +61,14 @@ export class PHDeductionsService {
     grossSalary: number,
     date: Date = new Date()
   ): Promise<PHDeductionResult> {
+    console.log(`[DEBUG] calculateAllDeductions called for org: ${organizationId}, salary: ${grossSalary}`);
+    
     // Calculate individual deductions
     const philhealth = await this.calculatePhilhealth(organizationId, grossSalary, date);
     const sss = await this.calculateSSS(organizationId, grossSalary, date);
     const pagibig = await this.calculatePagibig(organizationId, grossSalary, date);
+    
+    console.log(`[DEBUG] Individual deductions - PH: ${philhealth}, SSS: ${sss}, Pagibig: ${pagibig}`);
 
     // Calculate total government contributions
     const totalGovContributions = philhealth + sss + pagibig;
@@ -104,7 +108,8 @@ export class PHDeductionsService {
     );
 
     if (!taxBracket) {
-      throw new Error('No tax bracket found for the given income');
+      console.warn(`[WARNING] No tax bracket found for organization ${organizationId}, taxable income ${taxableIncome}`);
+      return 0;
     }
 
     // Convert to annual for calculation
@@ -143,7 +148,8 @@ export class PHDeductionsService {
     );
 
     if (!rate) {
-      throw new Error('No Philhealth rate found for the given salary');
+      console.warn(`[WARNING] No Philhealth rate found for organization ${organizationId}, salary ${salary}`);
+      return 0;
     }
 
     // Philhealth is calculated on gross salary
@@ -168,7 +174,8 @@ export class PHDeductionsService {
     );
 
     if (!rate) {
-      throw new Error('No SSS rate found for the given salary');
+      console.warn(`[WARNING] No SSS rate found for organization ${organizationId}, salary ${salary}`);
+      return 0;
     }
 
     // SSS has a maximum salary base
@@ -201,7 +208,8 @@ export class PHDeductionsService {
     );
 
     if (!rate) {
-      throw new Error('No Pagibig rate found for the given salary');
+      console.warn(`[WARNING] No Pagibig rate found for organization ${organizationId}, salary ${salary}`);
+      return 0;
     }
 
     // Calculate contribution

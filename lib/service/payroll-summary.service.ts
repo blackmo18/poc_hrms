@@ -1,12 +1,19 @@
 import { employeeController } from '@/lib/controllers/employee.controller';
 import { OvertimeController } from '@/lib/controllers/overtime.controller';
 import { payrollController } from '@/lib/controllers/payroll.controller';
-import { holidayService } from '@/lib/service/holiday.service';
+import { PayrollCalculationService } from './payroll-calculation.service';
 import { timeEntryService } from '@/lib/service/time-entry.service';
+import { holidayService } from '@/lib/service/holiday.service';
 import { getServiceContainer } from '@/lib/di/container';
 import { getWorkScheduleService } from '@/lib/service/work-schedule.service';
 import { getLateDeductionPolicyService } from '@/lib/service/late-deduction-policy.service';
 import { prisma } from '@/lib/db';
+import { 
+  calculateActualAbsentDays,
+  calculateLateMetrics,
+  calculateUndertimeMinutes,
+  getEmployeePayrollMetrics
+} from '@/lib/utils/payroll-calculations';
 
 export interface PayrollSummaryRequest {
   organizationId: string;
@@ -107,6 +114,7 @@ export class PayrollSummaryService {
   private phDeductionsService = getServiceContainer().getPHDeductionsService();
   private workScheduleService = getWorkScheduleService();
   private lateDeductionPolicyService = getLateDeductionPolicyService();
+  private payrollCalculationService = new PayrollCalculationService(this.phDeductionsService);
 
   async generateSummary(
     organizationId: string,
@@ -147,55 +155,41 @@ export class PayrollSummaryService {
             employeesWithSchedule.add(emp.id);
             
             // Calculate lateness and absences
-            const timeEntries = await timeEntryService.getByEmployeeAndDateRange(
-              emp.id,
-              periodStart,
-              periodEnd
-            );
+            // Always fetch compensation since it's not included in the employee object
+            const compensation = await prisma.compensation.findFirst({
+              where: {
+                employeeId: emp.id,
+                effectiveDate: { lte: new Date() }
+              },
+              orderBy: { effectiveDate: 'desc' }
+            });
+            
+            if (compensation) {
+              try {
+                // Use shared utility for metrics calculation
+                const metrics = await getEmployeePayrollMetrics(
+                  emp.id,
+                  organizationId,
+                  periodStart,
+                  periodEnd,
+                  compensation
+                );
 
-            let totalLateMinutes = 0;
-            let lateInstances = 0;
+                // Set late data
+                if (metrics.lateMinutes > 0) {
+                  latenessData.set(emp.id, { 
+                    minutes: metrics.lateMinutes, 
+                    instances: metrics.lateInstances 
+                  });
+                }
 
-            for (const entry of timeEntries) {
-              if (!entry.clockOutAt) continue;
-
-              const validation = await this.workScheduleService.validateTimeEntry(
-                schedule,
-                entry.clockInAt,
-                entry.clockOutAt
-              );
-
-              if (validation.lateMinutes > 0) {
-                totalLateMinutes += validation.lateMinutes;
-                lateInstances++;
+                // Set absence data
+                if (metrics.absentDays > 0) {
+                  absenceData.set(emp.id, metrics.absentDays);
+                }
+              } catch (error) {
+                console.error(`Error checking eligibility for employee ${emp.id}:`, error);
               }
-            }
-
-            if (totalLateMinutes > 0) {
-              latenessData.set(emp.id, { minutes: totalLateMinutes, instances: lateInstances });
-            }
-
-            // Calculate absences
-            const expectedWorkDays = await this.workScheduleService.getWorkDaysForPeriod(
-              schedule,
-              periodStart,
-              periodEnd
-            );
-
-            const datesWithEntries = new Set(
-              timeEntries.map(entry => entry.workDate.toISOString().split('T')[0])
-            );
-
-            let absenceCount = 0;
-            for (const workDay of expectedWorkDays) {
-              const dateStr = workDay.toISOString().split('T')[0];
-              if (!datesWithEntries.has(dateStr)) {
-                absenceCount++;
-              }
-            }
-
-            if (absenceCount > 0) {
-              absenceData.set(emp.id, absenceCount);
             }
           }
         } catch (error) {
@@ -304,20 +298,21 @@ export class PayrollSummaryService {
 
         if (!hasSchedule) {
           missingWorkSchedule++;
+        } else {
+          // Only add to eligible if they have BOTH compensation AND work schedule
+          eligibleEmployees.push({
+            id: employee.id,
+            employeeId: employee.employeeId,
+            firstName: employee.firstName,
+            lastName: employee.lastName,
+            departmentName: employee.department?.name,
+            baseSalary: currentComp?.baseSalary || 0,
+            hasAttendance: true, // Will be updated in attendance check
+            hasWorkSchedule: hasSchedule,
+            lateMinutes: 0, // Will be calculated later
+            absenceCount: 0, // Will be calculated later
+          });
         }
-
-        eligibleEmployees.push({
-          id: employee.id,
-          employeeId: employee.employeeId,
-          firstName: employee.firstName,
-          lastName: employee.lastName,
-          departmentName: employee.department?.name,
-          baseSalary: currentComp?.baseSalary || 0,
-          hasAttendance: true, // Will be updated in attendance check
-          hasWorkSchedule: hasSchedule,
-          lateMinutes: 0, // Will be calculated later
-          absenceCount: 0, // Will be calculated later
-        });
       }
     }
 
@@ -646,78 +641,45 @@ export class PayrollSummaryService {
     let undertimeAffectedEmployees = 0;
 
     for (const employee of employees) {
-      let employeeLateMinutes = 0;
-      let employeeLateInstances = 0;
-      let employeeAbsences = 0;
-      let employeeUndertimeMinutes = 0;
-      
+      // Get employee compensation for rate calculations
+      const compensation = await prisma.compensation.findFirst({
+        where: {
+          employeeId: employee.id,
+          effectiveDate: { lte: periodEnd }
+        },
+        orderBy: { effectiveDate: 'desc' }
+      });
+
+      if (!compensation) continue; // Skip if no compensation
+
       try {
-        const schedule = await this.workScheduleService.getByEmployeeId(employee.id);
-        if (!schedule) continue;
-        
-        const timeEntries = await timeEntryService.getByEmployeeAndDateRange(
+        // Use shared utility to get all metrics at once
+        const metrics = await getEmployeePayrollMetrics(
           employee.id,
+          organizationId,
           periodStart,
-          periodEnd
+          periodEnd,
+          compensation
         );
         
-        // Get expected work days for absence calculation
-        const expectedWorkDays = await this.workScheduleService.getWorkDaysForPeriod(
-          schedule,
-          periodStart,
-          periodEnd
-        );
-        
-        const datesWithEntries = new Set(
-          timeEntries.map(entry => entry.workDate.toISOString().split('T')[0])
-        );
-        
-        // Check absences
-        for (const workDay of expectedWorkDays) {
-          const dateStr = workDay.toISOString().split('T')[0];
-          if (!datesWithEntries.has(dateStr)) {
-            employeeAbsences++;
-          }
+        // Update totals
+        if (metrics.lateInstances > 0) {
+          totalLateInstances += metrics.lateInstances;
+          totalLateMinutes += metrics.lateMinutes;
+          lateAffectedEmployees++;
         }
         
-        // Process time entries for lateness and undertime
-        for (const entry of timeEntries) {
-          if (!entry.clockOutAt) continue;
-          
-          const validation = await this.workScheduleService.validateTimeEntry(
-            schedule,
-            entry.clockInAt,
-            entry.clockOutAt
-          );
-          
-          if (validation.lateMinutes > 0) {
-            employeeLateMinutes += validation.lateMinutes;
-            employeeLateInstances++;
-          }
-          
-          if (validation.undertimeMinutes > 0) {
-            employeeUndertimeMinutes += validation.undertimeMinutes;
-          }
+        if (metrics.absentDays > 0) {
+          totalAbsences += metrics.absentDays;
+          absenceAffectedEmployees++;
+        }
+        
+        if (metrics.undertimeMinutes > 0) {
+          totalUndertimeMinutes += metrics.undertimeMinutes;
+          undertimeAffectedEmployees++;
         }
       } catch (error) {
-        // No schedule, skip
-      }
-      
-      // Update totals if employee has any issues
-      if (employeeLateInstances > 0) {
-        totalLateInstances += employeeLateInstances;
-        totalLateMinutes += employeeLateMinutes;
-        lateAffectedEmployees++;
-      }
-      
-      if (employeeAbsences > 0) {
-        totalAbsences += employeeAbsences;
-        absenceAffectedEmployees++;
-      }
-      
-      if (employeeUndertimeMinutes > 0) {
-        totalUndertimeMinutes += employeeUndertimeMinutes;
-        undertimeAffectedEmployees++;
+        console.error(`Error calculating metrics for employee ${employee.id}:`, error);
       }
     }
 

@@ -289,6 +289,7 @@ export async function seedSSSContributions(
         employerRate: rate.employerRate,
         ecRate: rate.ecRate,
         effectiveFrom: new Date('2024-01-01'),
+        effectiveTo: null,
       },
     });
   }

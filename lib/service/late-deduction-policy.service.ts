@@ -124,12 +124,21 @@ export class LateDeductionPolicyService {
     // Get applicable policy
     const policy = await this.getPolicyByType(organizationId, policyType, date);
     
+    console.log(`[DEBUG] Late deduction policy for ${policyType}:`, policy ? {
+      id: policy.id,
+      deductionMethod: policy.deductionMethod,
+      minimumLateMinutes: policy.minimumLateMinutes,
+      fixedAmount: policy.fixedAmount,
+      percentageRate: policy.percentageRate
+    } : 'No policy found');
+    
     if (!policy) {
       return 0;
     }
 
     // Check if late minutes meet minimum threshold
     if (lateMinutes < policy.minimumLateMinutes) {
+      console.log(`[DEBUG] Late minutes (${lateMinutes}) < minimum (${policy.minimumLateMinutes})`);
       return 0;
     }
 
@@ -159,6 +168,8 @@ export class LateDeductionPolicyService {
       deduction = policy.maxDeductionPerDay;
     }
 
+    console.log(`[DEBUG] Calculated deduction: ₱${deduction} (method: ${policy.deductionMethod})`);
+    
     return Math.round(deduction * 100) / 100; // Round to 2 decimal places
   }
 

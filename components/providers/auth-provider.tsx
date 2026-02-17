@@ -12,7 +12,7 @@ interface User {
   email: string;
   username: string;
   role?: string;
-  organization_id?: string;
+  organizationId?: string;
   firstName?: string;
   lastName?: string;
 }
@@ -34,7 +34,7 @@ const sanitizeUser = (user: any): User => ({
   id: user.id,
   email: user.email,
   username: user.username,
-  organization_id: user.organization_id,
+  organizationId: user.organizationId || user.organization_id, // Handle both camelCase and snake_case
   firstName: user.first_name,
   lastName: user.last_name
 });
@@ -163,7 +163,7 @@ export function AuthProvider({
           id: data.user.id,
           email: data.user.email,
           username: data.user.email,
-          organization_id: data.user.organizationId
+          organizationId: data.user.organizationId
         };
         setUser(userData);
         

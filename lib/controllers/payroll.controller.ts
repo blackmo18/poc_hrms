@@ -1,10 +1,21 @@
 import { prisma } from '../db';
 import { CreatePayroll, UpdatePayroll } from '../models/payroll';
 import { generateULID } from '../utils/ulid.service';
-import { DIContainer } from '../di/container';
+import { PayrollCalculationService } from '../service/payroll-calculation.service';
+import { employeePayrollService } from '../service/employee-payroll.service';
 
-const diContainer = DIContainer.getInstance();
-const payrollCalculationService = diContainer.getPayrollCalculationService();
+function getDIContainer() {
+  const { DIContainer } = require('../di/container');
+  return DIContainer.getInstance();
+}
+
+let payrollCalculationService: PayrollCalculationService;
+function getPayrollCalculationService(): PayrollCalculationService {
+  if (!payrollCalculationService) {
+    payrollCalculationService = getDIContainer().getPayrollCalculationService();
+  }
+  return payrollCalculationService;
+}
 
 export class PayrollController {
   async getAll(employeeId?: string, periodStart?: Date, periodEnd?: Date) {
@@ -180,7 +191,7 @@ export class PayrollController {
     }
 
     // Use the enhanced payroll calculation service
-    const calculationResult = await payrollCalculationService.calculateCompletePayroll(
+    const calculationResult = await getPayrollCalculationService().calculateCompletePayroll(
       organizationId,
       employeeId,
       periodStart,
@@ -217,8 +228,8 @@ export class PayrollController {
       { type: 'SSS', amount: calculationResult.government_deductions.sss },
       { type: 'PAGIBIG', amount: calculationResult.government_deductions.pagibig },
       // Policy deductions
-      { type: 'LATE_DEDUCTION', amount: calculationResult.policy_deductions.late },
-      { type: 'ABSENCE_DEDUCTION', amount: calculationResult.policy_deductions.absence },
+      { type: 'LATE', amount: calculationResult.policy_deductions.late },
+      { type: 'ABSENCE', amount: calculationResult.policy_deductions.absence },
     ].filter(d => d.amount > 0);
 
     if (allDeductions.length > 0) {

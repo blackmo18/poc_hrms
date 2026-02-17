@@ -41,6 +41,9 @@ function PayrollRunContent() {
     departmentName?: string;
     baseSalary: number;
     hasAttendance: boolean;
+    hasWorkSchedule: boolean;
+    lateMinutes: number;
+    absenceCount: number;
   }>>([]);
   
   // Modal state
@@ -370,11 +373,24 @@ function PayrollRunContent() {
                             <div className="flex items-center space-x-2">
                               <span className="font-medium">{employee.lastName}, {employee.firstName}</span>
                               <span className="text-gray-400">({employee.employeeId})</span>
-                              {employee.hasAttendance ? (
-                                <span className="text-green-600">✓</span>
-                              ) : (
-                                <span className="text-red-600">✗</span>
-                              )}
+                              <div className="flex items-center space-x-1">
+                                {employee.hasAttendance ? (
+                                  <span className="text-green-600" title="Has attendance">✓</span>
+                                ) : (
+                                  <span className="text-red-600" title="Missing attendance">✗</span>
+                                )}
+                                {employee.hasWorkSchedule ? (
+                                  <span className="text-blue-600" title="Has work schedule">◉</span>
+                                ) : (
+                                  <span className="text-orange-600" title="Missing work schedule">○</span>
+                                )}
+                                {employee.lateMinutes > 0 && (
+                                  <span className="text-yellow-600" title={`Late: ${employee.lateMinutes} minutes`}>⏰</span>
+                                )}
+                                {employee.absenceCount > 0 && (
+                                  <span className="text-red-600" title={`Absent: ${employee.absenceCount} days`}>⚠</span>
+                                )}
+                              </div>
                             </div>
                             <span className="text-gray-500">₱{employee.baseSalary.toLocaleString()}</span>
                           </div>

@@ -6,7 +6,7 @@ interface User {
   email: string;
   username: string;
   role?: string;
-  organization_id?: string;
+  organizationId?: string;
   firstName?: string;
   lastName?: string;
 }
@@ -18,14 +18,16 @@ interface UseUserCacheOptions {
   isUserIdle?: () => boolean; // Function to check if user is idle
 }
 
-const sanitizeUser = (user: any): User => ({
-  id: user.id,
-  email: user.email,
-  username: user.username,
-  organization_id: user.organization_id,
-  firstName: user.firstName,
-  lastName: user.lastName
-});
+const sanitizeUser = (user: any): User => {
+  return {
+    id: user.id,
+    email: user.email,
+    username: user.username,
+    organizationId: user.organizationId || user.organization_id, // Handle both camelCase and snake_case
+    firstName: user.firstName,
+    lastName: user.lastName
+  };
+};
 
 export function useUserCache(
   setUser: (user: User | null) => void,

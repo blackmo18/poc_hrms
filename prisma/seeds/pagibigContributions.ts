@@ -45,6 +45,7 @@ export async function seedPagibigContributions(
         employeeRate: rate.employeeRate,
         employerRate: rate.employerRate,
         effectiveFrom: new Date('2024-01-01'),
+        effectiveTo: null,
       },
     });
   }
