@@ -153,10 +153,7 @@ export class PayrollController {
   }
 
   async processPayroll(employeeId: string, organizationId: string, departmentId: string | undefined, periodStart: Date, periodEnd: Date) {
-    // TODO: Implement full payroll calculation when all controllers are available
-    // For now, create a basic payroll record with PH deductions
-    
-    // Get employee data with compensation
+    // Get employee data with compensation and work schedule
     const employee = await prisma.employee.findUnique({
       where: { id: employeeId },
       include: {
@@ -182,13 +179,16 @@ export class PayrollController {
       throw new Error('No compensation record found for employee');
     }
 
-    // Use actual base salary from compensation
-    const grossPay = currentCompensation.baseSalary;
+    // Use the enhanced payroll calculation service
+    const calculationResult = await payrollCalculationService.calculateCompletePayroll(
+      organizationId,
+      employeeId,
+      periodStart,
+      periodEnd,
+      currentCompensation.baseSalary
+    );
 
-    // Calculate PH government deductions
-    const phDeductions = await payrollCalculationService.calculatePHDeductions(organizationId, grossPay);
-
-    // Create payroll record
+    // Create payroll record with enhanced data
     const payroll = await prisma.payroll.create({
       data: {
         id: generateULID(),
@@ -197,29 +197,33 @@ export class PayrollController {
         departmentId: departmentId,
         periodStart: periodStart,
         periodEnd: periodEnd,
-        grossPay: grossPay,
-        netPay: grossPay - phDeductions.totalDeductions,
-        taxableIncome: phDeductions.taxableIncome,
-        taxDeduction: phDeductions.tax,
-        philhealthDeduction: phDeductions.philhealth,
-        sssDeduction: phDeductions.sss,
-        pagibigDeduction: phDeductions.pagibig,
-        totalDeductions: phDeductions.totalDeductions,
+        grossPay: calculationResult.total_gross_pay,
+        netPay: calculationResult.total_net_pay,
+        taxableIncome: calculationResult.taxable_income,
+        taxDeduction: calculationResult.government_deductions.tax,
+        philhealthDeduction: calculationResult.government_deductions.philhealth,
+        sssDeduction: calculationResult.government_deductions.sss,
+        pagibigDeduction: calculationResult.government_deductions.pagibig,
+        totalDeductions: calculationResult.total_deductions,
         processedAt: new Date(),
       } as any,
     });
 
-    // Create government deduction records
-    const deductions = [
-      { type: 'TAX', amount: phDeductions.tax },
-      { type: 'PHILHEALTH', amount: phDeductions.philhealth },
-      { type: 'SSS', amount: phDeductions.sss },
-      { type: 'PAGIBIG', amount: phDeductions.pagibig },
+    // Create detailed deduction records
+    const allDeductions = [
+      // Government deductions
+      { type: 'TAX', amount: calculationResult.government_deductions.tax },
+      { type: 'PHILHEALTH', amount: calculationResult.government_deductions.philhealth },
+      { type: 'SSS', amount: calculationResult.government_deductions.sss },
+      { type: 'PAGIBIG', amount: calculationResult.government_deductions.pagibig },
+      // Policy deductions
+      { type: 'LATE_DEDUCTION', amount: calculationResult.policy_deductions.late },
+      { type: 'ABSENCE_DEDUCTION', amount: calculationResult.policy_deductions.absence },
     ].filter(d => d.amount > 0);
 
-    if (deductions.length > 0) {
+    if (allDeductions.length > 0) {
       await prisma.deduction.createMany({
-        data: deductions.map(deduction => ({
+        data: allDeductions.map(deduction => ({
           id: generateULID(),
           payrollId: payroll.id,
           employeeId,
@@ -229,6 +233,86 @@ export class PayrollController {
           createdAt: new Date(),
           updatedAt: new Date(),
         })),
+      });
+    }
+
+    // Create detailed earning records
+    const earnings = [];
+    
+    // Regular pay
+    if (calculationResult.total_regular_pay > 0) {
+      earnings.push({
+        id: generateULID(),
+        payrollId: payroll.id,
+        organizationId,
+        employeeId,
+        type: 'BASE_SALARY',
+        hours: calculationResult.total_regular_minutes / 60,
+        rate: currentCompensation.baseSalary / 160, // Assuming 160 hours per month
+        amount: calculationResult.total_regular_pay,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+    }
+
+    // Overtime pay
+    if (calculationResult.total_overtime_pay > 0) {
+      earnings.push({
+        id: generateULID(),
+        payrollId: payroll.id,
+        organizationId,
+        employeeId,
+        type: 'OVERTIME',
+        hours: calculationResult.total_overtime_minutes / 60,
+        rate: (currentCompensation.baseSalary / 160) * 1.25, // Overtime rate
+        amount: calculationResult.total_overtime_pay,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+    }
+
+    // Night differential pay
+    if (calculationResult.total_night_diff_pay > 0) {
+      earnings.push({
+        id: generateULID(),
+        payrollId: payroll.id,
+        organizationId,
+        employeeId,
+        type: 'NIGHT_DIFFERENTIAL',
+        hours: calculationResult.total_night_diff_minutes / 60,
+        rate: (currentCompensation.baseSalary / 160) * 0.1, // Night diff rate
+        amount: calculationResult.total_night_diff_pay,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+    }
+
+    if (earnings.length > 0) {
+      await prisma.payrollEarning.createMany({
+        data: earnings,
+      });
+    }
+
+    // Update payroll period status if applicable
+    // This would require finding the relevant payroll period
+    const payrollPeriod = await prisma.payrollPeriod.findFirst({
+      where: {
+        organizationId,
+        startDate: { lte: periodStart },
+        endDate: { gte: periodEnd },
+      },
+    });
+
+    if (payrollPeriod && payrollPeriod.status === 'PENDING') {
+      await prisma.payrollPeriod.update({
+        where: { 
+          organizationId_startDate_endDate: {
+            organizationId: payrollPeriod.organizationId,
+            startDate: payrollPeriod.startDate,
+            endDate: payrollPeriod.endDate,
+          }
+        },
+        data: { status: 'PROCESSING' },
       });
     }
 
