@@ -1,26 +1,39 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { PayrollSummaryService } from '../payroll-summary.service';
-import { prisma } from '../../db';
+import { employeeController } from '@/lib/controllers/employee.controller';
+import { OvertimeController } from '@/lib/controllers/overtime.controller';
+import { payrollController } from '@/lib/controllers/payroll.controller';
+import { holidayService } from '@/lib/service/holiday.service';
+import { timeEntryService } from '@/lib/service/time-entry.service';
 
-// Mock prisma
-vi.mock('../../db', () => ({
-  prisma: {
-    employee: {
-      count: vi.fn(),
-      findMany: vi.fn(),
-    },
-    timeEntry: {
-      findMany: vi.fn(),
-    },
-    overtime: {
-      findMany: vi.fn(),
-    },
-    holiday: {
-      findMany: vi.fn(),
-    },
-    payroll: {
-      findFirst: vi.fn(),
-    },
+// Mock all dependencies
+vi.mock('@/lib/controllers/employee.controller', () => ({
+  employeeController: {
+    getAll: vi.fn(),
+  },
+}));
+
+vi.mock('@/lib/controllers/overtime.controller', () => ({
+  OvertimeController: {
+    getOvertimeRequestsByOrganizationAndPeriod: vi.fn(),
+  },
+}));
+
+vi.mock('@/lib/controllers/payroll.controller', () => ({
+  payrollController: {
+    getPayrollsByOrganizationAndPeriod: vi.fn(),
+  },
+}));
+
+vi.mock('@/lib/service/holiday.service', () => ({
+  holidayService: {
+    getHolidays: vi.fn(),
+  },
+}));
+
+vi.mock('@/lib/service/time-entry.service', () => ({
+  timeEntryService: {
+    getTimeEntriesByOrganizationAndPeriod: vi.fn(),
   },
 }));
 
@@ -40,43 +53,49 @@ describe('PayrollSummaryService', () => {
 
     it('should generate complete payroll summary', async () => {
       // Mock employee data
-      (prisma.employee.count as any).mockResolvedValue(10);
-      (prisma.employee.findMany as any).mockResolvedValue([
-        {
-          id: 'emp1',
-          compensations: [{ id: 'comp1' }],
-        },
-        {
-          id: 'emp2',
-          compensations: [{ id: 'comp2' }],
-        },
-        {
-          id: 'emp3',
-          compensations: [], // Missing salary config
-        },
-      ]);
+      (employeeController.getAll as any).mockResolvedValueOnce({
+        pagination: { total: 10 },
+        data: [],
+      });
+      (employeeController.getAll as any).mockResolvedValueOnce({
+        pagination: { total: 10 },
+        data: [
+          {
+            id: 'emp1',
+            compensations: [{ id: 'comp1' }],
+          },
+          {
+            id: 'emp2',
+            compensations: [{ id: 'comp2' }],
+          },
+          {
+            id: 'emp3',
+            compensations: [], // Missing salary config
+          },
+        ],
+      });
 
       // Mock time entries
-      (prisma.timeEntry.findMany as any).mockResolvedValue([
+      (timeEntryService.getTimeEntriesByOrganizationAndPeriod as any).mockResolvedValue([
         { id: 'te1', employeeId: 'emp1' },
         { id: 'te2', employeeId: 'emp2' },
         { id: 'te3', employeeId: 'emp1' },
       ]);
 
       // Mock overtime
-      (prisma.overtime.findMany as any).mockResolvedValue([
+      (OvertimeController.getOvertimeRequestsByOrganizationAndPeriod as any).mockResolvedValue([
         { status: 'APPROVED' },
         { status: 'APPROVED' },
         { status: 'PENDING' },
       ]);
 
       // Mock holidays
-      (prisma.holiday.findMany as any).mockResolvedValue([
+      (holidayService.getHolidays as any).mockResolvedValue([
         { date: new Date('2024-01-20') },
       ]);
 
       // Mock existing payroll
-      (prisma.payroll.findFirst as any).mockResolvedValue(null);
+      (payrollController.getPayrollsByOrganizationAndPeriod as any).mockResolvedValue([]);
 
       const result = await service.generateSummary(
         mockOrganizationId,
@@ -132,14 +151,20 @@ describe('PayrollSummaryService', () => {
     });
 
     it('should handle organization-only filtering (no department)', async () => {
-      (prisma.employee.count as any).mockResolvedValue(5);
-      (prisma.employee.findMany as any).mockResolvedValue([
-        { id: 'emp1', compensations: [{ id: 'comp1' }] },
-      ]);
-      (prisma.timeEntry.findMany as any).mockResolvedValue([]);
-      (prisma.overtime.findMany as any).mockResolvedValue([]);
-      (prisma.holiday.findMany as any).mockResolvedValue([]);
-      (prisma.payroll.findFirst as any).mockResolvedValue(null);
+      (employeeController.getAll as any).mockResolvedValueOnce({
+        pagination: { total: 5 },
+        data: [],
+      });
+      (employeeController.getAll as any).mockResolvedValueOnce({
+        pagination: { total: 5 },
+        data: [
+          { id: 'emp1', compensations: [{ id: 'comp1' }] },
+        ],
+      });
+      (timeEntryService.getTimeEntriesByOrganizationAndPeriod as any).mockResolvedValue([]);
+      (OvertimeController.getOvertimeRequestsByOrganizationAndPeriod as any).mockResolvedValue([]);
+      (holidayService.getHolidays as any).mockResolvedValue([]);
+      (payrollController.getPayrollsByOrganizationAndPeriod as any).mockResolvedValue([]);
 
       const result = await service.generateSummary(
         mockOrganizationId,
@@ -155,22 +180,28 @@ describe('PayrollSummaryService', () => {
 
     it('should handle successful payroll generation readiness', async () => {
       // Mock all data as complete and valid
-      (prisma.employee.count as any).mockResolvedValue(3);
-      (prisma.employee.findMany as any).mockResolvedValue([
-        { id: 'emp1', compensations: [{ id: 'comp1' }] },
-        { id: 'emp2', compensations: [{ id: 'comp2' }] },
-        { id: 'emp3', compensations: [{ id: 'comp3' }] },
-      ]);
+      (employeeController.getAll as any).mockResolvedValueOnce({
+        pagination: { total: 3 },
+        data: [],
+      });
+      (employeeController.getAll as any).mockResolvedValueOnce({
+        pagination: { total: 3 },
+        data: [
+          { id: 'emp1', compensations: [{ id: 'comp1' }] },
+          { id: 'emp2', compensations: [{ id: 'comp2' }] },
+          { id: 'emp3', compensations: [{ id: 'comp3' }] },
+        ],
+      });
 
-      (prisma.timeEntry.findMany as any).mockResolvedValue([
+      (timeEntryService.getTimeEntriesByOrganizationAndPeriod as any).mockResolvedValue([
         { id: 'te1', employeeId: 'emp1' },
         { id: 'te2', employeeId: 'emp2' },
         { id: 'te3', employeeId: 'emp3' },
       ]);
 
-      (prisma.overtime.findMany as any).mockResolvedValue([]);
-      (prisma.holiday.findMany as any).mockResolvedValue([]);
-      (prisma.payroll.findFirst as any).mockResolvedValue(null);
+      (OvertimeController.getOvertimeRequestsByOrganizationAndPeriod as any).mockResolvedValue([]);
+      (holidayService.getHolidays as any).mockResolvedValue([]);
+      (payrollController.getPayrollsByOrganizationAndPeriod as any).mockResolvedValue([]);
 
       const result = await service.generateSummary(
         mockOrganizationId,
@@ -187,18 +218,24 @@ describe('PayrollSummaryService', () => {
     });
 
     it('should detect existing payroll runs', async () => {
-      (prisma.employee.count as any).mockResolvedValue(1);
-      (prisma.employee.findMany as any).mockResolvedValue([
-        { id: 'emp1', compensations: [{ id: 'comp1' }] },
-      ]);
-      (prisma.timeEntry.findMany as any).mockResolvedValue([
+      (employeeController.getAll as any).mockResolvedValueOnce({
+        pagination: { total: 1 },
+        data: [],
+      });
+      (employeeController.getAll as any).mockResolvedValueOnce({
+        pagination: { total: 1 },
+        data: [
+          { id: 'emp1', compensations: [{ id: 'comp1' }] },
+        ],
+      });
+      (timeEntryService.getTimeEntriesByOrganizationAndPeriod as any).mockResolvedValue([
         { id: 'te1', employeeId: 'emp1' },
       ]);
-      (prisma.overtime.findMany as any).mockResolvedValue([]);
-      (prisma.holiday.findMany as any).mockResolvedValue([]);
-      (prisma.payroll.findFirst as any).mockResolvedValue({
-        processedAt: new Date('2024-01-15T10:00:00Z'),
-      });
+      (OvertimeController.getOvertimeRequestsByOrganizationAndPeriod as any).mockResolvedValue([]);
+      (holidayService.getHolidays as any).mockResolvedValue([]);
+      (payrollController.getPayrollsByOrganizationAndPeriod as any).mockResolvedValue([
+        { processedAt: new Date('2024-01-15T10:00:00Z') },
+      ]);
 
       const result = await service.generateSummary(
         mockOrganizationId,
@@ -213,12 +250,18 @@ describe('PayrollSummaryService', () => {
     });
 
     it('should handle empty employee list', async () => {
-      (prisma.employee.count as any).mockResolvedValue(0);
-      (prisma.employee.findMany as any).mockResolvedValue([]);
-      (prisma.timeEntry.findMany as any).mockResolvedValue([]);
-      (prisma.overtime.findMany as any).mockResolvedValue([]);
-      (prisma.holiday.findMany as any).mockResolvedValue([]);
-      (prisma.payroll.findFirst as any).mockResolvedValue(null);
+      (employeeController.getAll as any).mockResolvedValueOnce({
+        pagination: { total: 0 },
+        data: [],
+      });
+      (employeeController.getAll as any).mockResolvedValueOnce({
+        pagination: { total: 0 },
+        data: [],
+      });
+      (timeEntryService.getTimeEntriesByOrganizationAndPeriod as any).mockResolvedValue([]);
+      (OvertimeController.getOvertimeRequestsByOrganizationAndPeriod as any).mockResolvedValue([]);
+      (holidayService.getHolidays as any).mockResolvedValue([]);
+      (payrollController.getPayrollsByOrganizationAndPeriod as any).mockResolvedValue([]);
 
       const result = await service.generateSummary(
         mockOrganizationId,
@@ -235,16 +278,22 @@ describe('PayrollSummaryService', () => {
     });
 
     it('should handle all employees missing attendance', async () => {
-      (prisma.employee.count as any).mockResolvedValue(2);
-      (prisma.employee.findMany as any).mockResolvedValue([
-        { id: 'emp1', compensations: [{ id: 'comp1' }] },
-        { id: 'emp2', compensations: [{ id: 'comp2' }] },
-      ]);
+      (employeeController.getAll as any).mockResolvedValueOnce({
+        pagination: { total: 2 },
+        data: [],
+      });
+      (employeeController.getAll as any).mockResolvedValueOnce({
+        pagination: { total: 2 },
+        data: [
+          { id: 'emp1', compensations: [{ id: 'comp1' }] },
+          { id: 'emp2', compensations: [{ id: 'comp2' }] },
+        ],
+      });
 
-      (prisma.timeEntry.findMany as any).mockResolvedValue([]); // No attendance records
-      (prisma.overtime.findMany as any).mockResolvedValue([]);
-      (prisma.holiday.findMany as any).mockResolvedValue([]);
-      (prisma.payroll.findFirst as any).mockResolvedValue(null);
+      (timeEntryService.getTimeEntriesByOrganizationAndPeriod as any).mockResolvedValue([]); // No attendance records
+      (OvertimeController.getOvertimeRequestsByOrganizationAndPeriod as any).mockResolvedValue([]);
+      (holidayService.getHolidays as any).mockResolvedValue([]);
+      (payrollController.getPayrollsByOrganizationAndPeriod as any).mockResolvedValue([]);
 
       const result = await service.generateSummary(
         mockOrganizationId,
@@ -263,24 +312,26 @@ describe('PayrollSummaryService', () => {
 
   describe('getEmployeeCount', () => {
     it('should count employees by organization only', async () => {
-      (prisma.employee.count as any).mockResolvedValue(5);
+      (employeeController.getAll as any).mockResolvedValue({
+        pagination: { total: 5 },
+        data: [],
+      });
 
       const result = await service['getEmployeeCount']('org-123', undefined);
 
-      expect(prisma.employee.count).toHaveBeenCalledWith({
-        where: { organizationId: 'org-123' },
-      });
+      expect(employeeController.getAll).toHaveBeenCalledWith('org-123', undefined, { page: 1, limit: 1 });
       expect(result).toBe(5);
     });
 
     it('should count employees by organization and department', async () => {
-      (prisma.employee.count as any).mockResolvedValue(3);
+      (employeeController.getAll as any).mockResolvedValue({
+        pagination: { total: 3 },
+        data: [],
+      });
 
       const result = await service['getEmployeeCount']('org-123', 'dept-456');
 
-      expect(prisma.employee.count).toHaveBeenCalledWith({
-        where: { organizationId: 'org-123', departmentId: 'dept-456' },
-      });
+      expect(employeeController.getAll).toHaveBeenCalledWith('org-123', 'dept-456', { page: 1, limit: 1 });
       expect(result).toBe(3);
     });
   });

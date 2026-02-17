@@ -118,9 +118,11 @@ export class PayrollSummaryService {
     let missingSalaryConfig = 0;
 
     for (const employee of employees) {
-      // Check for salary configuration - need to get compensations
-      // For now, we'll assume all have salary config since we don't have a direct way to check compensations
-      // This would need to be enhanced when compensation service is available
+      // Check for salary configuration by looking at compensations array
+      // Employees without compensations are considered to have missing salary config
+      if (!employee.compensations || employee.compensations.length === 0) {
+        missingSalaryConfig++;
+      }
     }
 
     const eligible = employees.length - missingSalaryConfig;

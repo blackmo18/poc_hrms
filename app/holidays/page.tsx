@@ -95,7 +95,7 @@ function HolidaysContent() {
             <h1 className="text-2xl font-bold">Holiday Management</h1>
             <p className="text-gray-600 dark:text-gray-400 mt-1">Manage PH national and company holidays</p>
           </div>
-          <Button className="flex items-center gap-2">
+          <Button className="flex items-center gap-2 bg-blue-600">
             <PlusIcon className="w-4 h-4" />
             Add Holiday
           </Button>

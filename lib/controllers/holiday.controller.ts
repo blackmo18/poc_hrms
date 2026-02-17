@@ -32,16 +32,64 @@ export class HolidayController {
   }
 
   /**
+   * Get holiday templates by organization (including system templates)
+   */
+  async getHolidayTemplatesByOrganizationWithSystem(organizationId: string): Promise<any[]> {
+    return await prisma.holidayTemplate.findMany({
+      where: {
+        OR: [
+          { organizationId }, // Organization-specific templates
+          { isDefault: true }, // System templates available to all
+        ],
+      },
+      include: {
+        holidays: {
+          orderBy: {
+            date: 'asc',
+          },
+        },
+        organization: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
+  }
+
+  /**
    * Create a holiday template
    */
-  async createHolidayTemplate(organizationID: string, name: string, description?: string, createdBy?: string): Promise<any> {
+  async createHolidayTemplate(organizationID: string, name: string, description?: string, createdBy?: string, holidays?: any[]): Promise<any> {
     return await prisma.holidayTemplate.create({
       data: {
         id: generateULID(),
         organizationId: organizationID,
         name: name,
         description: description,
+        ...(holidays && holidays.length > 0 && {
+          holidays: {
+            create: holidays.map(holiday => ({
+              id: generateULID(),
+              organizationId: organizationID,
+              date: new Date(holiday.date),
+              name: holiday.name,
+              type: holiday.type,
+              isPaidIfNotWorked: holiday.isPaidIfNotWorked,
+              countsTowardOt: holiday.countsTowardOt,
+              rateMultiplier: holiday.rateMultiplier,
+              isRecurring: false,
+            }))
+          }
+        })
       } as any,
+      include: {
+        holidays: true
+      }
     });
   }
 
@@ -412,6 +460,83 @@ export class HolidayController {
       orderBy: {
         date: 'asc',
       },
+    });
+  }
+
+  /**
+   * Find holiday template by ID with all its holidays
+   */
+  async findTemplateWithHolidays(templateId: string): Promise<any> {
+    return await prisma.holidayTemplate.findUnique({
+      where: { id: templateId },
+      include: {
+        holidays: {
+          orderBy: { date: 'asc' }
+        }
+      }
+    });
+  }
+
+  /**
+   * Check if a template name already exists for an organization
+   */
+  async checkTemplateNameExists(organizationId: string, templateName: string): Promise<boolean> {
+    const existing = await prisma.holidayTemplate.findFirst({
+      where: {
+        organizationId: organizationId,
+        name: templateName
+      }
+    });
+    return !!existing;
+  }
+
+  /**
+   * Create a holiday template with all required fields
+   */
+  async createFullHolidayTemplate(data: {
+    organizationId: string;
+    name: string;
+    description?: string;
+    isDefault?: boolean;
+  }): Promise<any> {
+    return await prisma.holidayTemplate.create({
+      data: {
+        id: generateULID(),
+        organizationId: data.organizationId,
+        name: data.name,
+        description: data.description,
+        isDefault: data.isDefault || false
+      }
+    });
+  }
+
+  /**
+   * Create a holiday with all required fields
+   */
+  async createFullHoliday(data: {
+    organizationId: string;
+    holidayTemplateId: string;
+    name: string;
+    date: Date;
+    type: HolidayType;
+    rateMultiplier: number;
+    isPaidIfNotWorked: boolean;
+    countsTowardOt: boolean;
+    isRecurring?: boolean;
+  }): Promise<any> {
+    return await prisma.holiday.create({
+      data: {
+        id: generateULID(),
+        organizationId: data.organizationId,
+        holidayTemplateId: data.holidayTemplateId,
+        name: data.name,
+        date: data.date,
+        type: data.type,
+        rateMultiplier: data.rateMultiplier,
+        isPaidIfNotWorked: data.isPaidIfNotWorked,
+        countsTowardOt: data.countsTowardOt,
+        isRecurring: data.isRecurring || false
+      }
     });
   }
 }

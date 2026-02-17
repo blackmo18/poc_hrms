@@ -70,7 +70,16 @@ export interface IHolidayService {
   }): Promise<any>;
 
   /**
-   * Get holidays for a calendar
+   * Copy holidays from a system template to create a new template for an organization
    */
-  getHolidaysForCalendar(calendarId: string): Promise<any[]>;
+  copyHolidaysFromTemplate(data: {
+    organizationId: string;
+    sourceTemplateId: string;
+    newTemplateName: string;
+    targetYear?: number;
+  }): Promise<{
+    template: any;
+    holidays: any[];
+    totalCopied: number;
+  }>;
 }

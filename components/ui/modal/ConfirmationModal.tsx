@@ -160,7 +160,7 @@ export default function ConfirmationModal({
   const renderDetails = () => {
     if (groupedDetails && groupedDetails.length > 0) {
       return (
-        <div className="mt-4 space-y-4">
+        <div className="mt-4 space-y-4 max-h-[60vh] overflow-y-auto pr-2">
           {groupedDetails.map((group, groupIndex) => (
             <div key={groupIndex} className={`${displayStyle === 'separated' ? 'bg-gray-50 dark:bg-gray-800 rounded-lg p-4' : ''}`}>
               <h4 className={`text-sm font-semibold text-gray-900 dark:text-white ${displayStyle === 'separated' ? 'mb-3' : 'mb-2'}`}>
@@ -177,7 +177,7 @@ export default function ConfirmationModal({
     
     if (details && details.length > 0) {
       return (
-        <div className={`mt-4 ${displayStyle === 'separated' ? 'bg-gray-50 dark:bg-gray-800 rounded-lg p-4' : ''}`}>
+        <div className={`mt-4 max-h-[60vh] overflow-y-auto pr-2 ${displayStyle === 'separated' ? 'bg-gray-50 dark:bg-gray-800 rounded-lg p-4' : ''}`}>
           <div className="space-y-1">
             {details.map((detail, index) => renderDetailItem(detail, index))}
           </div>
@@ -213,15 +213,17 @@ export default function ConfirmationModal({
           )}
           {renderDetails()}
         </div>
-        <div className="flex items-center justify-end gap-3 px-2">
-          <Button
-            variant="outline"
-            size="md"
-            onClick={onClose}
-            disabled={isLoading}
-          >
-            {cancelText}
-          </Button>
+        <div className="flex mt-4 items-center justify-end gap-3 px-2">
+          {cancelText && (
+            <Button
+              variant="outline"
+              size="md"
+              onClick={onClose}
+              disabled={isLoading}
+            >
+              {cancelText}
+            </Button>
+          )}
           <Button
             variant="primary"
             size="md"

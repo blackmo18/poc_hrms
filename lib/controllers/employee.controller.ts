@@ -55,6 +55,7 @@ export class EmployeeController {
             name: true,
           },
         },
+        compensations: true,
       },
       orderBy: {
         createdAt: 'desc'
