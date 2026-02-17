@@ -40,6 +40,11 @@ model Organization {
   permissions             Permission[]
   organizationOnboarding  OrganizationOnboarding?
   organizationOffboarding OrganizationOffboarding?
+  taxBrackets             TaxBracket[]
+  philhealthContributions PhilhealthContribution[]
+  sssContributions        SSSContribution[]
+  pagibigContributions    PagibigContribution[]
+  employeeGovernmentInfos EmployeeGovernmentInfo[]
 
   @@index([status])
   @@map("organizations")
@@ -111,6 +116,7 @@ model Employee {
   employeeBenefits EmployeeBenefit[]
   employeeDocument EmployeeDocument[]
   overtimes        Overtime[]
+  governmentInfo   EmployeeGovernmentInfo?
 
   @@unique([organizationId, email])
   @@index([organizationId])
@@ -324,15 +330,21 @@ model TimeBreak {
 }
 
 model Payroll {
-  id             String   @id
-  employeeId     String   @map("employee_id")
-  organizationId String   @map("organization_id")
-  departmentId   String?  @map("department_id")
-  periodStart    DateTime @map("period_start")
-  periodEnd      DateTime @map("period_end")
-  grossPay       Float    @map("gross_pay")
-  netPay         Float    @map("net_pay")
-  processedAt    DateTime @default(now()) @map("processed_at")
+  id                   String   @id
+  employeeId           String   @map("employee_id")
+  organizationId       String   @map("organization_id")
+  departmentId         String?  @map("department_id")
+  periodStart          DateTime @map("period_start")
+  periodEnd            DateTime @map("period_end")
+  grossPay             Float    @map("gross_pay")
+  netPay               Float    @map("net_pay")
+  taxableIncome        Float?   @map("taxable_income")
+  taxDeduction         Float?   @map("tax_deduction")
+  philhealthDeduction  Float?   @map("philhealth_deduction")
+  sssDeduction         Float?   @map("sss_deduction")
+  pagibigDeduction     Float?   @map("pagibig_deduction")
+  totalDeductions      Float?   @map("total_deductions")
+  processedAt          DateTime @default(now()) @map("processed_at")
 
   employee   Employee         @relation(fields: [employeeId], references: [id], onDelete: Cascade)
   earnings   PayrollEarning[]
@@ -734,6 +746,111 @@ model Overtime {
   @@index([status])
   @@index([workDate])
   @@map("overtimes")
+}
+
+/////////////////////////////
+// GOVERNMENT CONTRIBUTIONS
+/////////////////////////////
+
+model TaxBracket {
+  id             String  @id
+  organizationId String  @map("organization_id")
+  minSalary      Float   @map("min_salary")
+  maxSalary      Float?  @map("max_salary") // null for highest bracket
+  baseTax        Float   @map("base_tax")
+  rate           Float   // percentage as decimal (0.20 for 20%)
+  effectiveFrom  DateTime @map("effective_from")
+  effectiveTo    DateTime? @map("effective_to")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([organizationId])
+  @@index([effectiveFrom])
+  @@map("tax_brackets")
+}
+
+model PhilhealthContribution {
+  id             String  @id
+  organizationId String  @map("organization_id")
+  minSalary      Float   @map("min_salary")
+  maxSalary      Float?  @map("max_salary") // null for highest bracket
+  employeeRate   Float   @map("employee_rate") // percentage as decimal
+  employerRate   Float   @map("employer_rate") // percentage as decimal
+  effectiveFrom  DateTime @map("effective_from")
+  effectiveTo    DateTime? @map("effective_to")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([organizationId])
+  @@index([effectiveFrom])
+  @@map("philhealth_contributions")
+}
+
+model SSSContribution {
+  id             String  @id
+  organizationId String  @map("organization_id")
+  minSalary      Float   @map("min_salary")
+  maxSalary      Float?  @map("max_salary") // null for highest bracket
+  employeeRate   Float   @map("employee_rate") // percentage as decimal
+  employerRate   Float   @map("employer_rate") // percentage as decimal
+  ecRate         Float   @map("ec_rate") // Employees' Compensation rate
+  effectiveFrom  DateTime @map("effective_from")
+  effectiveTo    DateTime? @map("effective_to")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([organizationId])
+  @@index([effectiveFrom])
+  @@map("sss_contributions")
+}
+
+model PagibigContribution {
+  id             String  @id
+  organizationId String  @map("organization_id")
+  minSalary      Float   @map("min_salary")
+  maxSalary      Float?  @map("max_salary") // null for highest bracket
+  employeeRate   Float   @map("employee_rate") // percentage as decimal
+  employerRate   Float   @map("employer_rate") // percentage as decimal
+  effectiveFrom  DateTime @map("effective_from")
+  effectiveTo    DateTime? @map("effective_to")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([organizationId])
+  @@index([effectiveFrom])
+  @@map("pagibig_contributions")
+}
+
+model EmployeeGovernmentInfo {
+  id             String @id
+  employeeId     String @unique @map("employee_id")
+  organizationId String @map("organization_id")
+  
+  sssNumber      String? @map("sss_number")
+  philhealthNumber String? @map("philhealth_number")
+  pagibigNumber  String? @map("pagibig_number")
+  tinNumber      String? @map("tin_number")
+
+  employee   Employee   @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([organizationId])
+  @@map("employee_government_info")
 }
 
 /////////////////////////////

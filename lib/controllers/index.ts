@@ -13,3 +13,5 @@ export * from './overtime-request.controller';
 export * from './timesheet-calculation.controller';
 export * from './calendar.controller';
 export * from './holiday.controller';
+export * from './government-contribution.controller';
+export * from './employee-government-info.controller';

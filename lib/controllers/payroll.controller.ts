@@ -1,6 +1,10 @@
 import { prisma } from '../db';
 import { CreatePayroll, UpdatePayroll } from '../models/payroll';
 import { generateULID } from '../utils/ulid.service';
+import { DIContainer } from '../di/container';
+
+const diContainer = DIContainer.getInstance();
+const payrollCalculationService = diContainer.getPayrollCalculationService();
 
 export class PayrollController {
   async getAll(employeeId?: string, periodStart?: Date, periodEnd?: Date) {
@@ -148,9 +152,43 @@ export class PayrollController {
     });
   }
 
-  async processPayroll(employeeId: string, organizationId: string, departmentId: string | undefined, periodStart: Date, periodEnd: Date, grossSalary: number, deductions: Array<{ type: string; amount: number }>) {
-    const netSalary = deductions.reduce((total, deduction) => total - deduction.amount, grossSalary);
+  async processPayroll(employeeId: string, organizationId: string, departmentId: string | undefined, periodStart: Date, periodEnd: Date) {
+    // TODO: Implement full payroll calculation when all controllers are available
+    // For now, create a basic payroll record with PH deductions
+    
+    // Get employee data with compensation
+    const employee = await prisma.employee.findUnique({
+      where: { id: employeeId },
+      include: {
+        department: true,
+        jobTitle: true,
+        compensations: {
+          where: {
+            effectiveDate: { lte: new Date() }
+          },
+          orderBy: { effectiveDate: 'desc' },
+          take: 1
+        }
+      },
+    });
 
+    if (!employee) {
+      throw new Error('Employee not found');
+    }
+
+    // Get current compensation from the most recent record
+    const currentCompensation = employee.compensations[0];
+    if (!currentCompensation) {
+      throw new Error('No compensation record found for employee');
+    }
+
+    // Use actual base salary from compensation
+    const grossPay = currentCompensation.baseSalary;
+
+    // Calculate PH government deductions
+    const phDeductions = await payrollCalculationService.calculatePHDeductions(organizationId, grossPay);
+
+    // Create payroll record
     const payroll = await prisma.payroll.create({
       data: {
         id: generateULID(),
@@ -159,13 +197,26 @@ export class PayrollController {
         departmentId: departmentId,
         periodStart: periodStart,
         periodEnd: periodEnd,
-        grossPay: grossSalary,
-        netPay: netSalary,
+        grossPay: grossPay,
+        netPay: grossPay - phDeductions.totalDeductions,
+        taxableIncome: phDeductions.taxableIncome,
+        taxDeduction: phDeductions.tax,
+        philhealthDeduction: phDeductions.philhealth,
+        sssDeduction: phDeductions.sss,
+        pagibigDeduction: phDeductions.pagibig,
+        totalDeductions: phDeductions.totalDeductions,
         processedAt: new Date(),
       } as any,
     });
 
-    // Create deductions
+    // Create government deduction records
+    const deductions = [
+      { type: 'TAX', amount: phDeductions.tax },
+      { type: 'PHILHEALTH', amount: phDeductions.philhealth },
+      { type: 'SSS', amount: phDeductions.sss },
+      { type: 'PAGIBIG', amount: phDeductions.pagibig },
+    ].filter(d => d.amount > 0);
+
     if (deductions.length > 0) {
       await prisma.deduction.createMany({
         data: deductions.map(deduction => ({

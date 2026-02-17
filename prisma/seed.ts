@@ -10,6 +10,11 @@ import { seedEmployeesAndUsers } from './seeds/employees';
 import { seedLeaveRequests } from './seeds/leaveRequests';
 import { seedCompensation } from './seeds/compensation';
 import { seedHolidays } from './seeds/holidays';
+import { seedTaxBrackets } from './seeds/taxBrackets';
+import { seedPhilhealthContributions } from './seeds/philhealthContributions';
+import { seedSSSContributions } from './seeds/sssContributions';
+import { seedPagibigContributions } from './seeds/pagibigContributions';
+import { seedEmployeeGovernmentInfo } from './seeds/employeeGovernmentInfo';
 
 // Load .env.local (which could be from .env or Vercel depending on the command used)
 config({ path: '.env.local' });
@@ -40,6 +45,11 @@ async function cleanDatabase() {
 
   // Delete in correct order to respect foreign key constraints
   const tables = [
+    'employee_government_info',
+    'pagibig_contribution',
+    'sss_contribution',
+    'philhealth_contribution',
+    'tax_bracket',
     'leave_request',
     'compensation', 
     'user_role',
@@ -139,6 +149,15 @@ async function seedDatabase() {
 
   // Seed holidays
   await seedHolidays(prisma, generateULID, systemOrg);
+
+  // Seed government contributions
+  await seedTaxBrackets(prisma, generateULID, organization);
+  await seedPhilhealthContributions(prisma, generateULID, organization);
+  await seedSSSContributions(prisma, generateULID, organization);
+  await seedPagibigContributions(prisma, generateULID, organization);
+  
+  // Seed employee government information
+  await seedEmployeeGovernmentInfo(prisma, generateULID, employees, organization);
 
   console.log('🎉 Database seeding completed successfully!');
 
