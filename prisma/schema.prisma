@@ -32,6 +32,12 @@ model Organization {
   holidays                Holiday[]
   departments             Department[]
   jobTitles               JobTitle[]
+  payrollPeriods          PayrollPeriod[]
+  compensations           Compensation[]
+  timeEntries             TimeEntry[]
+  leaveRequests           LeaveRequest[]
+  overtimes               Overtime[]
+  deductions              Deduction[]
   benefits                Benefit[]
   documents               Document[]
   admins                  Admin[]
@@ -45,6 +51,8 @@ model Organization {
   sssContributions        SSSContribution[]
   pagibigContributions    PagibigContribution[]
   employeeGovernmentInfos EmployeeGovernmentInfo[]
+  TimeBreak               TimeBreak[]
+  PayrollEarning          PayrollEarning[]
 
   @@index([status])
   @@map("organizations")
@@ -103,8 +111,7 @@ model Employee {
   jobTitle     JobTitle?    @relation(fields: [jobTitleId], references: [id])
   calendar     Calendar?    @relation(fields: [calendarId], references: [id])
 
-  holidayAssignments EmployeeHolidayAssignment[]
-  timeEntries        TimeEntry[]
+  timeEntries         TimeEntry[]
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -117,6 +124,9 @@ model Employee {
   employeeDocument EmployeeDocument[]
   overtimes        Overtime[]
   governmentInfo   EmployeeGovernmentInfo?
+  TimeBreak        TimeBreak[]
+  PayrollEarning   PayrollEarning[]
+  Deduction        Deduction[]
 
   @@unique([organizationId, email])
   @@index([organizationId])
@@ -131,11 +141,14 @@ model Department {
   name           String
   description    String?
 
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  employees    Employee[]
+  organization  Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  employees     Employee[]
+  compensations Compensation[]
 
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  createdAt         DateTime            @default(now()) @map("created_at")
+  updatedAt         DateTime            @updatedAt @map("updated_at")
+  TimeEntry         TimeEntry[]
+  LeaveRequest      LeaveRequest[]
 
   @@unique([organizationId, name])
   @@index([organizationId])
@@ -206,6 +219,7 @@ model HolidayTemplate {
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
+
   @@map("holiday_templates")
 }
 
@@ -224,7 +238,6 @@ model Holiday {
   organization      Organization                @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   holidayTemplate   HolidayTemplate             @relation(fields: [holidayTemplateId], references: [id], onDelete: Cascade)
   calendarLinks     CalendarHoliday[]
-  employeeOverrides EmployeeHolidayAssignment[]
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -234,24 +247,6 @@ model Holiday {
   @@map("holidays")
 }
 
-model EmployeeHolidayAssignment {
-  id             String @id
-  employeeId     String @map("employee_id")
-  holidayId      String @map("holiday_id")
-  organizationId String @map("organization_id")
-
-  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  holiday  Holiday  @relation(fields: [holidayId], references: [id], onDelete: Cascade)
-
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-
-  @@unique([employeeId, holidayId])
-  @@index([organizationId])
-  @@index([employeeId])
-  @@index([holidayId])
-  @@map("employee_holiday_assignments")
-}
 
 /////////////////////////////
 // PAYROLL RULES
@@ -295,33 +290,34 @@ model TimeEntry {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  employee   Employee    @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  timeBreaks TimeBreak[]
+  employee            Employee            @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  organization        Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  department          Department?         @relation(fields: [departmentId], references: [id])
+  timeBreaks          TimeBreak[]
 
+  @@unique([employeeId, workDate])
   @@index([organizationId])
   @@index([employeeId])
   @@index([departmentId])
   @@index([workDate])
   @@index([status])
-  @@unique([employeeId, workDate])
   @@map("time_entries")
 }
 
 model TimeBreak {
-  id             String @id
-  timeEntryId    String @map("time_entry_id")
-  organizationId String @map("organization_id")
-  employeeId     String @map("employee_id")
+  id              String   @id
+  timeEntryId     String   @map("time_entry_id")
+  organizationId  String   @map("organization_id")
+  employeeId      String   @map("employee_id")
+  breakType       BreakType // MEAL, REST, etc
+  breakStartAt    DateTime @map("break_start_at") @db.Timestamptz(3)
+  breakEndAt      DateTime @map("break_end_at") @db.Timestamptz(3)
+  isPaid          Boolean  @default(true)
+  durationMinutes Int?     @map("duration_minutes")
 
-  breakStartAt DateTime  @map("break_start_at") @db.Timestamptz(3)
-  breakEndAt   DateTime? @map("break_end_at") @db.Timestamptz(3)
-
-  breakType BreakType @default(REST)
-  isPaid    Boolean   @default(false)
-
-  createdAt DateTime @default(now()) @map("created_at")
-
-  timeEntry TimeEntry @relation(fields: [timeEntryId], references: [id], onDelete: Cascade)
+  timeEntry    TimeEntry    @relation(fields: [timeEntryId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  employee     Employee     @relation(fields: [employeeId], references: [id], onDelete: Cascade)
 
   @@index([organizationId])
   @@index([employeeId])
@@ -330,25 +326,26 @@ model TimeBreak {
 }
 
 model Payroll {
-  id                   String   @id
-  employeeId           String   @map("employee_id")
-  organizationId       String   @map("organization_id")
-  departmentId         String?  @map("department_id")
-  periodStart          DateTime @map("period_start")
-  periodEnd            DateTime @map("period_end")
-  grossPay             Float    @map("gross_pay")
-  netPay               Float    @map("net_pay")
-  taxableIncome        Float?   @map("taxable_income")
-  taxDeduction         Float?   @map("tax_deduction")
-  philhealthDeduction  Float?   @map("philhealth_deduction")
-  sssDeduction         Float?   @map("sss_deduction")
-  pagibigDeduction     Float?   @map("pagibig_deduction")
-  totalDeductions      Float?   @map("total_deductions")
-  processedAt          DateTime @default(now()) @map("processed_at")
+  id                  String   @id
+  employeeId          String   @map("employee_id")
+  organizationId      String   @map("organization_id")
+  departmentId        String?  @map("department_id")
+  periodStart         DateTime @map("period_start")
+  periodEnd           DateTime @map("period_end")
+  grossPay            Float    @map("gross_pay")
+  netPay              Float    @map("net_pay")
+  taxableIncome       Float?   @map("taxable_income")
+  taxDeduction        Float?   @map("tax_deduction")
+  philhealthDeduction Float?   @map("philhealth_deduction")
+  sssDeduction        Float?   @map("sss_deduction")
+  pagibigDeduction    Float?   @map("pagibig_deduction")
+  totalDeductions     Float?   @map("total_deductions")
+  processedAt         DateTime @default(now()) @map("processed_at")
 
-  employee   Employee         @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  earnings   PayrollEarning[]
-  deductions Deduction[]
+  employee      Employee         @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  earnings      PayrollEarning[]
+  deductions    Deduction[]
+  payrollPeriod PayrollPeriod    @relation(fields: [periodStart, periodEnd], references: [startDate, endDate])
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -358,6 +355,31 @@ model Payroll {
   @@index([departmentId])
   @@index([periodStart, periodEnd])
   @@map("payrolls")
+}
+
+model PayrollPeriod {
+  startDate      DateTime @map("start_date")
+  endDate        DateTime @map("end_date")
+  organizationId String   @map("organization_id")
+  payDate        DateTime @map("pay_date")
+  status         String   @default("PENDING") // PENDING, PROCESSING, COMPLETED, CANCELLED
+  type           String   @default("MONTHLY") // MONTHLY, SEMI_MONTHLY, BI_WEEKLY, WEEKLY
+  year           Int
+  month          Int?
+  periodNumber   Int?
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  payrolls     Payroll[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@id([organizationId, startDate, endDate])
+  @@unique([startDate, endDate])
+  @@index([organizationId])
+  @@index([year])
+  @@index([status])
+  @@map("payroll_periods")
 }
 
 model PayrollEarning {
@@ -370,7 +392,9 @@ model PayrollEarning {
   rate           Float
   amount         Float
 
-  payroll Payroll @relation(fields: [payrollId], references: [id], onDelete: Cascade)
+  payroll      Payroll      @relation(fields: [payrollId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  employee     Employee     @relation(fields: [employeeId], references: [id], onDelete: Cascade)
 
   @@index([organizationId])
   @@index([employeeId])
@@ -387,7 +411,9 @@ model Deduction {
   type           String
   amount         Float
 
-  payroll Payroll @relation(fields: [payrollId], references: [id], onDelete: Cascade)
+  payroll      Payroll      @relation(fields: [payrollId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  employee     Employee     @relation(fields: [employeeId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -399,20 +425,68 @@ model Deduction {
   @@map("deductions")
 }
 
+model LateDeductionPolicy {
+  id             String         @id
+  organizationId String         @map("organization_id")
+  name           String // e.g., "Tardiness Policy", "Undertime Policy"
+  policyType     LatePolicyType @map("policy_type") // LATE, UNDERTIME
+
+  // Deduction method
+  deductionMethod DeductionMethod @map("deduction_method") // FIXED_AMOUNT, PERCENTAGE, HOURLY_RATE
+
+  // For FIXED_AMOUNT: Fixed amount per incident
+  fixedAmount Float? @map("fixed_amount")
+
+  // For PERCENTAGE: Percentage of daily rate
+  percentageRate Float? @map("percentage_rate")
+
+  // For HOURLY_RATE: Deduction based on hourly rate
+  hourlyRateMultiplier Float? @map("hourly_rate_multiplier") // e.g., 0.5 for half hourly rate
+
+  // Threshold settings
+  gracePeriodMinutes Int @default(0) @map("grace_period_minutes") // Grace period before considering late
+  minimumLateMinutes Int @default(1) @map("minimum_late_minutes") // Minimum minutes to be considered late
+
+  // Maximum deduction per day/cutoff
+  maxDeductionPerDay    Float? @map("max_deduction_per_day")
+  maxDeductionPerCutoff Float? @map("max_deduction_per_cutoff")
+
+  // Is this policy active?
+  isActive Boolean @default(true) @map("is_active")
+
+  // Policy effective dates
+  effectiveDate DateTime  @map("effective_date")
+  endDate       DateTime? @map("end_date")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([organizationId])
+  @@index([policyType])
+  @@index([isActive])
+  @@map("late_deduction_policies")
+}
+
 /////////////////////////////
 // COMPENSATION & BENEFITS
 /////////////////////////////
 
 model Compensation {
-  id             String       @id
-  employeeId     String       @map("employee_id")
-  organizationId String       @map("organization_id")
-  departmentId   String?      @map("department_id")
-  baseSalary     Float        @map("base_salary")
-  payFrequency   PayFrequency @map("pay_frequency")
-  effectiveDate  DateTime     @map("effective_date")
+  id             String         @id
+  employeeId     String         @map("employee_id")
+  organizationId String         @map("organization_id")
+  departmentId   String?        @map("department_id")
+  baseSalary     Float          @map("base_salary")
+  hourlyRate     Float?         @map("hourly_rate") // For hourly employees
+  employmentType EmploymentType @map("employment_type") // MONTHLY_SALARY, HOURLY, DAILY_WAGE
+  payFrequency   PayFrequency   @map("pay_frequency")
+  effectiveDate  DateTime       @map("effective_date")
+  endDate        DateTime?      @map("end_date") // For tracking compensation history
 
-  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  employee     Employee      @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  department   Department?   @relation(fields: [departmentId], references: [id])
+  workSchedule WorkSchedule? // One-to-one relationship
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -422,6 +496,82 @@ model Compensation {
   @@index([departmentId])
   @@index([effectiveDate])
   @@map("compensations")
+}
+
+model WorkSchedule {
+  id             String @id
+  compensationId String @unique @map("compensation_id")
+  organizationId String @map("organization_id")
+
+  // Schedule type
+  scheduleType ScheduleType @default(FIXED) @map("schedule_type") // FIXED, FLEXIBLE, ROTATING, HYBRID
+
+  // Basic schedule configuration
+  defaultStart String? @map("default_start") // HH:MM format (e.g., "09:00")
+  defaultEnd   String? @map("default_end") // HH:MM format (e.g., "18:00")
+
+  // Work days and rest days (PH Labor Code requirement)
+  workDays String[] @default(["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY"]) @map("work_days")
+  restDays String[] @default(["SATURDAY", "SUNDAY"]) @map("rest_days") // Legal rest days
+
+  // Philippine-specific rates (Labor Code mandates)
+  overtimeRate       Float @default(1.25) @map("overtime_rate") // 125% for OT (excess of 8h)
+  restDayRate        Float @default(1.30) @map("rest_day_rate") // 130% for rest day work
+  holidayRate        Float @default(1.30) @map("holiday_rate") // 130% for regular holiday
+  specialHolidayRate Float @default(1.30) @map("special_holiday_rate") // 130% for special holiday
+  doubleHolidayRate  Float @default(2.00) @map("double_holiday_rate") // 200% for work on regular holiday
+
+  // Night differential (10PM - 6AM per DOLE)
+  nightShiftStart String @default("22:00") @map("night_shift_start") // 10:00 PM
+  nightShiftEnd   String @default("06:00") @map("night_shift_end") // 6:00 AM
+  nightDiffRate   Float  @default(0.10) @map("night_diff_rate") // 10% of basic hourly rate
+
+  // For ROTATING schedules (common in PH BPO)
+  rotationPattern String?   @map("rotation_pattern") // e.g., "2D2N", "3-2-2"
+  rotationStart   DateTime? @map("rotation_start") // When rotation starts
+  shiftGroups     String[]  @map("shift_groups") // Morning, Evening, Night groups
+
+  // For HYBRID schedules (post-pandemic trend)
+  officeDays String[] @map("office_days") // Which days are office days
+  remoteDays String[] @map("remote_days") // Which days are remote days
+
+  // For FLEXIBLE schedules
+  coreHoursStart    String? @map("core_hours_start") // Must be online during these hours
+  coreHoursEnd      String? @map("core_hours_end")
+  totalHoursPerWeek Float?  @map("total_hours_per_week") // Total required hours per week
+
+  // Daily rate computation (PH requirement for wage deductions)
+  isMonthlyRate Boolean @default(true) @map("is_monthly_rate")
+  monthlyRate   Float?  @map("monthly_rate") // Monthly salary for daily rate calc
+  dailyRate     Float?  @map("daily_rate") // Computed: Monthly × 12 ÷ 313
+  hourlyRate    Float?  @map("hourly_rate") // Computed: Daily ÷ 8
+
+  // Grace period and required hours
+  gracePeriodMinutes  Int @default(0) @map("grace_period_minutes")
+  requiredWorkMinutes Int @default(480) @map("required_work_minutes") // 8 hours per PH Labor Code
+
+  // Maximum hours (PH limit: 8 hours regular, +2 for certain industries)
+  maxRegularHours  Int @default(8) @map("max_regular_hours")
+  maxOvertimeHours Int @default(3) @map("max_overtime_hours") // Max 3 hours OT per day
+
+  // Late deduction settings (PH allows but with limits)
+  allowLateDeduction   Boolean @default(false) @map("allow_late_deduction")
+  maxDeductionPerDay   Float?  @map("max_deduction_per_day") // Cannot exceed daily wage
+  maxDeductionPerMonth Float?  @map("max_deduction_per_month") // Additional PH protection
+
+  // Flexible settings
+  isFlexibleSchedule Boolean @default(false) @map("is_flexible_schedule")
+  minHoursPerDay     Float?  @map("min_hours_per_day")
+  maxHoursPerDay     Float?  @map("max_hours_per_day")
+  canLogAnyHours     Boolean @default(false) @map("can_log_any_hours")
+
+  compensation Compensation @relation(fields: [compensationId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([organizationId])
+  @@map("work_schedules")
 }
 
 model Benefit {
@@ -519,7 +669,9 @@ model LeaveRequest {
   status         LeaveStatus @default(PENDING)
   remarks        String?
 
-  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  employee     Employee     @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  department   Department?  @relation(fields: [departmentId], references: [id])
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -735,8 +887,9 @@ model Overtime {
   approvedByUserId String?               @map("approved_by_user_id")
   approvedAt       DateTime?             @map("approved_at")
 
-  employee       Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  approvedByUser User?    @relation(fields: [approvedByUserId], references: [id])
+  employee       Employee     @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  approvedByUser User?        @relation(fields: [approvedByUserId], references: [id])
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -753,13 +906,13 @@ model Overtime {
 /////////////////////////////
 
 model TaxBracket {
-  id             String  @id
-  organizationId String  @map("organization_id")
-  minSalary      Float   @map("min_salary")
-  maxSalary      Float?  @map("max_salary") // null for highest bracket
-  baseTax        Float   @map("base_tax")
-  rate           Float   // percentage as decimal (0.20 for 20%)
-  effectiveFrom  DateTime @map("effective_from")
+  id             String    @id
+  organizationId String    @map("organization_id")
+  minSalary      Float     @map("min_salary")
+  maxSalary      Float?    @map("max_salary") // null for highest bracket
+  baseTax        Float     @map("base_tax")
+  rate           Float // percentage as decimal (0.20 for 20%)
+  effectiveFrom  DateTime  @map("effective_from")
   effectiveTo    DateTime? @map("effective_to")
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
@@ -773,13 +926,13 @@ model TaxBracket {
 }
 
 model PhilhealthContribution {
-  id             String  @id
-  organizationId String  @map("organization_id")
-  minSalary      Float   @map("min_salary")
-  maxSalary      Float?  @map("max_salary") // null for highest bracket
-  employeeRate   Float   @map("employee_rate") // percentage as decimal
-  employerRate   Float   @map("employer_rate") // percentage as decimal
-  effectiveFrom  DateTime @map("effective_from")
+  id             String    @id
+  organizationId String    @map("organization_id")
+  minSalary      Float     @map("min_salary")
+  maxSalary      Float?    @map("max_salary") // null for highest bracket
+  employeeRate   Float     @map("employee_rate") // percentage as decimal
+  employerRate   Float     @map("employer_rate") // percentage as decimal
+  effectiveFrom  DateTime  @map("effective_from")
   effectiveTo    DateTime? @map("effective_to")
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
@@ -793,14 +946,14 @@ model PhilhealthContribution {
 }
 
 model SSSContribution {
-  id             String  @id
-  organizationId String  @map("organization_id")
-  minSalary      Float   @map("min_salary")
-  maxSalary      Float?  @map("max_salary") // null for highest bracket
-  employeeRate   Float   @map("employee_rate") // percentage as decimal
-  employerRate   Float   @map("employer_rate") // percentage as decimal
-  ecRate         Float   @map("ec_rate") // Employees' Compensation rate
-  effectiveFrom  DateTime @map("effective_from")
+  id             String    @id
+  organizationId String    @map("organization_id")
+  minSalary      Float     @map("min_salary")
+  maxSalary      Float?    @map("max_salary") // null for highest bracket
+  employeeRate   Float     @map("employee_rate") // percentage as decimal
+  employerRate   Float     @map("employer_rate") // percentage as decimal
+  ecRate         Float     @map("ec_rate") // Employees' Compensation rate
+  effectiveFrom  DateTime  @map("effective_from")
   effectiveTo    DateTime? @map("effective_to")
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
@@ -814,13 +967,13 @@ model SSSContribution {
 }
 
 model PagibigContribution {
-  id             String  @id
-  organizationId String  @map("organization_id")
-  minSalary      Float   @map("min_salary")
-  maxSalary      Float?  @map("max_salary") // null for highest bracket
-  employeeRate   Float   @map("employee_rate") // percentage as decimal
-  employerRate   Float   @map("employer_rate") // percentage as decimal
-  effectiveFrom  DateTime @map("effective_from")
+  id             String    @id
+  organizationId String    @map("organization_id")
+  minSalary      Float     @map("min_salary")
+  maxSalary      Float?    @map("max_salary") // null for highest bracket
+  employeeRate   Float     @map("employee_rate") // percentage as decimal
+  employerRate   Float     @map("employer_rate") // percentage as decimal
+  effectiveFrom  DateTime  @map("effective_from")
   effectiveTo    DateTime? @map("effective_to")
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
@@ -837,13 +990,13 @@ model EmployeeGovernmentInfo {
   id             String @id
   employeeId     String @unique @map("employee_id")
   organizationId String @map("organization_id")
-  
-  sssNumber      String? @map("sss_number")
-  philhealthNumber String? @map("philhealth_number")
-  pagibigNumber  String? @map("pagibig_number")
-  tinNumber      String? @map("tin_number")
 
-  employee   Employee   @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  sssNumber        String? @map("sss_number")
+  philhealthNumber String? @map("philhealth_number")
+  pagibigNumber    String? @map("pagibig_number")
+  tinNumber        String? @map("tin_number")
+
+  employee     Employee     @relation(fields: [employeeId], references: [id], onDelete: Cascade)
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now()) @map("created_at")
@@ -938,6 +1091,32 @@ enum PayFrequency {
   SEMI_MONTHLY
   BI_WEEKLY
   WEEKLY
+}
+
+enum EmploymentType {
+  MONTHLY_SALARY
+  HOURLY
+  DAILY_WAGE
+}
+
+enum ScheduleType {
+  FIXED // Fixed 9-5 schedule
+  FLEXIBLE // Flexible hours with core time
+  ROTATING // Shift rotation
+  HYBRID // Mix of office and remote
+  COMPRESSED // 4-day work week, longer hours
+  CUSTOM // Fully custom configuration
+}
+
+enum LatePolicyType {
+  LATE
+  UNDERTIME
+}
+
+enum DeductionMethod {
+  FIXED_AMOUNT
+  PERCENTAGE
+  HOURLY_RATE
 }
 
 enum EmploymentStatus {

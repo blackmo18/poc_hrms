@@ -346,58 +346,6 @@ export class HolidayController {
   }
 
   /**
-   * Assign holiday to employee
-   */
-  async assignHolidayToEmployee(data: {
-    employeeId: string;
-    holidayId: string;
-    organizationId: string;
-    createdBy?: string;
-  }): Promise<any> {
-    const id = generateULID();
-
-    // Check if association already exists
-    const existing = await prisma.employeeHolidayAssignment.findUnique({
-      where: {
-        employeeId_holidayId: {
-          employeeId: data.employeeId,
-          holidayId: data.holidayId,
-        },
-      },
-    });
-
-    if (existing) {
-      throw new Error('Holiday already assigned to this employee');
-    }
-
-    return await prisma.employeeHolidayAssignment.create({
-      data: {
-        id,
-        employeeId: data.employeeId,
-        holidayId: data.holidayId,
-        organizationId: data.organizationId,
-      } as any,
-      include: {
-        employee: {
-          select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-          },
-        },
-        holiday: {
-          select: {
-            id: true,
-            date: true,
-            type: true,
-            isRecurring: true,
-          },
-        },
-      },
-    });
-  }
-
-  /**
    * Find holiday by organization, date, and types
    */
   async findHolidayByDateAndType(organizationId: string, date: Date, types: HolidayType[]): Promise<any> {

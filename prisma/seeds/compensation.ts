@@ -1,4 +1,4 @@
-import { PrismaClient, PayFrequency } from '@prisma/client';
+import { PrismaClient, PayFrequency, EmploymentType } from '@prisma/client';
 import { generateULID } from '@/lib/utils/ulid.service';
 
 // NCR Salary Packages (Monthly, in PHP)
@@ -109,6 +109,7 @@ export async function seedCompensation(prisma: PrismaClient, generateULID: () =>
       organizationId: organization.id,
       baseSalary: baseSalary,
       payFrequency: PayFrequency.MONTHLY,
+      employmentType: EmploymentType.MONTHLY_SALARY,
       effectiveDate: new Date('2024-01-01'),
       departmentId: employee.departmentId || null,
     };

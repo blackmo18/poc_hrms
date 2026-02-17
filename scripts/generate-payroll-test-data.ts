@@ -273,13 +273,13 @@ async function createCompensation(employeeId: string, organizationId: string, de
     await prisma.compensation.create({
       data: {
         id: generateULID(),
-        employeeId,
-        organizationId,
-        departmentId,
+        employee: { connect: { id: employeeId } },
+        organization: { connect: { id: organizationId } },
+        department: { connect: { id: departmentId } },
         baseSalary,
         payFrequency: 'MONTHLY',
+        employmentType: 'MONTHLY_SALARY',
         effectiveDate,
-        updatedAt: new Date(),
       }
     });
   }

@@ -61,15 +61,6 @@ export interface IHolidayService {
   }): Promise<any>;
 
   /**
-   * Assign holiday to employee
-   */
-  assignHolidayToEmployee(data: {
-    employee_id: string;
-    holiday_id: string;
-    created_by?: string;
-  }): Promise<any>;
-
-  /**
    * Copy holidays from a system template to create a new template for an organization
    */
   copyHolidaysFromTemplate(data: {

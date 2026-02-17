@@ -15,3 +15,8 @@ export * from './calendar.controller';
 export * from './holiday.controller';
 export * from './government-contribution.controller';
 export * from './employee-government-info.controller';
+export * from './late-deduction-policy.controller';
+export * from './work-schedule.controller';
+export * from './payroll-period.controller';
+export * from './deduction.controller';
+export * from './payroll-earning.controller';

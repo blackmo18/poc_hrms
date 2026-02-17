@@ -59,8 +59,8 @@ export class TimeEntryController {
       data: {
         id: generateULID(),
         employee: { connect: { id: data.employeeId } },
-        organizationId: data.organizationId,
-        departmentId: data.departmentId,
+        organization: { connect: { id: data.organizationId } },
+        ...(data.departmentId && { department: { connect: { id: data.departmentId } } }),
         workDate: data.workDate,
         clockInAt: data.clockInAt,
         clockOutAt: data.clockOutAt,

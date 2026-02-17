@@ -124,35 +124,6 @@ export class HolidayService implements IHolidayService {
     }
   }
 
-  /**
-   * Assign holiday to employee
-   */
-  async assignHolidayToEmployee(data: {
-    employee_id: string;
-    holiday_id: string;
-    created_by?: string;
-  }): Promise<any> {
-    try {
-      // Get the holiday to find its organization
-      const holiday = await holidayController.getHolidayById(data.holiday_id);
-      if (!holiday) {
-        throw new Error('Holiday not found');
-      }
-
-      const assignment = await holidayController.assignHolidayToEmployee({
-        employeeId: data.employee_id,
-        holidayId: data.holiday_id,
-        organizationId: holiday.organizationId,
-      });
-      return {
-        success: true,
-        message: 'Holiday assigned to employee successfully',
-        data: assignment,
-      };
-    } catch (error) {
-      throw error;
-    }
-  }
 
   /**
    * Get holidays for a calendar
