@@ -160,6 +160,70 @@ export class HolidayService implements IHolidayService {
   async getHolidaysForCalendar(calendarId: string): Promise<any[]> {
     return await holidayController.getHolidaysForCalendar(calendarId);
   }
+
+  /**
+   * Copy holidays from a system template to create a new template for an organization
+   */
+  async copyHolidaysFromTemplate(data: {
+    organizationId: string;
+    sourceTemplateId: string;
+    newTemplateName: string;
+    targetYear?: number;
+  }): Promise<{
+    template: any;
+    holidays: any[];
+    totalCopied: number;
+  }> {
+    try {
+      // Get the source template
+      const sourceTemplate = await holidayController.getHolidayTemplateById(data.sourceTemplateId);
+      if (!sourceTemplate) {
+        throw new Error('Source template not found');
+      }
+
+      // Get holidays from source template
+      const sourceHolidays = await holidayController.getHolidaysByTemplate(data.sourceTemplateId);
+      
+      // Create new template
+      const newTemplate = await holidayController.createHolidayTemplate(
+        data.organizationId,
+        data.newTemplateName,
+        `Copy of ${sourceTemplate.description || sourceTemplate.name}`,
+        undefined
+      );
+
+      // Copy holidays to new template
+      const copiedHolidays = [];
+      for (const holiday of sourceHolidays) {
+        let holidayDate = new Date(holiday.date);
+        
+        // Adjust year if targetYear is specified
+        if (data.targetYear) {
+          holidayDate.setFullYear(data.targetYear);
+        }
+
+        const copiedHoliday = await holidayController.createHoliday({
+          template_id: newTemplate.id,
+          organization_id: data.organizationId,
+          date: holidayDate,
+          type: holiday.type,
+          is_recurring: holiday.isRecurring,
+          // Note: Controller currently hardcodes name as empty string
+          // TODO: Update controller to accept name parameter
+        });
+        
+        copiedHolidays.push(copiedHoliday);
+      }
+
+      return {
+        template: newTemplate,
+        holidays: copiedHolidays,
+        totalCopied: copiedHolidays.length,
+      };
+    } catch (error) {
+      throw error;
+    }
+  }
 }
 
 export const holidayManagementService = new HolidayService();
