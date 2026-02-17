@@ -108,12 +108,12 @@ function PayrollRunContent() {
 
   // Fetch departments whenever organization changes
   useEffect(() => {
-    const orgId = isSuperAdmin ? selectedOrganization : (user?.organization_id || null);
+    const orgId = isSuperAdmin ? selectedOrganization : (user?.organizationId || null);
     fetchDepartments(orgId);
     // Reset payroll summary when organization changes
     setPayrollSummary(null);
     setEligibleEmployees([]);
-  }, [selectedOrganization, isSuperAdmin, user?.organization_id, fetchDepartments]);
+  }, [selectedOrganization, isSuperAdmin, user?.organizationId, fetchDepartments]);
 
   // Reset payroll summary when organization or department changes
   useEffect(() => {
@@ -142,7 +142,7 @@ function PayrollRunContent() {
       return;
     }
 
-    const orgId = isSuperAdmin ? selectedOrganization : (user?.organization_id || null);
+    const orgId = isSuperAdmin ? selectedOrganization : (user?.organizationId || null);
     if (!orgId) {
       alert('Please select an organization');
       return;
@@ -153,7 +153,7 @@ function PayrollRunContent() {
       console.log('Payroll Summary Debug:', {
         selectedCutoff,
         selectedOrganization,
-        userOrganizationId: user?.organization_id
+        userOrganizationId: user?.organizationId
       });
 
       // Parse the selected cutoff to get start and end dates
@@ -232,7 +232,7 @@ function PayrollRunContent() {
     }
     setIsGenerating(true);
     // TODO: Call API to generate payroll with organization filter
-    const orgId = isSuperAdmin ? selectedOrganization : (user?.organization_id || null);
+    const orgId = isSuperAdmin ? selectedOrganization : (user?.organizationId || null);
     console.log('Generating payroll for:', { selectedCutoff, selectedDepartment, organizationId: orgId });
     setTimeout(() => setIsGenerating(false), 2000);
   };
@@ -298,7 +298,7 @@ function PayrollRunContent() {
                 onDepartmentChange={setSelectedDepartment}
                 departments={departments}
                 isLoadingDepartments={isLoadingDepartments}
-                userOrganizationId={user?.organization_id}
+                userOrganizationId={user?.organizationId}
               />
 
               {/* Payroll Summary */}
@@ -307,7 +307,7 @@ function PayrollRunContent() {
                 <PayrollSummaryButton
                   onGenerateSummary={handleGenerateSummary}
                   isGenerating={isGeneratingSummary}
-                  disabled={!selectedCutoff || (!selectedOrganization && !user?.organization_id)}
+                  disabled={!selectedCutoff || (!selectedOrganization && !user?.organizationId)}
                 />
 
                 {/* Summary Results - Shown After Generation */}
@@ -421,7 +421,7 @@ function PayrollRunContent() {
       <MissingAttendanceModal
         isOpen={isMissingAttendanceModalOpen}
         onClose={() => setIsMissingAttendanceModalOpen(false)}
-        organizationId={isSuperAdmin ? selectedOrganization : (user?.organization_id || null)}
+        organizationId={isSuperAdmin ? selectedOrganization : (user?.organizationId || null)}
         departmentId={selectedDepartment || undefined}
         cutoffPeriod={payrollSummary ? {
           start: payrollSummary.cutoffPeriod.start,

@@ -1,5 +1,5 @@
 export interface EmployeeFormData {
-  organization_id: string;
+  organizationId: string;
   department_id: string;
   job_title_id: string;
   manager_id: string;
@@ -18,7 +18,7 @@ export interface EmployeeFormData {
 
 export const validateEmployeeForm = (formData: EmployeeFormData): string | null => {
   // Validate required fields
-  if (!formData.organization_id) {
+  if (!formData.organizationId) {
     return 'Organization is required';
   }
   if (!formData.department_id) {

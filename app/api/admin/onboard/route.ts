@@ -28,13 +28,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ message: 'Access denied. Super admin required.' }, { status: 403 });
     }
 
-    const { organization_id, firstName, lastName, email, work_contact } = await request.json();
+    const { organizationId, firstName, lastName, email, work_contact } = await request.json();
 
-    if (!organization_id || !firstName || !lastName || !email || !work_contact) {
+    if (!organizationId || !firstName || !lastName || !email || !work_contact) {
       return NextResponse.json({ message: 'All fields are required' }, { status: 400 });
     }
 
-    const organization = await organizationService.getById(organization_id);
+    const organization = await organizationService.getById(organizationId);
 
     if (!organization || organization.name === 'System') {
       return NextResponse.json({ message: 'Invalid organization' }, { status: 400 });

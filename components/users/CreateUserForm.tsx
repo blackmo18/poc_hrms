@@ -11,7 +11,7 @@ import ActionInput from "@/components/form/input/ActionInput";
 interface UserFormData {
   employee_id: string;
   email: string;
-  organization_id: string;
+  organizationId: string;
   role_ids: string[];
   generated_password?: string;
 }
@@ -56,8 +56,8 @@ export default function CreateUserForm({
           <div>
             <Label>Organization *</Label>
             <Select
-              value={formData.organization_id}
-              onChange={(value) => onChange('organization_id', value)}
+              value={formData.organizationId}
+              onChange={(value) => onChange('organizationId', value)}
               options={Array.isArray(organizations) ? organizations.map(org => ({
                 value: org.id,
                 label: org.name
@@ -74,9 +74,9 @@ export default function CreateUserForm({
                 No organizations available
               </p>
             )}
-            {errors.organization_id && (
+            {errors.organizationId && (
               <p className="mt-1 text-sm text-red-600 dark:text-red-400">
-                {errors.organization_id}
+                {errors.organizationId}
               </p>
             )}
           </div>
@@ -87,7 +87,7 @@ export default function CreateUserForm({
               label="Employee *"
               displayValue={selectedEmployeeName}
               placeholder="Click to select employee"
-              disabled={!formData.organization_id}
+              disabled={!formData.organizationId}
               onClick={onEmployeeSelect}
             />
             {errors.employee_id && (

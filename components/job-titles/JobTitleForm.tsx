@@ -12,7 +12,7 @@ interface Organization {
 }
 
 interface JobTitleFormData {
-  organization_id?: string;
+  organizationId?: string;
   name: string;
   description: string;
 }
@@ -43,7 +43,7 @@ export default function JobTitleForm({
               fallback={
                 <Input
                   type="text"
-                  value={availableOrganizations.find(org => org.id.toString() === formData.organization_id)?.name || ''}
+                  value={availableOrganizations.find(org => org.id.toString() === formData.organizationId)?.name || ''}
                   disabled
                   className="bg-gray-100 dark:bg-gray-800 cursor-not-allowed"
                 />
@@ -52,8 +52,8 @@ export default function JobTitleForm({
               <Select
                 options={availableOrganizations.map(org => ({ value: org.id.toString(), label: org.name }))}
                 placeholder="Select organization"
-                onChange={(value) => onInputChange('organization_id', value)}
-                value={formData.organization_id || ''}
+                onChange={(value) => onInputChange('organizationId', value)}
+                value={formData.organizationId || ''}
                 required
               />
             </RoleComponentWrapper>

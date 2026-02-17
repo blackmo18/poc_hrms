@@ -27,12 +27,16 @@
     "db:local:force": "cp .env .env.local && npm run db:seed:force",
     "db:vercel:force": "vercel env pull .env.local && npm run db:seed:force",
     "db:local:reset": "cp .env .env.local && npm run db:seed:reset",
+    "test:payroll": "tsx scripts/test-new-payroll-structure.ts",
+    "test:payroll-data": "tsx scripts/generate-payroll-test-data.ts",
     "db:vercel:reset": "vercel env pull .env.local && npm run db:seed:reset",
     "db:local:full-reset": "cp .env .env.local && npm run db:seed:full-reset",
     "db:vercel:full-reset": "vercel env pull .env.local && npm run db:seed:full-reset",
     "test:payroll:generate": "tsx scripts/generate-payroll-test-data.ts",
     "test:payroll:cleanup": "tsx scripts/cleanup-payroll-test-data.ts",
-    "test:payroll:seed-org": "tsx scripts/seed-test-organization.ts"
+    "test:payroll:seed-org": "tsx scripts/seed-test-organization.ts",
+    "test:assign-work-schedule": "tsx scripts/assign-default-work-schedule.ts",
+    "test:seed-all-contributions": "tsx scripts/seed-all-org-contributions.ts"
   },
   "dependencies": {
     "@fullcalendar/core": "^6.1.15",

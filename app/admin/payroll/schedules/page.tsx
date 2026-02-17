@@ -4,15 +4,18 @@ import { useState, useEffect } from 'react';
 import PageBreadcrumb from '@/components/common/PageBreadCrumb';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { BadgeColor } from "@/components/ui/badge/Badge";
+import { BadgeColor } from '@/components/ui/badge/Badge';
+import Badge from '@/components/ui/badge/Badge';
 import { ProtectedRoute } from '@/components/protected-route';
 import { ADMINSTRATIVE_ROLES } from '@/lib/constants/roles';
 import { PlusIcon, EditIcon, TrashIcon, ClockIcon, UsersIcon, CalendarIcon } from 'lucide-react';
+import { Modal } from '@/components/ui/modal';
 import ConfirmationModal from '@/components/ui/modal/ConfirmationModal';
-import { Input } from '@/components/form/input/Input';
-import { Label } from '@/components/form/Label';
-import { Select } from '@/components/form/Select';
-import { Switch } from '@/components/form/switch/Switch';
+import Input from '@/components/form/input/InputField';
+import Label from '@/components/form/Label';
+import Select from '@/components/form/Select';
+import Textarea from '@/components/form/input/TextArea';
+import Switch from '@/components/form/switch/Switch';
 import OrganizationFilter from '@/components/common/OrganizationFilter';
 import RoleComponentWrapper from '@/components/common/RoleComponentWrapper';
 import { useAuth } from '@/components/providers/auth-provider';
@@ -99,7 +102,7 @@ function WorkSchedulesContent() {
       nightShiftStart: '22:00',
       nightShiftEnd: '06:00',
       isActive: true,
-      organizationId: user?.organization_id || '1',
+      organizationId: user?.organizationId || '1',
       organizationName: 'Tech Corp',
       assignedEmployees: 45,
       createdAt: '2024-01-01T00:00:00Z',
@@ -121,7 +124,7 @@ function WorkSchedulesContent() {
       nightShiftStart: '22:00',
       nightShiftEnd: '06:00',
       isActive: true,
-      organizationId: user?.organization_id || '1',
+      organizationId: user?.organizationId || '1',
       organizationName: 'Tech Corp',
       assignedEmployees: 12,
       createdAt: '2024-01-01T00:00:00Z',
@@ -143,7 +146,7 @@ function WorkSchedulesContent() {
       nightShiftStart: '22:00',
       nightShiftEnd: '06:00',
       isActive: true,
-      organizationId: user?.organization_id || '1',
+      organizationId: user?.organizationId || '1',
       organizationName: 'Tech Corp',
       assignedEmployees: 8,
       createdAt: '2024-01-01T00:00:00Z',
@@ -164,7 +167,7 @@ function WorkSchedulesContent() {
     const newSchedule: WorkSchedule = {
       id: Date.now().toString(),
       ...formData,
-      organizationId: selectedOrganization || user?.organization_id || '1',
+      organizationId: selectedOrganization || user?.organizationId || '1',
       organizationName: 'Tech Corp',
       assignedEmployees: 0,
       createdAt: new Date().toISOString(),
@@ -301,122 +304,12 @@ function WorkSchedulesContent() {
             <h1 className="text-2xl font-bold text-gray-900">Work Schedules</h1>
             <p className="text-gray-600 mt-1">Manage work schedules and shift patterns for employees</p>
           </div>
-          <ConfirmationModal
-        isOpen={isCreateDialogOpen || editingSchedule !== null}
-        onClose={() => {
-          setIsCreateDialogOpen(false);
-          setEditingSchedule(null);
-          resetForm();
-        }}
-        onConfirm={editingSchedule ? handleUpdateSchedule : handleCreateSchedule}
-        title={editingSchedule ? 'Edit Work Schedule' : 'Create New Work Schedule'}
-        message=""
-        confirmText={editingSchedule ? 'Update' : 'Create'}
-        cancelText="Cancel"
-        type="info"
-      >
-        <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="name">Schedule Name</Label>
-                    <Input
-                      id="name"
-                      value={formData.name}
-                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                      placeholder="e.g., Regular Office Hours"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="description">Description</Label>
-                    <Input
-                      id="description"
-                      value={formData.description}
-                      onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                      placeholder="Brief description"
-                    />
-                  </div>
-                </div>
-                
-                {/* Weekly Schedule */}
-                <div>
-                  <Label className="text-base font-medium">Weekly Schedule</Label>
-                  <div className="mt-2 space-y-2">
-                    {Object.entries(formData.schedule).map(([day, schedule]) => (
-                      <div key={day} className="flex items-center gap-2 p-2 border rounded">
-                        <Switch
-                          checked={schedule.isEnabled}
-                          onCheckedChange={(checked) => updateDaySchedule(day, 'isEnabled', checked)}
-                        />
-                        <Label className="w-20 capitalize">{day}</Label>
-                        <Input
-                          type="time"
-                          value={schedule.start}
-                          onChange={(e) => updateDaySchedule(day, 'start', e.target.value)}
-                          disabled={!schedule.isEnabled}
-                          className="w-32"
-                        />
-                        <span>to</span>
-                        <Input
-                          type="time"
-                          value={schedule.end}
-                          onChange={(e) => updateDaySchedule(day, 'end', e.target.value)}
-                          disabled={!schedule.isEnabled}
-                          className="w-32"
-                        />
-                        {!schedule.isEnabled && (
-                          <span className="text-sm text-gray-500 ml-2">Off</span>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-                
-                {/* Night Shift Settings */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="nightShiftStart">Night Shift Start</Label>
-                    <Input
-                      id="nightShiftStart"
-                      type="time"
-                      value={formData.nightShiftStart}
-                      onChange={(e) => setFormData({ ...formData, nightShiftStart: e.target.value })}
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="nightShiftEnd">Night Shift End</Label>
-                    <Input
-                      id="nightShiftEnd"
-                      type="time"
-                      value={formData.nightShiftEnd}
-                      onChange={(e) => setFormData({ ...formData, nightShiftEnd: e.target.value })}
-                    />
-                  </div>
-                </div>
-                
-                <div className="flex items-center space-x-2">
-                  <Switch
-                    id="isActive"
-                    checked={formData.isActive}
-                    onCheckedChange={(checked) => setFormData({ ...formData, isActive: checked })}
-                  />
-                  <Label htmlFor="isActive">Active</Label>
-                </div>
-                
-                <div className="flex justify-end gap-2 pt-4">
-                  <Button variant="outline" onClick={() => {
-                    setIsCreateDialogOpen(false);
-                    setEditingSchedule(null);
-                    resetForm();
-                  }}>
-                    Cancel
-                  </Button>
-                </div>
-              </div>
-            </ConfirmationModal>
+          <div className="flex gap-2">
             <Button onClick={() => setIsCreateDialogOpen(true)} className="flex items-center gap-2">
               <PlusIcon className="w-4 h-4" />
               Add Schedule
             </Button>
+          </div>
         </div>
 
         {/* Organization Filter */}
@@ -442,9 +335,9 @@ function WorkSchedulesContent() {
                     <div className="flex items-center gap-3 mb-2">
                       <h3 className="text-lg font-semibold">{schedule.name}</h3>
                       {!schedule.isActive && (
-                        <BadgeColor color="gray">
+                        <Badge color="dark">
                           Inactive
-                        </BadgeColor>
+                        </Badge>
                       )}
                     </div>
                     
@@ -509,13 +402,11 @@ function WorkSchedulesContent() {
                   </div>
                   
                   <div className="flex items-center gap-2 ml-4">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleToggleSchedule(schedule.id)}
-                    >
-                      {schedule.isActive ? 'Deactivate' : 'Activate'}
-                    </Button>
+                    <Switch
+                      label="Active"
+                      defaultChecked={schedule.isActive}
+                      onChange={(checked) => handleToggleSchedule(schedule.id)}
+                    />
                     <Button
                       variant="outline"
                       size="sm"
@@ -549,6 +440,117 @@ function WorkSchedulesContent() {
               </CardContent>
             </Card>
           )}
+        </div>
+      </div>
+
+      {/* Create/Edit Modal */}
+      <Modal
+        isOpen={isCreateDialogOpen || editingSchedule !== null}
+        onClose={() => {
+          setIsCreateDialogOpen(false);
+          setEditingSchedule(null);
+          resetForm();
+        }}
+        className="max-w-2xl"
+      >
+        <div className="bg-white rounded-lg p-6">
+          <h2 className="text-xl font-semibold mb-4">
+            {editingSchedule ? 'Edit Work Schedule' : 'Create New Work Schedule'}
+          </h2>
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="name">Schedule Name</Label>
+                <Input
+                  id="name"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  placeholder="e.g., Regular Office Hours"
+                />
+              </div>
+              <div>
+                <Label htmlFor="description">Description</Label>
+                <Input
+                  id="description"
+                  value={formData.description}
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  placeholder="Brief description"
+                />
+              </div>
+            </div>
+            
+            {/* Weekly Schedule */}
+            <div>
+              <Label>Weekly Schedule</Label>
+              <div className="mt-2 space-y-2">
+                {Object.entries(formData.schedule).map(([day, schedule]) => (
+                  <div key={day} className="flex items-center gap-2 p-2 border rounded">
+                    <Switch
+                      label={day}
+                      defaultChecked={schedule.isEnabled}
+                      onChange={(checked) => updateDaySchedule(day, 'isEnabled', checked)}
+                    />
+                    <Input
+                      type="time"
+                      value={schedule.start}
+                      onChange={(e) => updateDaySchedule(day, 'start', e.target.value)}
+                      disabled={!schedule.isEnabled}
+                      className="w-32"
+                    />
+                    <span>to</span>
+                    <Input
+                      type="time"
+                      value={schedule.end}
+                      onChange={(e) => updateDaySchedule(day, 'end', e.target.value)}
+                      disabled={!schedule.isEnabled}
+                      className="w-32"
+                    />
+                    {!schedule.isEnabled && (
+                      <span className="text-sm text-gray-500 ml-2">Off</span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+            
+            {/* Night Shift Settings */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="nightShiftStart">Night Shift Start</Label>
+                <Input
+                  id="nightShiftStart"
+                  type="time"
+                  value={formData.nightShiftStart}
+                  onChange={(e) => setFormData({ ...formData, nightShiftStart: e.target.value })}
+                />
+              </div>
+              <div>
+                <Label htmlFor="nightShiftEnd">Night Shift End</Label>
+                <Input
+                  id="nightShiftEnd"
+                  type="time"
+                  value={formData.nightShiftEnd}
+                  onChange={(e) => setFormData({ ...formData, nightShiftEnd: e.target.value })}
+                />
+              </div>
+            </div>
+            
+            <div className="flex justify-end gap-2 pt-4">
+              <Button variant="outline" onClick={() => {
+                setIsCreateDialogOpen(false);
+                setEditingSchedule(null);
+                resetForm();
+              }}>
+                Cancel
+              </Button>
+              <Button onClick={editingSchedule ? handleUpdateSchedule : handleCreateSchedule}>
+                {editingSchedule ? 'Update' : 'Create'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      </Modal>
+
       {/* Delete Confirmation Modal */}
       <ConfirmationModal
         isOpen={showDeleteModal}
@@ -561,7 +563,7 @@ function WorkSchedulesContent() {
         message="Are you sure you want to delete this schedule? This will affect all assigned employees. This action cannot be undone."
         confirmText="Delete"
         cancelText="Cancel"
-        type="danger"
+        variant="error"
       />
     </>
   );

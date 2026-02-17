@@ -44,7 +44,7 @@ type User = {
   role?: string;
   roles?: string[];
   permissions?: string[];
-  organization_id?: string;
+  organizationId?: string;
 }
 
 type NavItem = {
@@ -97,6 +97,9 @@ const navItems: NavItem[] = [
       { name: 'Payroll Summary', path: '/payroll/summary', pro: false, roles: ADMINSTRATIVE_ROLES },
       { name: 'Payroll History', path: '/payroll/history', pro: false },
       { name: 'Payroll Rules', path: '/payroll/rules', pro: false, roles: ADMINSTRATIVE_ROLES },
+      { name: 'Deduction Policies', path: '/admin/payroll/policies', pro: false, roles: ADMINSTRATIVE_ROLES },
+      { name: 'Work Schedules', path: '/admin/payroll/schedules', pro: false, roles: ADMINSTRATIVE_ROLES },
+      { name: 'Payroll Periods', path: '/admin/payroll/periods', pro: false, roles: ADMINSTRATIVE_ROLES },
     ]
 
   },

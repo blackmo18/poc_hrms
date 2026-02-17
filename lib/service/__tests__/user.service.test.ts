@@ -52,7 +52,7 @@ describe('UserService', () => {
         updated_at: new Date(),
         created_by: null,
         updated_by: null,
-        organization_id: 'org-1',
+        organizationId: 'org-1',
         employee_id: null,
       };
 
@@ -78,7 +78,7 @@ describe('UserService', () => {
         updated_at: new Date(),
         created_by: null,
         updated_by: null,
-        organization_id: 'org-1',
+        organizationId: 'org-1',
         employee_id: null,
       };
 
@@ -105,7 +105,7 @@ describe('UserService', () => {
           updated_at: new Date(),
           created_by: null,
           updated_by: null,
-          organization_id: 'org-1',
+          organizationId: 'org-1',
           employee_id: null,
         },
       ];
@@ -123,7 +123,7 @@ describe('UserService', () => {
     it('should create a new user', async () => {
       const createData = {
         email: 'new@example.com',
-        organization_id: 'org-1',
+        organizationId: 'org-1',
         employee_id: 'emp-1',
         role_ids: ['role-1'],
         status: 'ACTIVE' as 'ACTIVE',
@@ -141,7 +141,7 @@ describe('UserService', () => {
         updated_at: new Date(),
         created_by: null,
         updated_by: null,
-        organization_id: 'org-1',
+        organizationId: 'org-1',
         employee_id: 'emp-1',
       };
 
@@ -168,7 +168,7 @@ describe('UserService', () => {
         updated_at: new Date(),
         created_by: null,
         updated_by: null,
-        organization_id: 'org-1',
+        organizationId: 'org-1',
         employee_id: null,
       };
 
@@ -194,7 +194,7 @@ describe('UserService', () => {
         updated_at: new Date(),
         created_by: null,
         updated_by: null,
-        organization_id: 'org-1',
+        organizationId: 'org-1',
         employee_id: null,
       };
 

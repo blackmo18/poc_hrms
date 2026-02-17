@@ -1,5 +1,5 @@
 interface EmployeeFormData {
-  organization_id: string;
+  organizationId: string;
   department_id: string;
   job_title_id: string;
   manager_id: string;
@@ -70,7 +70,7 @@ export function getEmployeeGroupedDetails(
     {
       name: 'Organization Details',
       fields: [
-        { label: 'Organization', value: getOrganizationName(formData.organization_id) },
+        { label: 'Organization', value: getOrganizationName(formData.organizationId) },
         { label: 'Employee ID', value: formData.custom_id || 'Not provided' },
         { label: 'Employment Status', value: formData.employment_status },
         { label: 'Hire Date', value: new Date(formData.hire_date).toLocaleDateString() },

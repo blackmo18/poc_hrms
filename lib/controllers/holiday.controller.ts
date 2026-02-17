@@ -149,7 +149,7 @@ export class HolidayController {
    */
   async createHoliday(data: {
     template_id: string;
-    organization_id: string;
+    organizationId: string;
     date: Date;
     type: HolidayType;
     is_recurring?: boolean;
@@ -161,7 +161,7 @@ export class HolidayController {
       data: {
         id,
         holidayTemplateId: data.template_id,
-        organizationId: data.organization_id,
+        organizationId: data.organizationId,
         date: data.date,
         type: data.type,
         isRecurring: data.is_recurring || false,

@@ -7,7 +7,7 @@ export interface IOvertimeRequestService {
    */
   submitOvertimeRequest(data: {
     employee_id: string;
-    organization_id: string;
+    organizationId: string;
     work_date: Date;
     requested_minutes: number;
     reason?: string;

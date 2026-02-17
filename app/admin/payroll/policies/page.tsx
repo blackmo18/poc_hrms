@@ -3,26 +3,29 @@
 import { useState, useEffect } from 'react';
 import PageBreadcrumb from '@/components/common/PageBreadCrumb';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { BadgeColor } from "@/components/ui/badge/Badge";
+import { BadgeColor } from '@/components/ui/badge/Badge';
+import Badge from '@/components/ui/badge/Badge';
+import { Table, TableBody, TableCell, TableHeader, TableRow } from '@/components/ui/table';
 import { ProtectedRoute } from '@/components/protected-route';
 import { ADMINSTRATIVE_ROLES } from '@/lib/constants/roles';
 import { PlusIcon, EditIcon, TrashIcon, ClockIcon, AlertCircleIcon } from 'lucide-react';
+import { Modal } from '@/components/ui/modal';
 import ConfirmationModal from '@/components/ui/modal/ConfirmationModal';
-import { Input } from '@/components/form/input/Input';
-import { Label } from '@/components/form/Label';
-import { Select } from '@/components/form/Select';
-import { Textarea } from '@/components/form/input/Textarea';
-import { Switch } from '@/components/form/switch/Switch';
+import Input from '@/components/form/input/InputField';
+import Label from '@/components/form/Label';
+import Select from '@/components/form/Select';
+import Textarea from '@/components/form/input/TextArea';
+import Switch from '@/components/form/switch/Switch';
 import OrganizationFilter from '@/components/common/OrganizationFilter';
 import RoleComponentWrapper from '@/components/common/RoleComponentWrapper';
 import { useAuth } from '@/components/providers/auth-provider';
 import { useOrganizationFilter } from '@/hooks/useOrganizationFilter';
+import Button from '@/components/ui/button/Button';
 
 interface DeductionPolicy {
   id: string;
   name: string;
-  type: 'LATE' | 'UNDERTIME' | 'ABSENCE';
+  policyType: 'LATE' | 'UNDERTIME' | 'ABSENCE';
   deductionMethod: 'FIXED_AMOUNT' | 'HOURLY_RATE' | 'PERCENTAGE';
   rate: number;
   gracePeriodMinutes: number;
@@ -44,7 +47,7 @@ function DeductionPoliciesContent() {
   const [policyToDelete, setPolicyToDelete] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     name: '',
-    type: 'LATE' as 'LATE' | 'UNDERTIME' | 'ABSENCE',
+    policyType: 'LATE' as 'LATE' | 'UNDERTIME' | 'ABSENCE',
     deductionMethod: 'HOURLY_RATE' as 'HOURLY_RATE' | 'FIXED_AMOUNT' | 'PERCENTAGE',
     rate: 0,
     gracePeriodMinutes: 0,
@@ -69,89 +72,85 @@ function DeductionPoliciesContent() {
     showAllOption: false
   });
 
-  // Mock data
-  const mockPolicies: DeductionPolicy[] = [
-    {
-      id: '1',
-      name: 'Late Arrival Policy',
-      type: 'LATE',
-      deductionMethod: 'HOURLY_RATE',
-      rate: 0.5,
-      gracePeriodMinutes: 5,
-      maxDeductionPerDay: 500,
-      description: 'Deducts half of hourly rate for every minute late after 5-minute grace period',
-      isActive: true,
-      organizationId: user?.organization_id || '1',
-      organizationName: 'Tech Corp',
-      createdAt: '2024-01-01T00:00:00Z',
-      updatedAt: '2024-01-01T00:00:00Z',
-    },
-    {
-      id: '2',
-      name: 'Undertime Policy',
-      type: 'UNDERTIME',
-      deductionMethod: 'HOURLY_RATE',
-      rate: 1,
-      gracePeriodMinutes: 0,
-      maxDeductionPerDay: 1000,
-      description: 'Deducts full hourly rate for every minute of undertime',
-      isActive: true,
-      organizationId: user?.organization_id || '1',
-      organizationName: 'Tech Corp',
-      createdAt: '2024-01-01T00:00:00Z',
-      updatedAt: '2024-01-01T00:00:00Z',
-    },
-    {
-      id: '3',
-      name: 'Absence Policy',
-      type: 'ABSENCE',
-      deductionMethod: 'FIXED_AMOUNT',
-      rate: 1000,
-      gracePeriodMinutes: 0,
-      maxDeductionPerDay: 1000,
-      description: 'Fixed deduction of ₱1000 for each day of absence',
-      isActive: true,
-      organizationId: user?.organization_id || '1',
-      organizationName: 'Tech Corp',
-      createdAt: '2024-01-01T00:00:00Z',
-      updatedAt: '2024-01-01T00:00:00Z',
-    },
-  ];
+  // Fetch policies from API
+  const fetchPolicies = async () => {
+    try {
+      setIsLoading(true);
+      const organizationId = selectedOrganization || user?.organizationId;
+      if (!organizationId) return;
 
-  useEffect(() => {
-    // Simulate API call
-    setTimeout(() => {
-      setPolicies(mockPolicies);
+      const response = await fetch(`/api/late-deduction-policy?organizationId=${organizationId}`);
+      if (!response.ok) throw new Error('Failed to fetch policies');
+      
+      const data = await response.json();
+      console.log('API Response:', data); // Debug log
+      // Handle different response structures
+      const policiesArray = Array.isArray(data) ? data : data.policies || data.data || [];
+      console.log('Policies Array:', policiesArray); // Debug log
+      setPolicies(policiesArray);
+    } catch (error: any) {
+      console.error('Error fetching policies:', error);
+      // Set empty array on error
+      setPolicies([]);
+    } finally {
       setIsLoading(false);
-    }, 1000);
-  }, [selectedOrganization]);
-
-  const handleCreatePolicy = () => {
-    // TODO: Implement API call
-    const newPolicy: DeductionPolicy = {
-      id: Date.now().toString(),
-      ...formData,
-      organizationId: selectedOrganization || user?.organization_id || '1',
-      organizationName: 'Tech Corp',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-    setPolicies([...policies, newPolicy]);
-    setIsCreateDialogOpen(false);
-    resetForm();
+    }
   };
 
-  const handleUpdatePolicy = () => {
-    // TODO: Implement API call
-    if (!editingPolicy) return;
-    
-    setPolicies(policies.map(p => 
-      p.id === editingPolicy.id 
-        ? { ...p, ...formData, updatedAt: new Date().toISOString() }
-        : p
-    ));
-    setEditingPolicy(null);
-    resetForm();
+  useEffect(() => {
+    fetchPolicies();
+  }, [selectedOrganization]);
+
+  const handleCreatePolicy = async () => {
+    try {
+      const organizationId = selectedOrganization || user?.organizationId;
+      if (!organizationId) return;
+
+      const response = await fetch('/api/late-deduction-policy', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...formData,
+          organizationId,
+        }),
+      });
+
+      if (!response.ok) throw new Error('Failed to create policy');
+      
+      const newPolicy = await response.json();
+      setPolicies([...policies, newPolicy]);
+      setIsCreateDialogOpen(false);
+      resetForm();
+    } catch (error: any) {
+      console.error('Error creating policy:', error);
+      alert('Failed to create policy. Please try again.');
+    }
+  };
+
+  const handleUpdatePolicy = async () => {
+    try {
+      if (!editingPolicy) return;
+      
+      const response = await fetch(`/api/late-deduction-policy/${editingPolicy.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...formData,
+          organizationId: selectedOrganization || user?.organizationId,
+        }),
+      });
+
+      if (!response.ok) throw new Error('Failed to update policy');
+      
+      const updatedPolicy = await response.json();
+      setPolicies(policies.map(p => p.id === editingPolicy.id ? updatedPolicy : p));
+      setIsCreateDialogOpen(false);
+      setEditingPolicy(null);
+      resetForm();
+    } catch (error: any) {
+      console.error('Error updating policy:', error);
+      alert('Failed to update policy. Please try again.');
+    }
   };
 
   const handleDeletePolicy = (id: string) => {
@@ -159,11 +158,22 @@ function DeductionPoliciesContent() {
     setShowDeleteModal(true);
   };
 
-  const confirmDeletePolicy = () => {
-    if (policyToDelete) {
+  const confirmDeletePolicy = async () => {
+    try {
+      if (!policyToDelete) return;
+      
+      const response = await fetch(`/api/late-deduction-policy/${policyToDelete}?organizationId=${selectedOrganization || user?.organizationId}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) throw new Error('Failed to delete policy');
+      
       setPolicies(policies.filter(p => p.id !== policyToDelete));
-      setPolicyToDelete(null);
       setShowDeleteModal(false);
+      setPolicyToDelete(null);
+    } catch (error: any) {
+      console.error('Error deleting policy:', error);
+      alert('Failed to delete policy. Please try again.');
     }
   };
 
@@ -179,7 +189,7 @@ function DeductionPoliciesContent() {
   const resetForm = () => {
     setFormData({
       name: '',
-      type: 'LATE',
+      policyType: 'LATE',
       deductionMethod: 'HOURLY_RATE',
       rate: 0,
       gracePeriodMinutes: 0,
@@ -193,7 +203,7 @@ function DeductionPoliciesContent() {
     setEditingPolicy(policy);
     setFormData({
       name: policy.name,
-      type: policy.type,
+      policyType: policy.policyType,
       deductionMethod: policy.deductionMethod,
       rate: policy.rate,
       gracePeriodMinutes: policy.gracePeriodMinutes,
@@ -201,9 +211,14 @@ function DeductionPoliciesContent() {
       description: policy.description,
       isActive: policy.isActive,
     });
+    setIsCreateDialogOpen(true);
   };
 
-  const formatRate = (method: string, rate: number) => {
+  const formatRate = (method: string, rate?: number) => {
+    if (rate === undefined || rate === null) {
+      return 'Not set';
+    }
+    
     switch (method) {
       case 'HOURLY_RATE': return `${rate}x hourly rate`;
       case 'PERCENTAGE': return `${rate}% of daily rate`;
@@ -259,115 +274,131 @@ function DeductionPoliciesContent() {
           </div>
         </RoleComponentWrapper>
 
-        {/* Policies List */}
-        <div className="space-y-4">
-          {policies.map((policy) => (
-            <Card key={policy.id} className={!policy.isActive ? 'opacity-60' : ''}>
-              <CardContent className="pt-6">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-2">
-                      <h3 className="text-lg font-semibold">{policy.name}</h3>
-                      <BadgeColor color={policy.type === 'LATE' ? 'yellow' : policy.type === 'UNDERTIME' ? 'orange' : 'red'}>
-                        {policy.type}
-                      </BadgeColor>
-                      {!policy.isActive && (
-                        <BadgeColor color="gray">
-                          Inactive
-                        </BadgeColor>
-                      )}
-                    </div>
-                    
-                    <p className="text-gray-600 text-sm mb-4">{policy.description}</p>
-                    
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                      <div className="flex items-center gap-2">
-                        <ClockIcon className="w-4 h-4 text-gray-400" />
+        {/* Policies Table */}
+        <Card>
+          <CardContent className="p-0">
+            <div className="overflow-x-auto">
+              <Table className="w-full">
+                <TableHeader className="bg-gray-50 border-b">
+                  <TableRow>
+                    <TableCell isHeader={true} className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Policy Name
+                    </TableCell>
+                    <TableCell isHeader={true} className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Type
+                    </TableCell>
+                    <TableCell isHeader={true} className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Deduction Method
+                    </TableCell>
+                    <TableCell isHeader={true} className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Rate
+                    </TableCell>
+                    <TableCell isHeader={true} className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Grace Period
+                    </TableCell>
+                    <TableCell isHeader={true} className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Max Daily Deduction
+                    </TableCell>
+                    <TableCell isHeader={true} className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Status
+                    </TableCell>
+                    <TableCell isHeader={true} className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Actions
+                    </TableCell>
+                  </TableRow>
+                </TableHeader>
+                <TableBody className="bg-white divide-y divide-gray-200">
+                  {Array.isArray(policies) && policies.map((policy) => (
+                    <TableRow key={policy.id} className={!policy.isActive ? 'opacity-60' : ''}>
+                      <TableCell className="px-6 py-4 whitespace-nowrap">
                         <div>
-                          <p className="text-gray-500">Deduction Rate</p>
-                          <p className="font-medium">{formatRate(policy.deductionMethod, policy.rate)}</p>
+                          <div className="text-sm font-medium text-gray-900">{policy.name}</div>
+                          <div className="text-sm text-gray-500">{policy.description}</div>
                         </div>
-                      </div>
-                      
-                      <div className="flex items-center gap-2">
-                        <AlertCircleIcon className="w-4 h-4 text-gray-400" />
-                        <div>
-                          <p className="text-gray-500">Grace Period</p>
-                          <p className="font-medium">{policy.gracePeriodMinutes} minutes</p>
+                      </TableCell>
+                      <TableCell className="px-6 py-4 whitespace-nowrap">
+                        <Badge color={policy.policyType === 'LATE' ? 'warning' : policy.policyType === 'UNDERTIME' ? 'error' : 'error'}>
+                          {policy.policyType}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {policy.deductionMethod.replace('_', ' ')}
+                      </TableCell>
+                      <TableCell className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {formatRate(policy.deductionMethod, policy.rate)}
+                      </TableCell>
+                      <TableCell className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {policy.gracePeriodMinutes} minutes
+                      </TableCell>
+                      <TableCell className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        ₱{policy.maxDeductionPerDay?.toLocaleString() || '0'}
+                      </TableCell>
+                      <TableCell className="px-6 py-4 whitespace-nowrap">
+                        {!policy.isActive && (
+                          <Badge color="dark">Inactive</Badge>
+                        )}
+                        {policy.isActive && (
+                          <Badge color="success">Active</Badge>
+                        )}
+                      </TableCell>
+                      <TableCell className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                        <div className="flex justify-end gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleTogglePolicy(policy.id)}
+                          >
+                            {policy.isActive ? 'Deactivate' : 'Activate'}
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => openEditDialog(policy)}
+                          >
+                            <EditIcon className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleDeletePolicy(policy.id)}
+                            className="text-red-600 hover:text-red-700"
+                          >
+                            <TrashIcon className="w-4 h-4" />
+                          </Button>
                         </div>
-                      </div>
-                      
-                      <div>
-                        <p className="text-gray-500">Max Daily Deduction</p>
-                        <p className="font-medium">₱{policy.maxDeductionPerDay.toLocaleString()}</p>
-                      </div>
-                      
-                      <div>
-                        <p className="text-gray-500">Organization</p>
-                        <p className="font-medium">{policy.organizationName}</p>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center gap-2 ml-4">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleTogglePolicy(policy.id)}
-                    >
-                      {policy.isActive ? 'Deactivate' : 'Activate'}
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => openEditDialog(policy)}
-                    >
-                      <EditIcon className="w-4 h-4" />
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleDeletePolicy(policy.id)}
-                      className="text-red-600 hover:text-red-700"
-                    >
-                      <TrashIcon className="w-4 h-4" />
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-          
-          {policies.length === 0 && (
-            <Card>
-              <CardContent className="pt-6">
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+              
+              {policies.length === 0 && (
                 <div className="text-center py-8">
                   <p className="text-gray-500">No deduction policies found.</p>
                   <Button onClick={() => setIsCreateDialogOpen(true)} className="mt-4">
                     Create your first policy
                   </Button>
                 </div>
-              </CardContent>
-            </Card>
-          )}
-        </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Create/Edit Modal */}
-      <ConfirmationModal
+      <Modal
         isOpen={isCreateDialogOpen || editingPolicy !== null}
         onClose={() => {
           setIsCreateDialogOpen(false);
           setEditingPolicy(null);
           resetForm();
         }}
-        onConfirm={editingPolicy ? handleUpdatePolicy : handleCreatePolicy}
-        title={editingPolicy ? 'Edit Policy' : 'Create New Policy'}
-        message=""
-        confirmText={editingPolicy ? 'Update' : 'Create'}
-        cancelText="Cancel"
-        type="info"
+        className="max-w-2xl"
       >
+        <div className="bg-white rounded-lg p-6">
+          <h2 className="text-xl font-semibold mb-4">
+            {editingPolicy ? 'Edit Policy' : 'Create New Policy'}
+          </h2>
         <div className="space-y-4">
           <div>
             <Label htmlFor="name">Policy Name</Label>
@@ -381,10 +412,10 @@ function DeductionPoliciesContent() {
           
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <Label htmlFor="type">Policy Type</Label>
+              <Label htmlFor="policyType">Policy Type</Label>
               <Select
-                value={formData.type}
-                onChange={(value: any) => setFormData({ ...formData, type: value })}
+                value={formData.policyType}
+                onChange={(value: any) => setFormData({ ...formData, policyType: value })}
                 options={[
                   { value: 'LATE', label: 'Late' },
                   { value: 'UNDERTIME', label: 'Undertime' },
@@ -418,7 +449,7 @@ function DeductionPoliciesContent() {
               <Input
                 id="rate"
                 type="number"
-                step="0.01"
+                step={0.1}
                 value={formData.rate}
                 onChange={(e) => setFormData({ ...formData, rate: parseFloat(e.target.value) || 0 })}
               />
@@ -448,9 +479,8 @@ function DeductionPoliciesContent() {
           <div>
             <Label htmlFor="description">Description</Label>
             <Textarea
-              id="description"
               value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              onChange={(value) => setFormData({ ...formData, description: value })}
               placeholder="Describe how this policy works..."
               rows={3}
             />
@@ -458,14 +488,27 @@ function DeductionPoliciesContent() {
           
           <div className="flex items-center space-x-2">
             <Switch
-              id="isActive"
-              checked={formData.isActive}
-              onCheckedChange={(checked) => setFormData({ ...formData, isActive: checked })}
+              label="Active"
+              defaultChecked={formData.isActive}
+              onChange={(checked) => setFormData({ ...formData, isActive: checked })}
             />
-            <Label htmlFor="isActive">Active</Label>
+          </div>
+          
+          <div className="flex justify-end gap-2 pt-4">
+            <Button variant="outline" onClick={() => {
+              setIsCreateDialogOpen(false);
+              setEditingPolicy(null);
+              resetForm();
+            }}>
+              Cancel
+            </Button>
+            <Button onClick={editingPolicy ? handleUpdatePolicy : handleCreatePolicy}>
+              {editingPolicy ? 'Update' : 'Create'}
+            </Button>
           </div>
         </div>
-      </ConfirmationModal>
+        </div>
+      </Modal>
 
       {/* Delete Confirmation Modal */}
       <ConfirmationModal
@@ -479,7 +522,7 @@ function DeductionPoliciesContent() {
         message="Are you sure you want to delete this policy? This action cannot be undone."
         confirmText="Delete"
         cancelText="Cancel"
-        type="danger"
+        variant="error"
       />
     </>
   );

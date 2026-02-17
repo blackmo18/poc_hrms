@@ -162,7 +162,7 @@ describe('PayrollCalculationService', () => {
 
   describe('computeDailyPay', () => {
     it('should compute daily pay components', async () => {
-      const employee = { id: 'emp-1', organization_id: 'org-1' };
+      const employee = { id: 'emp-1', organizationId: 'org-1' };
       const timeEntry = {
         work_date: new Date(),
         clock_in_at: '2024-01-01T09:00:00Z',

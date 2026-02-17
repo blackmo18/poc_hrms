@@ -191,7 +191,7 @@ function EmployeePayrollSummaryContent() {
         }
 
         // Get organization ID from either new or old field name
-        const organizationId = user.organizationId || (user as any).organization_id;
+        const organizationId = user.organizationId || (user as any).organizationId;
         
         if (!organizationId) {
           throw new Error('User organization ID is missing');
@@ -272,7 +272,7 @@ function EmployeePayrollSummaryContent() {
       employeeId,
       user: !!user,
       userOrgId: user?.organizationId,
-      userOrgIdOld: (user as any)?.organization_id, // Temporary fallback
+      userOrgIdOld: (user as any)?.organizationId, // Temporary fallback
       userEmail: user?.email
     });
     
@@ -283,7 +283,7 @@ function EmployeePayrollSummaryContent() {
     }
 
     // Get organization ID from either new or old field name
-    const organizationId = user?.organizationId || (user as any)?.organization_id;
+    const organizationId = user?.organizationId || (user as any)?.organizationId;
     
     if (employeeId && organizationId) {
       console.log('All conditions met, fetching data...');

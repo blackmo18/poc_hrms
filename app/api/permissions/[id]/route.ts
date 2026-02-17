@@ -83,7 +83,7 @@ export async function PUT(
     const { id } = await params;
     const permissionId = id;
     const body = await request.json();
-    const { name, description, organization_id } = body;
+    const { name, description, organizationId } = body;
 
     // Validate required fields
     if (!name) {
@@ -114,7 +114,7 @@ export async function PUT(
       data: {
         name,
         description,
-        organizationId: organization_id || null, // null for global permissions
+        organizationId: organizationId || null, // null for global permissions
       },
       include: {
         organization: true,

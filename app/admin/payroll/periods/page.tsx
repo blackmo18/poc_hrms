@@ -4,15 +4,18 @@ import { useState, useEffect } from 'react';
 import PageBreadcrumb from '@/components/common/PageBreadCrumb';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { BadgeColor } from "@/components/ui/badge/Badge";
+import { BadgeColor } from '@/components/ui/badge/Badge';
+import Badge from '@/components/ui/badge/Badge';
 import { ProtectedRoute } from '@/components/protected-route';
 import { ADMINSTRATIVE_ROLES } from '@/lib/constants/roles';
 import { PlusIcon, EditIcon, TrashIcon, CalendarIcon, CheckCircleIcon, XCircleIcon, ClockIcon } from 'lucide-react';
+import { Modal } from '@/components/ui/modal';
 import ConfirmationModal from '@/components/ui/modal/ConfirmationModal';
-import { Input } from '@/components/form/input/Input';
-import { Label } from '@/components/form/Label';
-import { Select } from '@/components/form/Select';
-import { Textarea } from '@/components/form/input/Textarea';
+import Input from '@/components/form/input/InputField';
+import Label from '@/components/form/Label';
+import Select from '@/components/form/Select';
+import Textarea from '@/components/form/input/TextArea';
+import Switch from '@/components/form/switch/Switch';
 import OrganizationFilter from '@/components/common/OrganizationFilter';
 import RoleComponentWrapper from '@/components/common/RoleComponentWrapper';
 import { useAuth } from '@/components/providers/auth-provider';
@@ -77,7 +80,7 @@ function PayrollPeriodsContent() {
       endDate: '2024-01-15',
       payDate: '2024-01-20',
       status: 'COMPLETED',
-      organizationId: user?.organization_id || '1',
+      organizationId: user?.organizationId || '1',
       organizationName: 'Tech Corp',
       employeeCount: 45,
       totalGrossPay: 2250000,
@@ -94,7 +97,7 @@ function PayrollPeriodsContent() {
       endDate: '2024-01-31',
       payDate: '2024-02-05',
       status: 'PROCESSING',
-      organizationId: user?.organization_id || '1',
+      organizationId: user?.organizationId || '1',
       organizationName: 'Tech Corp',
       employeeCount: 45,
       totalGrossPay: 2300000,
@@ -110,7 +113,7 @@ function PayrollPeriodsContent() {
       endDate: '2024-02-15',
       payDate: '2024-02-20',
       status: 'PENDING',
-      organizationId: user?.organization_id || '1',
+      organizationId: user?.organizationId || '1',
       organizationName: 'Tech Corp',
       employeeCount: 47,
       totalGrossPay: 0,
@@ -134,7 +137,7 @@ function PayrollPeriodsContent() {
       id: Date.now().toString(),
       ...formData,
       status: 'PENDING',
-      organizationId: selectedOrganization || user?.organization_id || '1',
+      organizationId: selectedOrganization || user?.organizationId || '1',
       organizationName: 'Tech Corp',
       employeeCount: 0,
       totalGrossPay: 0,
@@ -258,91 +261,12 @@ function PayrollPeriodsContent() {
             <h1 className="text-2xl font-bold text-gray-900">Payroll Periods</h1>
             <p className="text-gray-600 mt-1">Manage payroll periods and track processing status</p>
           </div>
-          <ConfirmationModal
-        isOpen={isCreateDialogOpen || editingPeriod !== null}
-        onClose={() => {
-          setIsCreateDialogOpen(false);
-          setEditingPeriod(null);
-          resetForm();
-        }}
-        onConfirm={editingPeriod ? handleUpdatePeriod : handleCreatePeriod}
-        title={editingPeriod ? 'Edit Payroll Period' : 'Create New Payroll Period'}
-        message=""
-        confirmText={editingPeriod ? 'Update' : 'Create'}
-        cancelText="Cancel"
-        type="info"
-      >
-        <div className="space-y-4">
-                <div>
-                  <Label htmlFor="name">Period Name</Label>
-                  <Input
-                    id="name"
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    placeholder="e.g., January 1-15, 2024"
-                  />
-                </div>
-                
-                <div>
-                  <Label htmlFor="type">Period Type</Label>
-                  <Select
-                    value={formData.type}
-                    onChange={(value: any) => setFormData({ ...formData, type: value })}
-                    options={[
-                      { value: 'MONTHLY', label: 'Monthly' },
-                      { value: 'SEMI_MONTHLY', label: 'Semi-Monthly' },
-                      { value: 'WEEKLY', label: 'Weekly' },
-                      { value: 'BI_WEEKLY', label: 'Bi-Weekly' },
-                    ]}
-                    placeholder="Select type"
-                  />
-                </div>
-                
-                <div>
-                  <Label htmlFor="startDate">Start Date</Label>
-                  <Input
-                    id="startDate"
-                    type="date"
-                    value={formData.startDate}
-                    onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
-                  />
-                </div>
-                
-                <div>
-                  <Label htmlFor="endDate">End Date</Label>
-                  <Input
-                    id="endDate"
-                    type="date"
-                    value={formData.endDate}
-                    onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
-                  />
-                </div>
-                
-                <div>
-                  <Label htmlFor="payDate">Pay Date</Label>
-                  <Input
-                    id="payDate"
-                    type="date"
-                    value={formData.payDate}
-                    onChange={(e) => setFormData({ ...formData, payDate: e.target.value })}
-                  />
-                </div>
-                
-                <div className="flex justify-end gap-2 pt-4">
-                  <Button variant="outline" onClick={() => {
-                    setIsCreateDialogOpen(false);
-                    setEditingPeriod(null);
-                    resetForm();
-                  }}>
-                    Cancel
-                  </Button>
-                </div>
-              </div>
-            </ConfirmationModal>
+          <div className="flex gap-2">
             <Button onClick={() => setIsCreateDialogOpen(true)} className="flex items-center gap-2">
               <PlusIcon className="w-4 h-4" />
               Add Period
             </Button>
+          </div>
         </div>
 
         {/* Organization Filter */}
@@ -367,17 +291,17 @@ function PayrollPeriodsContent() {
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2">
                       <h3 className="text-lg font-semibold">{period.name}</h3>
-                      <BadgeColor color={
-                        period.status === 'COMPLETED' ? 'green' : 
-                        period.status === 'PROCESSING' ? 'blue' : 
-                        period.status === 'FAILED' ? 'red' : 'yellow'
+                      <Badge color={
+                        period.status === 'COMPLETED' ? 'success' : 
+                        period.status === 'PROCESSING' ? 'info' : 
+                        period.status === 'FAILED' ? 'error' : 'warning'
                       }>
                         <div className="flex items-center gap-1">
                           {getStatusIcon(period.status)}
                           {period.status}
                         </div>
-                      </BadgeColor>
-                      <BadgeColor variant="outline">{period.type}</BadgeColor>
+                      </Badge>
+                      <Badge color="light">{period.type}</Badge>
                     </div>
                     
                     <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-sm">
@@ -473,6 +397,95 @@ function PayrollPeriodsContent() {
               </CardContent>
             </Card>
           )}
+        </div>
+      </div>
+
+      {/* Create/Edit Modal */}
+      <Modal
+        isOpen={isCreateDialogOpen || editingPeriod !== null}
+        onClose={() => {
+          setIsCreateDialogOpen(false);
+          setEditingPeriod(null);
+          resetForm();
+        }}
+        className="max-w-2xl"
+      >
+        <div className="bg-white rounded-lg p-6">
+          <h2 className="text-xl font-semibold mb-4">
+            {editingPeriod ? 'Edit Payroll Period' : 'Create New Payroll Period'}
+          </h2>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="name">Period Name</Label>
+              <Input
+                id="name"
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                placeholder="e.g., January 1-15, 2024"
+              />
+            </div>
+            
+            <div>
+              <Label htmlFor="type">Period Type</Label>
+              <Select
+                value={formData.type}
+                onChange={(value: any) => setFormData({ ...formData, type: value })}
+                options={[
+                  { value: 'MONTHLY', label: 'Monthly' },
+                  { value: 'SEMI_MONTHLY', label: 'Semi-Monthly' },
+                  { value: 'WEEKLY', label: 'Weekly' },
+                  { value: 'BI_WEEKLY', label: 'Bi-Weekly' },
+                ]}
+                placeholder="Select type"
+              />
+            </div>
+            
+            <div>
+              <Label htmlFor="startDate">Start Date</Label>
+              <Input
+                id="startDate"
+                type="date"
+                value={formData.startDate}
+                onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
+              />
+            </div>
+            
+            <div>
+              <Label htmlFor="endDate">End Date</Label>
+              <Input
+                id="endDate"
+                type="date"
+                value={formData.endDate}
+                onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
+              />
+            </div>
+            
+            <div>
+              <Label htmlFor="payDate">Pay Date</Label>
+              <Input
+                id="payDate"
+                type="date"
+                value={formData.payDate}
+                onChange={(e) => setFormData({ ...formData, payDate: e.target.value })}
+              />
+            </div>
+            
+            <div className="flex justify-end gap-2 pt-4">
+              <Button variant="outline" onClick={() => {
+                setIsCreateDialogOpen(false);
+                setEditingPeriod(null);
+                resetForm();
+              }}>
+                Cancel
+              </Button>
+              <Button onClick={editingPeriod ? handleUpdatePeriod : handleCreatePeriod}>
+                {editingPeriod ? 'Update' : 'Create'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      </Modal>
+
       {/* Delete Confirmation Modal */}
       <ConfirmationModal
         isOpen={showDeleteModal}
@@ -485,7 +498,7 @@ function PayrollPeriodsContent() {
         message="Are you sure you want to delete this payroll period? This action cannot be undone."
         confirmText="Delete"
         cancelText="Cancel"
-        type="danger"
+        variant="error"
       />
     </>
   );

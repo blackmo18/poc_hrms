@@ -7,7 +7,7 @@ export async function GET(request: NextRequest) {
   return requiresRoles(request, ['ADMIN', 'SUPER_ADMIN'], async (authRequest) => {
     // Parse query parameters
     const { searchParams } = new URL(request.url);
-    const organizationId = searchParams.get('organization_id');
+    const organizationId = searchParams.get('organizationId');
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '10');
 

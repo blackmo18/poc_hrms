@@ -84,7 +84,7 @@ export class TimesheetCalculationController {
     throw new Error('calculateTimesheetsForOrganization not yet implemented - requires employee listing');
 
     // Future implementation:
-    // const employees = await employeeController.getAll({ organization_id: organizationId, is_active: true });
+    // const employees = await employeeController.getAll({ organizationId: organizationId, is_active: true });
     // const employeeIds = employees.map(emp => emp.id);
     // return await this.calculateTimesheetsForEmployees(employeeIds, startDate, endDate);
   }

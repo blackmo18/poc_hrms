@@ -131,8 +131,8 @@ export function useOrganizationFilter(options: UseOrganizationFilterOptions): Us
     if (authLoading || !enabled) return;
 
     if (onDataFetchRef.current) {
-      const orgId = !isSuperAdmin && user?.organization_id 
-        ? user.organization_id 
+      const orgId = !isSuperAdmin && user?.organizationId 
+        ? user.organizationId 
         : selectedOrganization || undefined;
       
       if (orgId !== undefined || isSuperAdmin) {
@@ -140,7 +140,7 @@ export function useOrganizationFilter(options: UseOrganizationFilterOptions): Us
         isOrgChangeRef.current = false;
       }
     }
-  }, [currentPage, selectedOrganization, authLoading, enabled, isSuperAdmin, user?.organization_id]);
+  }, [currentPage, selectedOrganization, authLoading, enabled, isSuperAdmin, user?.organizationId]);
 
   return {
     // State

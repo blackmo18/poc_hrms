@@ -11,7 +11,7 @@ interface DepartmentConfirmModalProps {
   onClose: () => void;
   onConfirm: () => void;
   departmentData: {
-    organization_id: string;
+    organizationId: string;
     name: string;
     description: string;
   };
@@ -58,7 +58,7 @@ export default function DepartmentConfirmModal({
                 <div className="flex justify-between">
                   <span className="text-sm text-gray-600 dark:text-gray-400">Organization:</span>
                   <span className="text-sm font-medium text-gray-900 dark:text-white">
-                    {getOrganizationName(departmentData.organization_id)}
+                    {getOrganizationName(departmentData.organizationId)}
                   </span>
                 </div>
                 <div className="flex justify-between">

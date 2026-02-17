@@ -56,10 +56,10 @@ export async function PUT(
       const { id } = await params;
       const userId = id;
       const body = await request.json();
-      const { email, organization_id, status } = body;
+      const { email, organizationId, status } = body;
 
       // Validate required fields
-      if (!email || !organization_id) {
+      if (!email || !organizationId) {
         return NextResponse.json(
           { error: 'Email and organization are required' },
           { status: 400 }
@@ -95,7 +95,7 @@ export async function PUT(
       // Update user
       const updatedUser = await getUserService().update(userId, {
         email,
-        organizationId: organization_id,
+        organizationId: organizationId,
         status: status || existingUser.status,
       });
 

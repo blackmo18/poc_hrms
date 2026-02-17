@@ -53,7 +53,7 @@ export class HolidayService implements IHolidayService {
 
       const holiday = await holidayController.createHoliday({
         template_id: data.template_id,
-        organization_id: data.organizationId,
+        organizationId: data.organizationId,
         date: data.date,
         type: data.type,
         is_recurring: data.is_recurring,
@@ -175,7 +175,7 @@ export class HolidayService implements IHolidayService {
 
         const copiedHoliday = await holidayController.createHoliday({
           template_id: newTemplate.id,
-          organization_id: data.organizationId,
+          organizationId: data.organizationId,
           date: holidayDate,
           type: holiday.type,
           is_recurring: holiday.isRecurring,

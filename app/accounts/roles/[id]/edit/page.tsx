@@ -24,7 +24,7 @@ interface Role {
   id: string;
   name: string;
   description: string;
-  organization_id: string;
+  organizationId: string;
   permissions: {
     id: string;
     name: string;
@@ -35,7 +35,7 @@ interface Role {
 interface RoleFormData {
   name: string;
   description: string;
-  organization_id: string;
+  organizationId: string;
   permission_ids: string[];
 }
 
@@ -47,7 +47,7 @@ export default function EditRolePage() {
   const [formData, setFormData] = useState<RoleFormData>({
     name: "",
     description: "",
-    organization_id: "",
+    organizationId: "",
     permission_ids: [],
   });
 
@@ -75,7 +75,7 @@ export default function EditRolePage() {
           setFormData({
             name: roleData.name,
             description: roleData.description || "",
-            organization_id: roleData.organization_id,
+            organizationId: roleData.organizationId,
             permission_ids: roleData.permissions.map((perm: any) => perm.id),
           });
         }
@@ -133,8 +133,8 @@ export default function EditRolePage() {
       newErrors.name = "Role name is required";
     }
 
-    if (!formData.organization_id) {
-      newErrors.organization_id = "Organization is required";
+    if (!formData.organizationId) {
+      newErrors.organizationId = "Organization is required";
     }
 
     setErrors(newErrors);
@@ -239,17 +239,17 @@ export default function EditRolePage() {
               Organization *
             </label>
             <Select
-              value={formData.organization_id}
-              onChange={(value) => handleInputChange('organization_id', value)}
+              value={formData.organizationId}
+              onChange={(value) => handleInputChange('organizationId', value)}
               options={organizations.map(org => ({
                 value: org.id,
                 label: org.name
               }))}
               placeholder="Select organization"
             />
-            {errors.organization_id && (
+            {errors.organizationId && (
               <p className="mt-1 text-sm text-red-600 dark:text-red-400">
-                {errors.organization_id}
+                {errors.organizationId}
               </p>
             )}
           </div>

@@ -91,7 +91,7 @@ export class OvertimeRequestController {
       data: {
         id: generateULID(),
         employeeId: data.employeeId || data.employee_id,
-        organizationId: data.organizationId || data.organization_id,
+        organizationId: data.organizationId || data.organizationId,
         workDate: data.workDate || data.work_date,
         requestedMinutes: data.requestedMinutes || data.requested_minutes,
         reason: data.reason,
