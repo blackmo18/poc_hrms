@@ -15,6 +15,7 @@ interface UseUserCacheOptions {
   revalidationInterval?: number;
   enabled?: boolean;
   onUserNull?: () => void;
+  isUserIdle?: () => boolean; // Function to check if user is idle
 }
 
 const sanitizeUser = (user: any): User => ({
@@ -33,9 +34,10 @@ export function useUserCache(
   options: UseUserCacheOptions = {}
 ) {
   const { 
-    revalidationInterval = 4 * 60 * 1000, // 4 minutes default
+    revalidationInterval = 15 * 60 * 1000, // 15 minutes default (less intrusive)
     enabled = true,
-    onUserNull
+    onUserNull,
+    isUserIdle = () => false // Default to not idle
   } = options;
   
   const [isRevalidating, setIsRevalidating] = useState(false);
@@ -101,11 +103,18 @@ export function useUserCache(
     }
   };
 
-  // Periodic session revalidation
+  // Periodic session revalidation - only when user is idle
   useEffect(() => {
     if (!enabled || isRevalidating) return;
 
     const interval = setInterval(async () => {
+      // Skip validation if user is active (not idle)
+      if (!isUserIdle()) {
+        console.log('Skipping session validation - user is active');
+        return;
+      }
+
+      console.log('Performing session validation - user is idle');
       setIsRevalidating(true);
       try {
         await checkAuth(true); // Force refresh
@@ -115,7 +124,7 @@ export function useUserCache(
     }, revalidationInterval);
 
     return () => clearInterval(interval);
-  }, [isRevalidating, checkAuth, revalidationInterval, enabled]);
+  }, [isRevalidating, checkAuth, revalidationInterval, enabled, isUserIdle]);
 
   return {
     checkAuth,

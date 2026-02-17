@@ -156,6 +156,9 @@ export default function TimesheetViewPage() {
     return total;
   }, 0) / 60; // Convert to hours
 
+  // Round to 2 decimal places to prevent floating-point precision issues
+  const roundedOvertimeHours = Math.round(overtimeHours * 100) / 100;
+
   const onTimeEntries = attendanceRecords.filter(record => {
     if (!record.clockInAt || record.isAbsent) return false;
     const clockInTime = new Date(`1970-01-01 ${record.clockInAt}`).getTime();
@@ -203,7 +206,7 @@ export default function TimesheetViewPage() {
           <Card>
             <CardContent className="pt-6">
               <p className="text-sm text-gray-600 dark:text-gray-400">Overtime Hours</p>
-              <p className="text-2xl font-bold mt-2">{overtimeHours.toFixed(2)} hrs</p>
+              <p className="text-2xl font-bold mt-2">{roundedOvertimeHours.toFixed(2)} hrs</p>
             </CardContent>
           </Card>
           <Card>

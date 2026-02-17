@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import OrganizationFilter from '@/components/common/OrganizationFilter';
 import { Card, CardHeader, CardContent } from '@/components/ui/card';
 import { PayrollSelectionPanel } from './components/PayrollSelectionPanel';
@@ -15,8 +16,12 @@ import { useAuth } from '@/components/providers/auth-provider';
 import { usePayrollPeriods } from '@/hooks/usePayrollPeriods';
 import { useOrganizationFilter } from '@/hooks/useOrganizationFilter';
 import RoleComponentWrapper from '@/components/common/RoleComponentWrapper';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 function PayrollRunContent() {
+  console.log('PayrollRunContent render - new render');
+  
+  const router = useRouter();
   const [selectedCutoff, setSelectedCutoff] = useState('');
   const [selectedDepartment, setSelectedDepartment] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
@@ -26,6 +31,17 @@ function PayrollRunContent() {
   // Payroll summary state
   const [payrollSummary, setPayrollSummary] = useState<any>(null);
   const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
+  
+  // Eligible employees state for payroll information panel
+  const [eligibleEmployees, setEligibleEmployees] = useState<Array<{
+    id: string;
+    employeeId: string;
+    firstName: string;
+    lastName: string;
+    departmentName?: string;
+    baseSalary: number;
+    hasAttendance: boolean;
+  }>>([]);
   
   // Modal state
   const [isMissingAttendanceModalOpen, setIsMissingAttendanceModalOpen] = useState(false);
@@ -93,12 +109,29 @@ function PayrollRunContent() {
     fetchDepartments(orgId);
     // Reset payroll summary when organization changes
     setPayrollSummary(null);
+    setEligibleEmployees([]);
   }, [selectedOrganization, isSuperAdmin, user?.organization_id, fetchDepartments]);
 
-  // Reset payroll summary when department changes
+  // Reset payroll summary when organization or department changes
   useEffect(() => {
     setPayrollSummary(null);
+    setEligibleEmployees([]);
   }, [selectedDepartment]);
+
+  // Listen for payroll summary generated event
+  useEffect(() => {
+    const handlePayrollSummaryGenerated = (event: any) => {
+      if (event.detail.eligibleEmployees) {
+        setEligibleEmployees(event.detail.eligibleEmployees);
+      }
+    };
+
+    window.addEventListener('payrollSummaryGenerated', handlePayrollSummaryGenerated);
+    
+    return () => {
+      window.removeEventListener('payrollSummaryGenerated', handlePayrollSummaryGenerated);
+    };
+  }, []);
 
   const handleGenerateSummary = async () => {
     if (!selectedCutoff) {
@@ -158,7 +191,15 @@ function PayrollRunContent() {
 
       if (response.ok) {
         const summary = await response.json();
+        console.log('Payroll Summary received:', summary);
         setPayrollSummary(summary);
+        
+        // Set eligible employees from summary response
+        if (summary.employees && summary.employees.eligibleEmployees) {
+          setEligibleEmployees(summary.employees.eligibleEmployees);
+        }
+        
+        console.log('Payroll Summary state set');
       } else {
         const error = await response.json();
         alert(`Failed to generate summary: ${error.error || 'Unknown error'}`);
@@ -193,9 +234,30 @@ function PayrollRunContent() {
     setTimeout(() => setIsGenerating(false), 2000);
   };
 
+  const handleBatchGeneratePayroll = async () => {
+    if (!selectedCutoff || !selectedDepartment) {
+      alert('Please select both cutoff period and department');
+      return;
+    }
+    
+    const isConfirmed = window.confirm(`Are you sure you want to generate payroll for ${eligibleEmployees.length} eligible employees?`);
+    if (!isConfirmed) return;
+    
+    // TODO: Implement actual batch generation
+    console.log('Batch generating payroll for eligible employees:', eligibleEmployees);
+    alert('Batch payroll generation initiated (demo - no actual action performed)');
+  };
+
+  const handleEmployeeClick = (employeeId: string) => {
+    // Open employee payroll summary page in new tab
+    const url = `/payroll/summary/employee/${employeeId}?cutoff=${selectedCutoff}&department=${selectedDepartment}`;
+    window.open(url, '_blank');
+  };
+
   return (
-    <>
-      <PageBreadcrumb pageTitle="Payroll Run" />
+    <TooltipProvider>
+      <>
+        <PageBreadcrumb pageTitle="Payroll Run" />
       
       <div className="max-w-7xl mx-auto px-4 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -254,8 +316,10 @@ function PayrollRunContent() {
               {/* Action Buttons */}
               <ActionButtons
                 onGeneratePayroll={handleGeneratePayroll}
+                onBatchGeneratePayroll={handleBatchGeneratePayroll}
                 isGenerating={isGenerating}
                 disabled={!selectedCutoff || !selectedDepartment}
+                eligibleCount={eligibleEmployees.length}
               />
             </CardContent>
           </Card>
@@ -268,18 +332,69 @@ function PayrollRunContent() {
             <CardContent className="space-y-4 text-sm">
               <div>
                 <p className="text-gray-600 dark:text-gray-400">Current Period</p>
-                <p className="font-medium">Jan 16 - 31, 2024</p>
+                <p className="font-medium">
+                  {selectedCutoff ? (() => {
+                    const parts = selectedCutoff.split('-');
+                    const year = parts[0];
+                    const month = parseInt(parts[1]) - 1;
+                    const startDay = parts[2];
+                    const endDay = parts[3];
+                    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                    return `${monthNames[month]} ${startDay} - ${endDay}, ${year}`;
+                  })() : 'Not selected'}
+                </p>
               </div>
               <div>
-                <p className="text-gray-600 dark:text-gray-400">Employees</p>
-                <p className="font-medium">45 in selected department</p>
+                <p className="text-gray-600 dark:text-gray-400">Employees Ready for Payroll</p>
+                <p className="font-medium">{eligibleEmployees.length} eligible employees</p>
               </div>
               <div>
                 <p className="text-gray-600 dark:text-gray-400">Status</p>
-                <p className="font-medium text-yellow-600">Pending Generation</p>
+                <p className={`font-medium ${payrollSummary?.readiness?.canGenerate ? 'text-green-600' : 'text-yellow-600'}`}>
+                  {payrollSummary?.readiness?.canGenerate ? 'Ready to Generate' : 'Pending Generation'}
+                </p>
               </div>
+              
+              {/* Display eligible employees list */}
+              {eligibleEmployees.length > 0 && (
+                <div className="pt-4 border-t">
+                  <p className="text-xs text-gray-500 mb-2">Eligible Employees ({eligibleEmployees.length})</p>
+                  <div className="max-h-64 overflow-y-auto space-y-1">
+                    {eligibleEmployees.map((employee) => (
+                      <Tooltip key={employee.id}>
+                        <TooltipTrigger asChild>
+                          <div 
+                            onClick={() => handleEmployeeClick(employee.id)}
+                            className="flex items-center justify-between text-xs p-2 bg-gray-50 dark:bg-gray-800 rounded hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer transition-colors"
+                          >
+                            <div className="flex items-center space-x-2">
+                              <span className="font-medium">{employee.lastName}, {employee.firstName}</span>
+                              <span className="text-gray-400">({employee.employeeId})</span>
+                              {employee.hasAttendance ? (
+                                <span className="text-green-600">✓</span>
+                              ) : (
+                                <span className="text-red-600">✗</span>
+                              )}
+                            </div>
+                            <span className="text-gray-500">₱{employee.baseSalary.toLocaleString()}</span>
+                          </div>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>Click to generate employee payroll summary</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
               <div className="pt-4 border-t">
-                <p className="text-xs text-gray-500">Last generated: Jan 15, 2024</p>
+                <p className="text-xs text-gray-500">
+                  Last generated: {payrollSummary?.payrollStatus?.lastGeneratedAt 
+                    ? new Date(payrollSummary.payrollStatus.lastGeneratedAt).toLocaleDateString()
+                    : 'Never'
+                  }
+                </p>
               </div>
             </CardContent>
           </Card>
@@ -298,7 +413,8 @@ function PayrollRunContent() {
         } : null}
         onViewAttendance={handleViewEmployeeAttendance}
       />
-    </>
+      </>
+    </TooltipProvider>
   );
 }
 

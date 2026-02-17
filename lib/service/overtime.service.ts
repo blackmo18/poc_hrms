@@ -1,6 +1,7 @@
 import { Overtime } from '@prisma/client';
 import { generateULID } from '@/lib/utils/ulid.service';
 import { OvertimeController, overtimeController } from '@/lib/controllers/overtime.controller';
+import { prisma } from '@/lib/db';
 
 export interface CreateOvertimeRequestData {
   employeeId: string;
@@ -58,20 +59,48 @@ export class OvertimeService {
   }
 
   async getOvertimeRequestsByEmployee(employeeId: string): Promise<Overtime[]> {
-    // This method is now called directly on the controller instance
-    // The controller will handle the database query
-    const overtimeRequests = await overtimeController.getOvertimeRequests(employeeId);
-    // Extract data from response
-    const response = await overtimeRequests.json();
-    return response.success ? response.data : [];
+    // Direct database query to avoid circular dependency
+    const overtimeRequests = await prisma.overtime.findMany({
+      where: { employeeId },
+      include: {
+        employee: {
+          select: {
+            firstName: true,
+            lastName: true,
+            department: {
+              select: {
+                name: true,
+              },
+            },
+          },
+        },
+      },
+      orderBy: { workDate: 'desc' },
+    });
+    
+    return overtimeRequests;
   }
 
   async getOvertimeRequestById(id: string): Promise<Overtime | null> {
-    // This method is now called directly on the controller instance
-    const overtimeRequest = await overtimeController.getOvertimeRequestById(id);
-    // Extract data from response
-    const response = await overtimeRequest.json();
-    return response.success ? response.data : null;
+    // Direct database query to avoid circular dependency
+    const overtimeRequest = await prisma.overtime.findUnique({
+      where: { id },
+      include: {
+        employee: {
+          select: {
+            firstName: true,
+            lastName: true,
+            department: {
+              select: {
+                name: true,
+              },
+            },
+          },
+        },
+      },
+    });
+    
+    return overtimeRequest;
   }
 }
 

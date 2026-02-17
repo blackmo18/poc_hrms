@@ -117,6 +117,7 @@ function OvertimeApprovalsContent() {
 
   const pendingCount = filteredRequests.filter(r => r.status === 'pending').length;
   const totalHours = filteredRequests.reduce((sum, r) => sum + (r.requestedHours || 0), 0);
+  const roundedTotalHours = Math.round(totalHours * 100) / 100;
   const approvedCount = filteredRequests.filter(r => r.status === 'approved').length;
 
   if (loading) {
@@ -147,7 +148,7 @@ function OvertimeApprovalsContent() {
           <Card className="dark:bg-white/[0.03] dark:border-gray-800">
             <CardContent className="pt-6">
               <p className="text-sm text-gray-600 dark:text-gray-400">Total OT Hours</p>
-              <p className="text-2xl font-bold mt-2">{totalHours} hrs</p>
+              <p className="text-2xl font-bold mt-2">{roundedTotalHours.toFixed(2)} hrs</p>
             </CardContent>
           </Card>
           <Card className="dark:bg-white/[0.03] dark:border-gray-800">
@@ -214,7 +215,7 @@ function OvertimeApprovalsContent() {
                     </div>
                     <div>
                       <p className="text-gray-600 dark:text-gray-400">Hours Requested</p>
-                      <p className="font-medium text-gray-900 dark:text-white">{request.requestedHours} hrs</p>
+                      <p className="font-medium text-gray-900 dark:text-white">{typeof request.requestedHours === 'number' ? request.requestedHours.toFixed(2) : request.requestedHours} hrs</p>
                     </div>
                     <div>
                       <p className="text-gray-600 dark:text-gray-400">Reason</p>
@@ -268,7 +269,7 @@ function OvertimeApprovalsContent() {
           { label: 'Department', value: modalState.request.department },
           { label: 'Organization', value: orgMap[modalState.request.organization] || modalState.request.organization },
           { label: 'Date', value: modalState.request.date },
-          { label: 'Hours Requested', value: `${modalState.request.requestedHours} hrs` },
+          { label: 'Hours Requested', value: `${typeof modalState.request.requestedHours === 'number' ? modalState.request.requestedHours.toFixed(2) : modalState.request.requestedHours} hrs` },
           { label: 'Reason', value: modalState.request.reason },
           { label: 'Submitted', value: modalState.request.submittedDate },
         ] : []}

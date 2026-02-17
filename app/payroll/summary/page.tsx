@@ -17,7 +17,13 @@ function PayrollSummaryContent() {
       otPay: 2500,
       nightDiff: 1200,
       holidayPay: 0,
-      deductions: 3200,
+      deductions: {
+        tax: 1500,
+        philhealth: 412.50,
+        sss: 900,
+        pagibig: 200,
+        total: 3012.50
+      },
       netPay: 15500,
       status: 'pending',
     },
@@ -29,7 +35,13 @@ function PayrollSummaryContent() {
       otPay: 1800,
       nightDiff: 800,
       holidayPay: 2400,
-      deductions: 2500,
+      deductions: {
+        tax: 1200,
+        philhealth: 330,
+        sss: 720,
+        pagibig: 160,
+        total: 2410
+      },
       netPay: 14500,
       status: 'approved',
     },
@@ -89,35 +101,59 @@ function PayrollSummaryContent() {
                     <th className="text-right py-3 px-4">OT Pay</th>
                     <th className="text-right py-3 px-4">Night Diff</th>
                     <th className="text-right py-3 px-4">Holiday Pay</th>
-                    <th className="text-right py-3 px-4">Deductions</th>
+                    <th className="text-right py-3 px-4">Gross Pay</th>
+                    <th className="text-center py-3 px-4 bg-gray-50 dark:bg-gray-800" colSpan={5}>Deductions</th>
                     <th className="text-right py-3 px-4">Net Pay</th>
                     <th className="text-center py-3 px-4">Status</th>
                   </tr>
+                  <tr className="border-b bg-gray-50 dark:bg-gray-800">
+                    <th className="text-left py-2 px-4"></th>
+                    <th className="text-right py-2 px-4"></th>
+                    <th className="text-right py-2 px-4"></th>
+                    <th className="text-right py-2 px-4"></th>
+                    <th className="text-right py-2 px-4"></th>
+                    <th className="text-right py-2 px-4"></th>
+                    <th className="text-right py-2 px-4 text-xs">Tax</th>
+                    <th className="text-right py-2 px-4 text-xs">Philhealth</th>
+                    <th className="text-right py-2 px-4 text-xs">SSS</th>
+                    <th className="text-right py-2 px-4 text-xs">Pagibig</th>
+                    <th className="text-right py-2 px-4 text-xs font-semibold">Total</th>
+                    <th className="text-right py-2 px-4"></th>
+                    <th className="text-center py-2 px-4"></th>
+                  </tr>
                 </thead>
                 <tbody>
-                  {payrollData.map((row) => (
-                    <tr key={row.id} className="border-b hover:bg-gray-50 dark:hover:bg-gray-800">
-                      <td className="py-3 px-4">
-                        <div>
-                          <p className="font-medium">{row.employee}</p>
-                          <p className="text-xs text-gray-500">{row.department}</p>
-                        </div>
-                      </td>
-                      <td className="text-right py-3 px-4">₱ {row.regularPay.toLocaleString()}</td>
-                      <td className="text-right py-3 px-4">₱ {row.otPay.toLocaleString()}</td>
-                      <td className="text-right py-3 px-4">₱ {row.nightDiff.toLocaleString()}</td>
-                      <td className="text-right py-3 px-4">₱ {row.holidayPay.toLocaleString()}</td>
-                      <td className="text-right py-3 px-4">₱ {row.deductions.toLocaleString()}</td>
-                      <td className="text-right py-3 px-4 font-semibold">₱ {row.netPay.toLocaleString()}</td>
-                      <td className="text-center py-3 px-4">
-                        {row.status === 'approved' ? (
-                          <CheckCircleIcon className="w-5 h-5 text-green-600 mx-auto" />
-                        ) : (
-                          <XCircleIcon className="w-5 h-5 text-yellow-600 mx-auto" />
-                        )}
-                      </td>
-                    </tr>
-                  ))}
+                  {payrollData.map((row) => {
+                    const grossPay = row.regularPay + row.otPay + row.nightDiff + row.holidayPay;
+                    return (
+                      <tr key={row.id} className="border-b hover:bg-gray-50 dark:hover:bg-gray-800">
+                        <td className="py-3 px-4">
+                          <div>
+                            <p className="font-medium">{row.employee}</p>
+                            <p className="text-xs text-gray-500">{row.department}</p>
+                          </div>
+                        </td>
+                        <td className="text-right py-3 px-4">₱ {row.regularPay.toLocaleString()}</td>
+                        <td className="text-right py-3 px-4">₱ {row.otPay.toLocaleString()}</td>
+                        <td className="text-right py-3 px-4">₱ {row.nightDiff.toLocaleString()}</td>
+                        <td className="text-right py-3 px-4">₱ {row.holidayPay.toLocaleString()}</td>
+                        <td className="text-right py-3 px-4 font-semibold">₱ {grossPay.toLocaleString()}</td>
+                        <td className="text-right py-3 px-4 bg-gray-50 dark:bg-gray-800">₱ {row.deductions.tax.toLocaleString()}</td>
+                        <td className="text-right py-3 px-4 bg-gray-50 dark:bg-gray-800">₱ {row.deductions.philhealth.toLocaleString()}</td>
+                        <td className="text-right py-3 px-4 bg-gray-50 dark:bg-gray-800">₱ {row.deductions.sss.toLocaleString()}</td>
+                        <td className="text-right py-3 px-4 bg-gray-50 dark:bg-gray-800">₱ {row.deductions.pagibig.toLocaleString()}</td>
+                        <td className="text-right py-3 px-4 bg-gray-50 dark:bg-gray-800 font-semibold text-red-600">₱ {row.deductions.total.toLocaleString()}</td>
+                        <td className="text-right py-3 px-4 font-semibold">₱ {row.netPay.toLocaleString()}</td>
+                        <td className="text-center py-3 px-4">
+                          {row.status === 'approved' ? (
+                            <CheckCircleIcon className="w-5 h-5 text-green-600 mx-auto" />
+                          ) : (
+                            <XCircleIcon className="w-5 h-5 text-yellow-600 mx-auto" />
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

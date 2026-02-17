@@ -106,7 +106,7 @@ export default function TimesheetsPage() {
         <Card>
           <CardContent className="pt-6">
             <p className="text-sm text-gray-600 dark:text-gray-400">Total OT Hours</p>
-            <p className="text-2xl font-bold mt-2">{employeeTimesheets.reduce((sum, t) => sum + t.overtimeHours, 0)} hrs</p>
+            <p className="text-2xl font-bold mt-2">{employeeTimesheets.reduce((sum, t) => sum + t.overtimeHours, 0).toFixed(2)} hrs</p>
           </CardContent>
         </Card>
         <Card>
@@ -145,7 +145,7 @@ export default function TimesheetsPage() {
                       {timesheet.weekStart} - {timesheet.weekEnd}
                     </td>
                     <td className="py-3 px-4 text-center font-semibold">{timesheet.totalHours} hrs</td>
-                    <td className="py-3 px-4 text-center">{timesheet.overtimeHours} hrs</td>
+                    <td className="py-3 px-4 text-center">{timesheet.overtimeHours.toFixed(2)} hrs</td>
                     <td className="py-3 px-4 text-center">
                       <span className={`text-xs px-2 py-1 rounded ${
                         timesheet.status === 'submitted' 

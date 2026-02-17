@@ -3,6 +3,7 @@ import { OvertimeController } from '@/lib/controllers/overtime.controller';
 import { payrollController } from '@/lib/controllers/payroll.controller';
 import { holidayService } from '@/lib/service/holiday.service';
 import { timeEntryService } from '@/lib/service/time-entry.service';
+import { getServiceContainer } from '@/lib/di/container';
 
 export interface PayrollSummaryRequest {
   organizationId: string;
@@ -28,6 +29,15 @@ export interface PayrollSummaryResponse {
       missingSalaryConfig: number;
       missingAttendance: number;
     };
+    eligibleEmployees?: Array<{
+      id: string;
+      employeeId: string;
+      firstName: string;
+      lastName: string;
+      departmentName?: string;
+      baseSalary: number;
+      hasAttendance: boolean;
+    }>;
   };
   attendance: {
     totalRecords: number;
@@ -54,9 +64,20 @@ export interface PayrollSummaryResponse {
     lastGeneratedAt?: string;
     hasExistingRun: boolean;
   };
+  deductions: {
+    totals: {
+      tax: number;
+      philhealth: number;
+      sss: number;
+      pagibig: number;
+      total: number;
+    };
+  };
 }
 
 export class PayrollSummaryService {
+  private phDeductionsService = getServiceContainer().getPHDeductionsService();
+
   async generateSummary(
     organizationId: string,
     departmentId: string | undefined,
@@ -72,6 +93,22 @@ export class PayrollSummaryService {
     // Get attendance statistics
     const attendanceStats = await this.getAttendanceStats(organizationId, departmentId, periodStart, periodEnd);
 
+    // Update eligible employees with attendance status
+    if (employeeEligibility.eligibleEmployees) {
+      const employeesWithAttendance = new Set(
+        (await timeEntryService.getTimeEntriesByOrganizationAndPeriod(
+          organizationId,
+          departmentId,
+          periodStart,
+          periodEnd
+        )).map(te => te.employeeId)
+      );
+
+      employeeEligibility.eligibleEmployees.forEach(emp => {
+        emp.hasAttendance = employeesWithAttendance.has(emp.id);
+      });
+    }
+
     // Get overtime statistics
     const overtimeStats = await this.getOvertimeStats(organizationId, departmentId, periodStart, periodEnd);
 
@@ -80,6 +117,9 @@ export class PayrollSummaryService {
 
     // Get payroll status
     const payrollStatus = await this.getPayrollStatus(organizationId, departmentId, periodStart, periodEnd);
+
+    // Calculate deduction totals
+    const deductions = await this.calculateDeductionTotals(organizationId, departmentId, periodStart, periodEnd);
 
     // Determine readiness
     const readiness = this.calculateReadiness(employeeEligibility, attendanceStats, payrollStatus);
@@ -95,13 +135,18 @@ export class PayrollSummaryService {
         total: totalEmployees,
         eligible: employeeEligibility.eligible,
         ineligible: employeeEligibility.ineligible,
-        exclusionReasons: employeeEligibility.exclusionReasons,
+        eligibleEmployees: employeeEligibility.eligibleEmployees,
+        exclusionReasons: {
+          ...employeeEligibility.exclusionReasons,
+          missingAttendance: attendanceStats.missingEmployeesCount,
+        },
       },
       attendance: attendanceStats,
       overtime: overtimeStats,
       holidays: holidayStats,
       readiness,
       payrollStatus,
+      deductions,
     };
   }
 
@@ -116,21 +161,46 @@ export class PayrollSummaryService {
     const employees = result.data;
 
     let missingSalaryConfig = 0;
+    const eligibleEmployees: Array<{
+      id: string;
+      employeeId: string;
+      firstName: string;
+      lastName: string;
+      departmentName?: string;
+      baseSalary: number;
+      hasAttendance: boolean;
+    }> = [];
 
     for (const employee of employees) {
       // Check for salary configuration by looking at compensations array
       // Employees without compensations are considered to have missing salary config
       if (!employee.compensations || employee.compensations.length === 0) {
         missingSalaryConfig++;
+      } else {
+        // Get current compensation
+        const currentComp = employee.compensations.find(c => 
+          new Date(c.effectiveDate) <= new Date()
+        );
+
+        eligibleEmployees.push({
+          id: employee.id,
+          employeeId: employee.employeeId,
+          firstName: employee.firstName,
+          lastName: employee.lastName,
+          departmentName: employee.department?.name,
+          baseSalary: currentComp?.baseSalary || 0,
+          hasAttendance: true, // Will be updated in attendance check
+        });
       }
     }
 
-    const eligible = employees.length - missingSalaryConfig;
+    const eligible = eligibleEmployees.length;
     const ineligible = missingSalaryConfig;
 
     return {
       eligible,
       ineligible,
+      eligibleEmployees,
       exclusionReasons: {
         missingSalaryConfig,
         missingAttendance: 0, // Will be calculated in attendance check
@@ -272,6 +342,59 @@ export class PayrollSummaryService {
       warnings,
     };
   }
+
+  private async calculateDeductionTotals(
+    organizationId: string,
+    departmentId: string | undefined,
+    periodStart: Date,
+    periodEnd: Date
+  ) {
+    // Get all eligible employees with compensations
+    const result = await employeeController.getAll(organizationId, departmentId, { page: 1, limit: 1000 });
+    const employees = result.data;
+
+    let totalTax = 0;
+    let totalPhilhealth = 0;
+    let totalSSS = 0;
+    let totalPagibig = 0;
+
+    // Calculate deductions for each employee
+    for (const employee of employees) {
+      if (employee.compensations && employee.compensations.length > 0) {
+        // Get current compensation
+        const currentComp = employee.compensations.find(c => 
+          new Date(c.effectiveDate) <= periodEnd
+        );
+
+        if (currentComp) {
+          // Calculate monthly gross (simplified - should include proration)
+          const monthlyGross = currentComp.baseSalary;
+          
+          // Calculate PH deductions
+          const deductions = await this.phDeductionsService.calculateAllDeductions(
+            organizationId,
+            monthlyGross
+          );
+
+          totalTax += deductions.tax;
+          totalPhilhealth += deductions.philhealth;
+          totalSSS += deductions.sss;
+          totalPagibig += deductions.pagibig;
+        }
+      }
+    }
+
+    return {
+      totals: {
+        tax: totalTax,
+        philhealth: totalPhilhealth,
+        sss: totalSSS,
+        pagibig: totalPagibig,
+        total: totalTax + totalPhilhealth + totalSSS + totalPagibig,
+      },
+    };
+  }
 }
 
 export const payrollSummaryService = new PayrollSummaryService();
+

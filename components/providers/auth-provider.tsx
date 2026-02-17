@@ -76,10 +76,6 @@ export function AuthProvider({
     router.push('/login');
   };
 
-  const { checkAuth } = useUserCache(setUser, setIsLoading, setHasCheckedAuth, {
-    onUserNull: handleUserNull
-  });
-
   // Cross-tab session synchronization
   useEffect(() => {
     const unsubscribe = sessionManager.subscribe((sessionData) => {
@@ -223,6 +219,21 @@ export function AuthProvider({
       sessionManager.clearSession();
     }
   };
+
+  const { getIdleStatus } = useIdleTimeout(logout, user, {
+    timeout: 30 * 60 * 1000, // 30 minutes
+    promptBefore: 5 * 60 * 1000, // 5 minutes
+    enabled: !!user
+  });
+
+  // Update checkAuth with proper isUserIdle function
+  const { checkAuth } = useUserCache(setUser, setIsLoading, setHasCheckedAuth, {
+    onUserNull: handleUserNull,
+    isUserIdle: () => {
+      const status = getIdleStatus();
+      return status ? status.idleTime > 5 * 60 * 1000 : false; // Consider idle after 5 minutes
+    }
+  });
 
   // Get access token - Better-Auth manages tokens via cookies
   const getAccessToken = async (): Promise<string | null> => {
