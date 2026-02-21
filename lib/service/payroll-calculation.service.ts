@@ -91,14 +91,8 @@ export class PayrollCalculationService {
     
     // Get employee's work schedule
     const workSchedule = await workScheduleService.getByEmployeeId(employeeId);
-    console.log(`[DEBUG] Work schedule for late deductions:`, workSchedule ? {
-      allowLateDeduction: workSchedule.allowLateDeduction,
-      gracePeriodMinutes: workSchedule.gracePeriodMinutes,
-      defaultStart: workSchedule.defaultStart
-    } : 'No work schedule found');
     
     if (!workSchedule || !workSchedule.allowLateDeduction) {
-      console.log(`[DEBUG] Late deductions not allowed - no schedule or disabled`);
       return { totalDeduction: 0, breakdown: [] };
     }
 
@@ -116,12 +110,6 @@ export class PayrollCalculationService {
     for (const entry of timeEntries) {
       if (!entry.clockOutAt) continue; // Skip incomplete entries
       
-      console.log(`[DEBUG] Processing time entry for ${entry.workDate}:`, {
-        clockIn: entry.clockInAt,
-        clockOut: entry.clockOutAt,
-        workDate: entry.workDate
-      });
-
       // Validate time entry against schedule
       const validation = await workScheduleService.validateTimeEntry(
         workSchedule,
@@ -129,12 +117,6 @@ export class PayrollCalculationService {
         entry.clockOutAt
       );
       
-      console.log(`[DEBUG] Validation result for ${entry.workDate}:`, {
-        lateMinutes: validation.lateMinutes,
-        isValid: validation.isValid,
-        violations: validation.violations
-      });
-
       if (validation.lateMinutes > 0) {
         // Calculate deduction for tardiness
         const tardinessDeduction = await lateDeductionPolicyService.calculateDeduction(
@@ -146,24 +128,15 @@ export class PayrollCalculationService {
           entry.workDate
         );
         
-        console.log(`[DEBUG] Tardiness deduction for ${entry.workDate}:`, {
-          lateMinutes: validation.lateMinutes,
-          calculatedDeduction: tardinessDeduction,
-          dailyMax: workSchedule.maxDeductionPerDay
-        });
-
-        // Apply per-day maximum
-        const dailyMax = workSchedule.maxDeductionPerDay;
-        const actualDeduction = dailyMax ? Math.min(tardinessDeduction, dailyMax) : tardinessDeduction;
-
-        breakdown.push({
-          date: entry.workDate,
-          minutes: validation.lateMinutes,
-          deduction: actualDeduction
-        });
-
-        totalDeduction += actualDeduction;
-        totalDeductionThisCutoff += actualDeduction;
+        if (tardinessDeduction > 0) {
+          totalDeduction += tardinessDeduction;
+          totalDeductionThisCutoff += tardinessDeduction;
+          breakdown.push({
+            date: new Date(entry.workDate),
+            minutes: validation.lateMinutes,
+            deduction: tardinessDeduction
+          });
+        }
       }
 
       if (validation.undertimeMinutes > 0) {
@@ -211,10 +184,6 @@ export class PayrollCalculationService {
     periodEnd: Date,
     dailyRate: number
   ): Promise<{ totalDeduction: number; breakdown: Array<{ date: Date; deduction: number }> }> {
-    console.log(`[DEBUG] Calculating absence deductions for employee ${employeeId}`);
-    console.log(`[DEBUG] Period: ${periodStart.toISOString()} to ${periodEnd.toISOString()}`);
-    console.log(`[DEBUG] Daily rate: ₱${dailyRate}`);
-    
     let totalDeduction = 0;
     const breakdown: Array<{ date: Date; deduction: number }> = [];
     
@@ -223,11 +192,8 @@ export class PayrollCalculationService {
       const workScheduleService = getWorkScheduleService();
       const schedule = await workScheduleService.getByEmployeeId(employeeId);
       if (!schedule) {
-        console.log(`[DEBUG] No work schedule found for employee ${employeeId}`);
         return { totalDeduction: 0, breakdown: [] };
       }
-      
-      console.log(`[DEBUG] Work schedule found: ${schedule.defaultStart} - ${schedule.defaultEnd}`);
       
       // Get time entries for the period
       const timeEntries = await timeEntryService.getByEmployeeAndDateRange(
@@ -238,13 +204,9 @@ export class PayrollCalculationService {
       
       // Get weekdays only (same as calculateActualAbsentDays)
       const expectedWeekdays = countWeekdaysInPeriod(periodStart, periodEnd);
-      console.log(`[DEBUG] Expected weekdays: ${expectedWeekdays}`);
-      
-      // Create a set of dates with time entries
       const datesWithEntries = new Set(
         timeEntries.map(entry => entry.workDate.toISOString().split('T')[0])
       );
-      console.log(`[DEBUG] Time entries found: ${timeEntries.length}`);
       
       // Check each weekday for absence
       let currentDate = new Date(periodStart);
@@ -255,8 +217,6 @@ export class PayrollCalculationService {
           const dateStr = currentDate.toISOString().split('T')[0];
           
           if (!datesWithEntries.has(dateStr)) {
-            console.log(`[DEBUG] Absence detected on ${dateStr}`);
-            
             // Check for absence policy (optional)
             // Note: There's no ABSENCE policy type, so we'll use LATE as fallback
             const lateDeductionPolicyService = getLateDeductionPolicyService();
@@ -265,14 +225,10 @@ export class PayrollCalculationService {
               'LATE' // Using LATE as absence policies aren't supported yet
             );
             
-            console.log(`[DEBUG] Absence policy found:`, absencePolicy);
-            
             let deductionAmount = dailyRate; // Default to daily rate
             
             if (absencePolicy && absencePolicy.deductionMethod === 'FIXED_AMOUNT') {
               deductionAmount = absencePolicy.fixedAmount || dailyRate;
-            } else if (absencePolicy && absencePolicy.deductionMethod === 'PERCENTAGE') {
-              deductionAmount = dailyRate * (absencePolicy.percentageRate || 1);
             }
             
             totalDeduction += deductionAmount;
@@ -280,19 +236,16 @@ export class PayrollCalculationService {
               date: new Date(currentDate),
               deduction: deductionAmount
             });
-            
-            console.log(`[DEBUG] Added deduction: ₱${deductionAmount}, Total so far: ₱${totalDeduction}`);
           }
         }
         
         currentDate.setDate(currentDate.getDate() + 1);
       }
     } catch (error) {
-      console.error(`[DEBUG] Error calculating absence deductions:`, error);
+      console.error('Error calculating absence deductions:', error);
       return { totalDeduction: 0, breakdown: [] };
     }
 
-    console.log(`[DEBUG] Final absence deduction total: ₱${totalDeduction}`);
     return { totalDeduction, breakdown };
   }
 
@@ -315,16 +268,11 @@ export class PayrollCalculationService {
     periodEnd: Date,
     monthlySalary: number
   ): Promise<PayrollCalculationResult> {
-    console.log(`[DEBUG] calculateCompletePayroll called for employee: ${employeeId}`);
-    console.log(`[DEBUG] Period: ${periodStart.toISOString()} to ${periodEnd.toISOString()}`);
-    console.log(`[DEBUG] Monthly salary: ${monthlySalary}`);
-    
     const workScheduleService = getWorkScheduleService();
     const container = DIContainer.getInstance();
     
     // Get work schedule
     const workSchedule = await workScheduleService.getByEmployeeId(employeeId);
-    console.log(`[DEBUG] Work schedule found:`, workSchedule ? 'Yes' : 'No');
     
     // Calculate rates
     const dailyRate = workSchedule 
@@ -342,37 +290,45 @@ export class PayrollCalculationService {
       periodEnd
     );
     
-    console.log(`[DEBUG] Time entries found: ${timeEntries.length}`);
-    if (timeEntries.length > 0) {
-      console.log(`[DEBUG] First time entry:`, {
-        workDate: timeEntries[0].workDate,
-        clockInAt: timeEntries[0].clockInAt,
-        clockOutAt: timeEntries[0].clockOutAt,
-        totalWorkMinutes: timeEntries[0].totalWorkMinutes
-      });
-    }
-    
     // If there are no time entries, return basic salary without deductions
     if (timeEntries.length === 0) {
-      console.log(`[DEBUG] No time entries found - returning basic salary`);
       // Calculate pro-rated basic salary for the period
       const daysInPeriod = Math.ceil((periodEnd.getTime() - periodStart.getTime()) / (1000 * 60 * 60 * 24));
       const dailyRate = workSchedule 
         ? await workScheduleService.calculateDailyRate(workSchedule, monthlySalary)
         : monthlySalary / 22; // Fallback: assume 22 working days
         
-      // For semi-monthly, typically 15-16 days
-      const expectedWorkDays = Math.min(daysInPeriod, 16);
+      // Determine if this is semi-monthly or full month
+      const isSemiMonthly = daysInPeriod <= 16;
+      let expectedWorkDays: number;
+      let taxBase: number;
+      
+      if (isSemiMonthly) {
+        // Semi-monthly (15-16 days)
+        expectedWorkDays = daysInPeriod;
+        taxBase = monthlySalary; // Use full monthly for tax bracket
+      } else {
+        // Full month or longer
+        expectedWorkDays = Math.min(daysInPeriod, 22); // Max 22 working days
+        taxBase = monthlySalary * (daysInPeriod / 30); // Pro-rate monthly for tax
+      }
+      
       const basicPay = dailyRate * expectedWorkDays;
       
       // Calculate government deductions on basic pay
       const phDeductionsService = container.getPHDeductionsService();
-      console.log(`[DEBUG] Calculating government deductions for basic pay: ${basicPay}`);
+      // Pass appropriate tax base based on period length
       const governmentDeductions = await phDeductionsService.calculateAllDeductions(
         organizationId,
-        basicPay
+        basicPay,
+        new Date(),
+        taxBase // Use calculated tax base (monthly for semi-monthly, pro-rated for full month)
       );
-      console.log(`[DEBUG] Government deductions result:`, governmentDeductions);
+      
+      // For display, show monthly equivalent taxable income
+      const displayTaxableIncome = isSemiMonthly 
+        ? governmentDeductions.taxableIncome * 2 
+        : governmentDeductions.taxableIncome;
         
       return {
         employeeId,
@@ -385,7 +341,7 @@ export class PayrollCalculationService {
         total_overtime_pay: 0,
         total_night_diff_pay: 0,
         total_gross_pay: basicPay,
-        taxable_income: governmentDeductions.taxableIncome,
+        taxable_income: displayTaxableIncome,
         government_deductions: {
           tax: governmentDeductions.tax,
           philhealth: governmentDeductions.philhealth,
@@ -470,12 +426,6 @@ export class PayrollCalculationService {
       dailyRate,
       hourlyRate
     );
-    
-    console.log(`[DEBUG] Late deductions result:`, {
-      totalDeduction: lateDeductions.totalDeduction,
-      breakdownCount: lateDeductions.breakdown.length,
-      breakdown: lateDeductions.breakdown
-    });
 
     const absenceDeductions = await this.calculateAbsenceDeductions(
       organizationId,
@@ -522,10 +472,104 @@ export class PayrollCalculationService {
 
     // Calculate government deductions on adjusted gross (minus policy deductions)
     const adjustedGross = Math.max(0, totalGrossPay - policyDeductionsTotal);
-    const governmentDeductions = await this.calculatePHDeductions(organizationId, adjustedGross);
+    
+    // For tax calculation, we need to determine the monthly equivalent
+    // If employee has absences, tax should be based on actual compensation
+    let monthlyTaxBase = monthlySalary;
+    
+    // Check if there are significant absences (more than 10% reduction)
+    const expectedGross = monthlySalary * 0.5; // Expected semi-monthly gross
+    const actualGrossRatio = adjustedGross / expectedGross;
+    
+    if (actualGrossRatio < 0.9) {
+      // Employee has significant absences, adjust tax base
+      monthlyTaxBase = monthlySalary * actualGrossRatio;
+    }
+    
+    // For semi-monthly payroll, pass appropriate tax base
+    const governmentDeductions = await this.phDeductionsService.calculateAllDeductions(
+      organizationId,
+      adjustedGross,
+      new Date(),
+      monthlyTaxBase // Use adjusted monthly rate if there are absences
+    );
+    
+    // For display, show monthly equivalent taxable income
+    const daysInPeriod = Math.ceil((periodEnd.getTime() - periodStart.getTime()) / (1000 * 60 * 60 * 24));
+    const isSemiMonthly = daysInPeriod <= 16;
+    const displayTaxableIncome = isSemiMonthly 
+      ? governmentDeductions.taxableIncome * 2 
+      : governmentDeductions.taxableIncome;
 
     const totalDeductions = governmentDeductions.totalDeductions + policyDeductionsTotal;
     const totalNetPay = totalGrossPay - totalDeductions;
+
+    // Calculate total late minutes from breakdown
+    const totalLateMinutes = lateDeductions.breakdown.reduce((sum, b) => sum + b.minutes, 0);
+
+    // Create structured log entry
+    const payrollLog = {
+      type: 'PAYROLL_CALCULATION',
+      timestamp: new Date().toISOString(),
+      references: {
+        organizationId,
+        employeeId,
+        workScheduleId: workSchedule?.id || null,
+        period: {
+          start: periodStart.toISOString().split('T')[0],
+          end: periodEnd.toISOString().split('T')[0]
+        }
+      },
+      attendance: {
+        presentDays: timeEntries.length,
+        lateMinutes: totalLateMinutes,
+        absentDays: actualAbsentDays,
+        totalRegularMinutes,
+        totalOvertimeMinutes,
+        totalNightDiffMinutes
+      },
+      compensation: {
+        dailyRate,
+        hourlyRate,
+        monthlySalary
+      },
+      earnings: {
+        regularPay: totalRegularPay,
+        overtimePay: totalOvertimePay,
+        nightDiffPay: totalNightDiffPay,
+        grossPay: totalGrossPay,
+        netPay: totalNetPay
+      },
+      deductions: {
+        government: {
+          tax: governmentDeductions.tax,
+          sss: governmentDeductions.sss,
+          philhealth: governmentDeductions.philhealth,
+          pagibig: governmentDeductions.pagibig,
+          total: governmentDeductions.totalDeductions
+        },
+        policy: {
+          late: lateDeductions.totalDeduction,
+          absence: correctedAbsenceDeduction,
+          total: policyDeductionsTotal
+        },
+        total: totalDeductions
+      },
+      policies: {
+        applied: lateDeductions.breakdown.map(b => ({
+          date: b.date.toISOString().split('T')[0],
+          minutes: b.minutes,
+          deduction: b.deduction
+        }))
+      },
+      taxable: {
+        income: displayTaxableIncome,
+        isSemiMonthly,
+        base: isSemiMonthly ? monthlySalary : monthlySalary * (Math.ceil((periodEnd.getTime() - periodStart.getTime()) / (1000 * 60 * 60 * 24)) / 30)
+      }
+    };
+
+    console.log(`[PAYROLL] ${JSON.stringify(payrollLog)}`);
 
     return {
       employeeId,
@@ -538,7 +582,7 @@ export class PayrollCalculationService {
       total_overtime_pay: totalOvertimePay,
       total_night_diff_pay: totalNightDiffPay,
       total_gross_pay: totalGrossPay,
-      taxable_income: governmentDeductions.taxableIncome,
+      taxable_income: displayTaxableIncome,
       government_deductions: {
         tax: governmentDeductions.tax,
         philhealth: governmentDeductions.philhealth,

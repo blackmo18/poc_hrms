@@ -40,12 +40,9 @@ export async function GET(
           end: periodEnd,
         },
       });
-      
-      console.log(`[DEBUG] API - Period start: ${periodStart}, Period end: ${periodEnd}`);
+
       const startDate = new Date(periodStart);
       const endDate = new Date(periodEnd);
-      console.log(`[DEBUG] API - Parsed dates: ${startDate.toISOString()} to ${endDate.toISOString()}`);
-      console.log(`[DEBUG] API - Valid dates:`, !isNaN(startDate.getTime()), !isNaN(endDate.getTime()));
 
       // Check user permissions for the organization
       const user = authRequest.user!;

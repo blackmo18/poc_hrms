@@ -59,28 +59,50 @@ export class PHDeductionsService {
   async calculateAllDeductions(
     organizationId: string,
     grossSalary: number,
-    date: Date = new Date()
+    date: Date = new Date(),
+    monthlyRate?: number // Optional monthly rate for tax calculation
   ): Promise<PHDeductionResult> {
-    console.log(`[DEBUG] calculateAllDeductions called for org: ${organizationId}, salary: ${grossSalary}`);
-    
     // Calculate individual deductions
     const philhealth = await this.calculatePhilhealth(organizationId, grossSalary, date);
     const sss = await this.calculateSSS(organizationId, grossSalary, date);
     const pagibig = await this.calculatePagibig(organizationId, grossSalary, date);
+
+    // Calculate taxable income (gross - government deductions)
+    const totalGovDeductions = philhealth + sss + pagibig;
+    const taxableIncome = grossSalary - totalGovDeductions;
     
-    console.log(`[DEBUG] Individual deductions - PH: ${philhealth}, SSS: ${sss}, Pagibig: ${pagibig}`);
-
-    // Calculate total government contributions
-    const totalGovContributions = philhealth + sss + pagibig;
-
-    // Calculate taxable income (gross pay - government contributions)
-    const taxableIncome = Math.max(0, grossSalary - totalGovContributions);
-
-    // Calculate tax based on taxable income
-    const tax = await this.calculateTax(organizationId, taxableIncome, date);
+    // For tax calculation, use monthly rate if provided (for semi-monthly payroll)
+    const taxBaseIncome = monthlyRate || taxableIncome;
+    let tax = await this.calculateTax(organizationId, taxBaseIncome, date);
+    
+    // If we have a monthly rate but actual gross is different (semi-monthly case),
+    // proportionally adjust the tax
+    if (monthlyRate && grossSalary !== monthlyRate) {
+      const taxRatio = grossSalary / monthlyRate;
+      tax = tax * taxRatio;
+    }
 
     // Calculate total deductions
     const totalDeductions = tax + philhealth + sss + pagibig;
+
+    // Create structured log entry
+    const deductionLog = {
+      type: 'DEDUCTION_CALCULATION',
+      timestamp: new Date().toISOString(),
+      organizationId,
+      grossSalary,
+      taxableIncome,
+      deductions: {
+        tax,
+        sss,
+        philhealth,
+        pagibig,
+        total: totalDeductions
+      },
+      monthlyRate: monthlyRate || null
+    };
+
+    console.log(`[DEDUCTIONS] ${JSON.stringify(deductionLog)}`);
 
     return {
       tax,
@@ -100,10 +122,10 @@ export class PHDeductionsService {
     taxableIncome: number,
     date: Date = new Date()
   ): Promise<number> {
-    // Get applicable tax bracket
+    // Get applicable tax bracket using monthly income (not annual)
     const taxBracket = await this.taxBracketController.findApplicableBracket(
       organizationId,
-      taxableIncome,
+      taxableIncome, // Use monthly taxable income directly
       date
     );
 

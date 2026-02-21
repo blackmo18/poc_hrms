@@ -42,3 +42,9 @@ export type { CreatePayrollPeriod, UpdatePayrollPeriod } from './payroll-period.
 export type { CreateDeduction, UpdateDeduction, DeductionSummary } from './deduction.service';
 export type { CreatePayrollEarning, UpdatePayrollEarning, EarningSummary } from './payroll-earning.service';
 export type { CreateEmployeeGovernmentInfo, UpdateEmployeeGovernmentInfo, BulkUpdateData } from './employee-government-info.service';
+
+// UI-specific services (browser-based, DOM manipulation)
+export * from './ui';
+
+// PDF generation services
+export * from './pdf';

@@ -274,14 +274,6 @@ export class WorkScheduleService {
 
       if (clockIn > scheduledStart) {
         lateMinutes = Math.floor((clockIn.getTime() - scheduledStart.getTime()) / (1000 * 60));
-        
-        console.log(`[DEBUG] Clock-in validation:`, {
-          clockIn: clockIn.toISOString(),
-          scheduledStart: scheduledStart.toISOString(),
-          rawLateMinutes: lateMinutes,
-          gracePeriod: schedule.gracePeriodMinutes || 0
-        });
-        
         // Apply grace period
         if (lateMinutes > (schedule.gracePeriodMinutes || 0)) {
           violations.push(`Late by ${lateMinutes} minutes`);
@@ -312,7 +304,6 @@ export class WorkScheduleService {
     }
 
     const finalLateMinutes = Math.max(0, lateMinutes - (schedule.gracePeriodMinutes || 0));
-    console.log(`[DEBUG] Final late minutes after grace period: ${finalLateMinutes}`);
 
     return {
       isValid: violations.length === 0,

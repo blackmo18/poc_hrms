@@ -100,9 +100,6 @@ export class EmployeePayrollService {
     periodStart: Date,
     periodEnd: Date
   ): Promise<EmployeePayrollData> {
-    console.log(`[DEBUG] EmployeePayrollService - Getting payroll for employee: ${employeeId}`);
-    console.log(`[DEBUG] Period: ${periodStart.toISOString()} to ${periodEnd.toISOString()}`);
-
     // Check if payroll already exists
     const existingPayroll = await this.payrollController.getAll(
       employeeId,
@@ -111,11 +108,10 @@ export class EmployeePayrollService {
     );
 
     if (existingPayroll.length > 0) {
-      console.log(`[DEBUG] Found existing payroll record`);
-      return this.transformExistingPayroll(existingPayroll[0], organizationId, periodStart, periodEnd);
+      const payroll = existingPayroll[0];
+      return this.transformExistingPayroll(payroll, organizationId, periodStart, periodEnd);
     }
 
-    console.log(`[DEBUG] No existing payroll, calculating new payroll`);
     return this.calculateNewPayroll(employeeId, organizationId, periodStart, periodEnd);
   }
 
@@ -128,9 +124,9 @@ export class EmployeePayrollService {
     periodStart: Date,
     periodEnd: Date
   ): Promise<EmployeePayrollData> {
-    // Get organization details
+    // Get organization details from the payroll record, not the parameter
     const organization = await prisma.organization.findUnique({
-      where: { id: organizationId },
+      where: { id: payroll.organizationId }, // Use payroll's organizationId
       select: {
         id: true,
         name: true,
@@ -142,14 +138,15 @@ export class EmployeePayrollService {
       }
     });
 
-    // Get detailed breakdown using the calculation service
-    const calculationResult = await this.payrollCalculationService.calculateCompletePayroll(
-      organizationId,
-      payroll.employeeId,
-      periodStart,
-      periodEnd,
-      payroll.grossPay // Use existing gross pay as base
-    );
+    // Get stored deductions
+    const storedDeductions = await prisma.deduction.findMany({
+      where: { payrollId: payroll.id }
+    });
+
+    // Get stored earnings
+    const storedEarnings = await prisma.payrollEarning.findMany({
+      where: { payrollId: payroll.id }
+    });
 
     // Calculate actual absent days using the service
     const actualAbsentDays = await this.payrollCalculationService.calculateActualAbsentDays(
@@ -157,6 +154,19 @@ export class EmployeePayrollService {
       periodStart,
       periodEnd
     );
+
+    // Extract deduction amounts
+    const taxDeduction = storedDeductions.find(d => d.type === 'TAX')?.amount || 0;
+    const sssDeduction = storedDeductions.find(d => d.type === 'SSS')?.amount || 0;
+    const philhealthDeduction = storedDeductions.find(d => d.type === 'PHILHEALTH')?.amount || 0;
+    const pagibigDeduction = storedDeductions.find(d => d.type === 'PAGIBIG')?.amount || 0;
+    const lateDeduction = storedDeductions.find(d => d.type === 'LATE')?.amount || 0;
+    const absenceDeduction = storedDeductions.find(d => d.type === 'ABSENCE')?.amount || 0;
+
+    // Extract earnings
+    const basicSalary = storedEarnings.find(e => e.type === 'BASE_SALARY')?.amount || payroll.grossPay;
+    const overtimePay = storedEarnings.find(e => e.type === 'OVERTIME')?.amount || 0;
+    const nightDifferential = storedEarnings.find(e => e.type === 'NIGHT_DIFFERENTIAL')?.amount || 0;
 
     return {
       id: payroll.id,
@@ -176,35 +186,35 @@ export class EmployeePayrollService {
         website: organization?.website || undefined,
       },
       attendance: {
-        presentDays: calculationResult.daily_breakdown.filter(d => d.regular_minutes > 0).length,
+        presentDays: 0, // TODO: Calculate from time entries
         absentDays: actualAbsentDays,
-        lateDays: calculationResult.daily_breakdown.filter(d => d.late_minutes > 0).length,
-        overtimeHours: Math.floor(calculationResult.total_overtime_minutes / 60),
-        lateMinutes: calculationResult.daily_breakdown.reduce((sum, d) => sum + d.late_minutes, 0),
-        undertimeMinutes: calculationResult.daily_breakdown.reduce((sum, d) => sum + d.undertime_minutes, 0),
+        lateDays: 0, // TODO: Calculate from time entries
+        overtimeHours: Math.floor((overtimePay / (payroll.grossPay / 160)) * 1.25), // Estimate
+        lateMinutes: 0, // TODO: Calculate from time entries
+        undertimeMinutes: 0, // TODO: Calculate from time entries
       },
       earnings: {
-        basicSalary: calculationResult.total_regular_pay,
-        overtimePay: calculationResult.total_overtime_pay,
+        basicSalary: basicSalary,
+        overtimePay: overtimePay,
         holidayPay: 0, // TODO: Calculate from daily breakdown
-        nightDifferential: calculationResult.total_night_diff_pay,
-        totalEarnings: calculationResult.total_gross_pay,
-        regularHours: Math.floor(calculationResult.total_regular_minutes / 60),
-        overtimeHours: Math.floor(calculationResult.total_overtime_minutes / 60),
-        nightDiffHours: Math.floor(calculationResult.total_night_diff_minutes / 60),
+        nightDifferential: nightDifferential,
+        totalEarnings: payroll.grossPay,
+        regularHours: Math.floor(basicSalary / (payroll.grossPay / 160)),
+        overtimeHours: Math.floor((overtimePay / (payroll.grossPay / 160)) * 1.25), // Estimate
+        nightDiffHours: Math.floor(nightDifferential / ((payroll.grossPay / 160) * 0.10)),
       },
       deductions: {
-        sss: calculationResult.government_deductions.sss,
-        philhealth: calculationResult.government_deductions.philhealth,
-        pagibig: calculationResult.government_deductions.pagibig,
-        withholdingTax: calculationResult.government_deductions.tax,
-        lateDeduction: calculationResult.policy_deductions.late,
-        absenceDeduction: calculationResult.policy_deductions.absence,
-        totalDeductions: calculationResult.total_deductions,
-        governmentDeductions: calculationResult.government_deductions.total,
-        policyDeductions: calculationResult.policy_deductions.total,
+        sss: sssDeduction,
+        philhealth: philhealthDeduction,
+        pagibig: pagibigDeduction,
+        withholdingTax: taxDeduction,
+        lateDeduction: lateDeduction,
+        absenceDeduction: absenceDeduction,
+        totalDeductions: payroll.totalDeductions,
+        governmentDeductions: sssDeduction + philhealthDeduction + pagibigDeduction + taxDeduction,
+        policyDeductions: lateDeduction + absenceDeduction,
       },
-      netPay: calculationResult.total_net_pay,
+      netPay: payroll.netPay,
       cutoffPeriod: {
         start: periodStart.toISOString().split('T')[0],
         end: periodEnd.toISOString().split('T')[0],
@@ -240,9 +250,9 @@ export class EmployeePayrollService {
       throw new Error(`No compensation found for employee: ${employeeId}`);
     }
 
-    // Get organization details
+    // Get organization details from employee, not the parameter
     const organization = await prisma.organization.findUnique({
-      where: { id: organizationId },
+      where: { id: employee.organization?.id || organizationId }, // Use employee's organization ID
       select: {
         id: true,
         name: true,
@@ -254,7 +264,6 @@ export class EmployeePayrollService {
       }
     });
 
-    console.log(`[DEBUG] EmployeePayrollService - Calling calculateCompletePayroll`);
     const calculationResult = await this.payrollCalculationService.calculateCompletePayroll(
       employee.organization?.id || organizationId,
       employeeId,

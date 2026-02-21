@@ -230,11 +230,59 @@ function PayrollRunContent() {
       alert('Please select both cutoff period and department');
       return;
     }
+    
+    const isConfirmed = window.confirm('Are you sure you want to generate payroll for all eligible employees?');
+    if (!isConfirmed) return;
+    
     setIsGenerating(true);
-    // TODO: Call API to generate payroll with organization filter
-    const orgId = isSuperAdmin ? selectedOrganization : (user?.organizationId || null);
-    console.log('Generating payroll for:', { selectedCutoff, selectedDepartment, organizationId: orgId });
-    setTimeout(() => setIsGenerating(false), 2000);
+    
+    try {
+      const orgId = isSuperAdmin ? selectedOrganization : (user?.organizationId || null);
+      
+      // Parse cutoff period
+      const [year, month, startDay, endDay] = selectedCutoff.split('-').map(Number);
+      const periodStart = new Date(year, month - 1, startDay);
+      const periodEnd = new Date(year, month - 1, endDay);
+      
+      // Generate payroll for each eligible employee
+      const payrollPromises = eligibleEmployees.map(async (employee) => {
+        const response = await fetch('/api/payroll', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          credentials: 'include',
+          body: JSON.stringify({
+            action: 'process',
+            employeeId: employee.id,
+            organizationId: orgId,
+            departmentId: selectedDepartment,
+            periodStart: periodStart.toISOString(),
+            periodEnd: periodEnd.toISOString(),
+          }),
+        });
+        
+        if (!response.ok) {
+          throw new Error(`Failed to generate payroll for ${employee.firstName} ${employee.lastName}`);
+        }
+        
+        return response.json();
+      });
+      
+      const results = await Promise.all(payrollPromises);
+      console.log('Generated payrolls:', results);
+      
+      alert(`Successfully generated payroll for ${results.length} employees!`);
+      
+      // Refresh the page to show updated status
+      window.location.reload();
+      
+    } catch (error) {
+      console.error('Error generating payroll:', error);
+      alert('Error generating payroll. Please try again.');
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   const handleBatchGeneratePayroll = async () => {
@@ -253,7 +301,8 @@ function PayrollRunContent() {
 
   const handleEmployeeClick = (employeeId: string) => {
     // Open employee payroll summary page in new tab
-    const url = `/payroll/summary/employee/${employeeId}?cutoff=${selectedCutoff}&department=${selectedDepartment}`;
+    // Remove department parameter from URL
+    const url = `/payroll/summary/employee/${employeeId}?cutoff=${selectedCutoff}`;
     window.open(url, '_blank');
   };
 

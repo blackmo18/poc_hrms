@@ -180,17 +180,6 @@ export class PhilhealthPrismaController
     salary: number,
     date: Date = new Date()
   ): Promise<PhilhealthContribution | null> {
-    console.log(`[DEBUG] Finding Philhealth rate for org: ${organizationId}, salary: ${salary}, date: ${date}`);
-    
-    // First, let's check if there are any rates at all
-    const allRates = await this.prisma.philhealthContribution.findMany({
-      where: { organizationId }
-    });
-    console.log(`[DEBUG] All Philhealth rates for org ${organizationId}:`, allRates.length);
-    if (allRates.length > 0) {
-      console.log(`[DEBUG] First rate sample:`, allRates[0]);
-    }
-    
     const rate = await this.prisma.philhealthContribution.findFirst({
       where: {
         organizationId,
@@ -204,7 +193,6 @@ export class PhilhealthPrismaController
       orderBy: { minSalary: 'desc' },
     });
     
-    console.log(`[DEBUG] Found Philhealth rate:`, rate);
     return rate;
   }
 

@@ -62,12 +62,12 @@ export class TimeBreakService implements ITimeBreakService {
       };
 
       const newBreak = await timeBreakController.create(createData);
-      console.log('Break created:', {
+      console.log(`[BREAK] Break created: ${JSON.stringify({
         id: newBreak.id,
         breakStartAt: newBreak.breakStartAt,
         breakEndAt: newBreak.breakEndAt,
         timeEntryId: newBreak.timeEntryId
-      });
+      })}`);
 
       return {
         success: true,
@@ -108,7 +108,7 @@ export class TimeBreakService implements ITimeBreakService {
 
       // Find ongoing break with better error handling
       const existingBreaks = await timeBreakController.getByTimeEntryId(data.timeEntryId);
-      console.log(`Found ${existingBreaks.length} breaks for time entry ${data.timeEntryId}`);
+      console.log(`[BREAK] Found ${existingBreaks.length} breaks for time entry ${data.timeEntryId}`);
       
       const ongoingBreak = existingBreaks.find(breakItem => !breakItem.breakEndAt);
 

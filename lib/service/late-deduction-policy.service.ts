@@ -124,21 +124,13 @@ export class LateDeductionPolicyService {
     // Get applicable policy
     const policy = await this.getPolicyByType(organizationId, policyType, date);
     
-    console.log(`[DEBUG] Late deduction policy for ${policyType}:`, policy ? {
-      id: policy.id,
-      deductionMethod: policy.deductionMethod,
-      minimumLateMinutes: policy.minimumLateMinutes,
-      fixedAmount: policy.fixedAmount,
-      percentageRate: policy.percentageRate
-    } : 'No policy found');
-    
     if (!policy) {
+      console.log(`[PAYROLL] No ${policyType} policy found for organization ${organizationId}`);
       return 0;
     }
 
     // Check if late minutes meet minimum threshold
     if (lateMinutes < policy.minimumLateMinutes) {
-      console.log(`[DEBUG] Late minutes (${lateMinutes}) < minimum (${policy.minimumLateMinutes})`);
       return 0;
     }
 
@@ -168,7 +160,29 @@ export class LateDeductionPolicyService {
       deduction = policy.maxDeductionPerDay;
     }
 
-    console.log(`[DEBUG] Calculated deduction: ₱${deduction} (method: ${policy.deductionMethod})`);
+    if (deduction > 0) {
+      const policyLog = {
+        type: 'POLICY_APPLICATION',
+        timestamp: new Date().toISOString(),
+        references: {
+          organizationId,
+          policyId: policy.id,
+          employeeId: null, // Will be populated by caller
+          date: date.toISOString().split('T')[0]
+        },
+        policy: {
+          type: policyType,
+          method: policy.deductionMethod,
+          minimumMinutes: policy.minimumLateMinutes,
+          gracePeriod: policy.gracePeriodMinutes
+        },
+        calculation: {
+          minutes: lateMinutes,
+          deduction
+        }
+      };
+      console.log(`[POLICY] ${JSON.stringify(policyLog)}`);
+    }
     
     return Math.round(deduction * 100) / 100; // Round to 2 decimal places
   }

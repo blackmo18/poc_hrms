@@ -10,6 +10,7 @@ import { ArrowLeft, Download, FileText, XCircleIcon } from 'lucide-react';
 import { useAuth } from '@/components/providers/auth-provider';
 import Button from '@/components/ui/button/Button';
 import PayrollInfoCard from '@/components/payroll/PayrollInfoCard';
+import PayslipPreview from '@/components/payslip/PayslipPreview';
 
 interface EmployeePayrollData {
   id: string;
@@ -96,6 +97,8 @@ function EmployeePayrollSummaryContent() {
   const [payrollData, setPayrollData] = useState<EmployeePayrollData | null>(null);
   const [workSchedule, setWorkSchedule] = useState<any>(null);
   const [applicablePolicies, setApplicablePolicies] = useState<any>(null);
+  const [isPayslipPreviewOpen, setIsPayslipPreviewOpen] = useState(false);
+  const [ytdData, setYtdData] = useState<any>(null);
   const { user, isLoading: isAuthLoading } = useAuth();
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -216,6 +219,7 @@ function EmployeePayrollSummaryContent() {
         }
 
         const data = await response.json();
+        console.log('Payroll data received:', data);
         setPayrollData(data);
 
         // Fetch work schedule
@@ -302,13 +306,11 @@ function EmployeePayrollSummaryContent() {
   }, [employeeId, cutoff, department, user?.organizationId, isAuthLoading]);
 
   const handleGeneratePayslip = () => {
-    // TODO: Implement payslip generation
-    alert('Generating payslip (demo - no actual action performed)');
+    setIsPayslipPreviewOpen(true);
   };
 
   const handleDownloadPDF = () => {
-    // TODO: Implement PDF download
-    alert('Downloading PDF (demo - no actual action performed)');
+    setIsPayslipPreviewOpen(true);
   };
 
   if (isLoading || isAuthLoading) {
@@ -693,6 +695,16 @@ function EmployeePayrollSummaryContent() {
           </div>
         </div>
       </div>
+      
+      {/* Payslip Preview Dialog */}
+      {payrollData && (
+        <PayslipPreview
+          isOpen={isPayslipPreviewOpen}
+          onClose={() => setIsPayslipPreviewOpen(false)}
+          data={payrollData}
+          ytdData={ytdData}
+        />
+      )}
     </>
   );
 }

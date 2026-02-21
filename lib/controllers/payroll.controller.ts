@@ -164,6 +164,21 @@ export class PayrollController {
   }
 
   async processPayroll(employeeId: string, organizationId: string, departmentId: string | undefined, periodStart: Date, periodEnd: Date) {
+    // Log critical flow start
+    console.log(`[PAYROLL_GENERATION] Starting payroll processing`, JSON.stringify({
+      timestamp: new Date().toISOString(),
+      references: {
+        organizationId,
+        employeeId,
+        departmentId,
+        period: {
+          start: periodStart.toISOString().split('T')[0],
+          end: periodEnd.toISOString().split('T')[0]
+        }
+      },
+      status: 'STARTED'
+    }));
+    
     // Get employee data with compensation and work schedule
     const employee = await prisma.employee.findUnique({
       where: { id: employeeId },
@@ -181,12 +196,38 @@ export class PayrollController {
     });
 
     if (!employee) {
+      console.log(`[PAYROLL_GENERATION] Payroll processing failed`, JSON.stringify({
+        timestamp: new Date().toISOString(),
+        references: {
+          organizationId,
+          employeeId,
+          period: {
+            start: periodStart.toISOString().split('T')[0],
+            end: periodEnd.toISOString().split('T')[0]
+          }
+        },
+        error: 'Employee not found',
+        status: 'FAILED'
+      }));
       throw new Error('Employee not found');
     }
 
     // Get current compensation from the most recent record
     const currentCompensation = employee.compensations[0];
     if (!currentCompensation) {
+      console.log(`[PAYROLL_GENERATION] Payroll processing failed`, JSON.stringify({
+        timestamp: new Date().toISOString(),
+        references: {
+          organizationId,
+          employeeId,
+          period: {
+            start: periodStart.toISOString().split('T')[0],
+            end: periodEnd.toISOString().split('T')[0]
+          }
+        },
+        error: 'No compensation record found for employee',
+        status: 'FAILED'
+      }));
       throw new Error('No compensation record found for employee');
     }
 
@@ -204,7 +245,7 @@ export class PayrollController {
       data: {
         id: generateULID(),
         employeeId: employeeId,
-        organizationId: organizationId,
+        organizationId: employee.department?.organizationId || organizationId, // Use employee's organization ID
         departmentId: departmentId,
         periodStart: periodStart,
         periodEnd: periodEnd,
@@ -326,6 +367,28 @@ export class PayrollController {
         data: { status: 'PROCESSING' },
       });
     }
+
+    // Log critical flow completion
+    console.log(`[PAYROLL_GENERATION] Payroll processing completed`, JSON.stringify({
+      timestamp: new Date().toISOString(),
+      references: {
+        organizationId,
+        employeeId,
+        payrollId: payroll.id,
+        period: {
+          start: periodStart.toISOString().split('T')[0],
+          end: periodEnd.toISOString().split('T')[0]
+        }
+      },
+      summary: {
+        grossPay: calculationResult.total_gross_pay,
+        netPay: calculationResult.total_net_pay,
+        totalDeductions: calculationResult.total_deductions,
+        earningsCount: earnings.length,
+        deductionsCount: allDeductions.length
+      },
+      status: 'COMPLETED'
+    }));
 
     return this.getById(payroll.id);
   }

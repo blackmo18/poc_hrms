@@ -83,10 +83,10 @@ export class CompensationService {
 
   async updateCompensation(id: string, data: UpdateCompensation, reason?: string): Promise<Compensation> {
     // Log the update for audit purposes
-    console.log(`Compensation update for ${id}`, {
+    console.log(`[COMPENSATION] Update for ${id}: ${JSON.stringify({
       reason: reason || 'No reason provided',
       timestamp: new Date(),
-    });
+    })}`);
 
     return await this.update(id, data);
   }

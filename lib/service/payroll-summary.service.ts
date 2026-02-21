@@ -2,18 +2,14 @@ import { employeeController } from '@/lib/controllers/employee.controller';
 import { OvertimeController } from '@/lib/controllers/overtime.controller';
 import { payrollController } from '@/lib/controllers/payroll.controller';
 import { PayrollCalculationService } from './payroll-calculation.service';
+import { employeePayrollService } from './employee-payroll.service';
 import { timeEntryService } from '@/lib/service/time-entry.service';
 import { holidayService } from '@/lib/service/holiday.service';
 import { getServiceContainer } from '@/lib/di/container';
 import { getWorkScheduleService } from '@/lib/service/work-schedule.service';
 import { getLateDeductionPolicyService } from '@/lib/service/late-deduction-policy.service';
 import { prisma } from '@/lib/db';
-import { 
-  calculateActualAbsentDays,
-  calculateLateMetrics,
-  calculateUndertimeMinutes,
-  getEmployeePayrollMetrics
-} from '@/lib/utils/payroll-calculations';
+import { getEmployeePayrollMetrics } from '@/lib/utils/payroll-calculations';
 
 export interface PayrollSummaryRequest {
   organizationId: string;
@@ -486,123 +482,73 @@ export class PayrollSummaryService {
     // Calculate deductions for each employee
     for (const employee of employees) {
       if (employee.compensations && employee.compensations.length > 0) {
-        // Get current compensation
-        const currentComp = employee.compensations.find(c => 
-          new Date(c.effectiveDate) <= periodEnd
-        );
-
-        if (currentComp) {
-          // Calculate monthly gross (simplified - should include proration)
-          const monthlyGross = currentComp.baseSalary;
-          
-          // Get work schedule for rate calculations
-          let dailyRate = monthlyGross / 22; // Default
-          let hourlyRate = dailyRate / 8;
-          
-          try {
-            const schedule = await this.workScheduleService.getByEmployeeId(employee.id);
-            if (schedule) {
-              dailyRate = await this.workScheduleService.calculateDailyRate(schedule, monthlyGross);
-              hourlyRate = await this.workScheduleService.calculateHourlyRate(schedule, monthlyGross);
-            }
-          } catch (error) {
-            // No schedule, use defaults
-          }
-          
-          // Calculate PH deductions
-          const deductions = await this.phDeductionsService.calculateAllDeductions(
-            organizationId,
-            monthlyGross
-          );
-
-          totalTax += deductions.tax;
-          totalPhilhealth += deductions.philhealth;
-          totalSSS += deductions.sss;
-          totalPagibig += deductions.pagibig;
-          
-          // Calculate policy deductions
-          // Note: Using LATE policy type as TARDINESS is not in the enum
-          const lateDeductions = await this.lateDeductionPolicyService.calculateDeduction(
-            organizationId,
-            'LATE',
-            0, // Will be calculated based on actual time entries
-            dailyRate,
-            hourlyRate
-          );
-          
-          // For actual calculation, we would need to process time entries
-          // This is a simplified version
-          const timeEntries = await timeEntryService.getByEmployeeAndDateRange(
+        // Use the same service as employee payroll page for consistency
+        try {
+          const payrollData = await employeePayrollService.getEmployeePayroll(
             employee.id,
+            organizationId,
             periodStart,
             periodEnd
           );
           
-          let employeeLateTotal = 0;
-          let employeeAbsenceTotal = 0;
+          // Add the actual values from payroll data
+          totalTax += payrollData.deductions.withholdingTax;
+          totalPhilhealth += payrollData.deductions.philhealth;
+          totalSSS += payrollData.deductions.sss;
+          totalPagibig += payrollData.deductions.pagibig;
           
-          for (const entry of timeEntries) {
-            if (!entry.clockOutAt) continue;
-            
-            try {
-              const schedule = await this.workScheduleService.getByEmployeeId(employee.id);
-              if (schedule) {
-                const validation = await this.workScheduleService.validateTimeEntry(
-                  schedule,
-                  entry.clockInAt,
-                  entry.clockOutAt
-                );
-                
-                if (validation.lateMinutes > 0) {
-                  const deduction = await this.lateDeductionPolicyService.calculateDeduction(
-                    organizationId,
-                    'LATE',
-                    validation.lateMinutes,
-                    dailyRate,
-                    hourlyRate,
-                    entry.workDate
-                  );
-                  employeeLateTotal += deduction;
-                }
-              }
-            } catch (error) {
-              // No schedule, skip
+          // Add policy deductions
+          totalLate += payrollData.deductions.lateDeduction;
+          totalAbsence += payrollData.deductions.absenceDeduction;
+          
+          // Create structured log entry for employee summary
+          const employeeSummaryLog = {
+            type: 'EMPLOYEE_PAYROLL_SUMMARY',
+            timestamp: new Date().toISOString(),
+            organizationId,
+            employeeId: employee.id,
+            payroll: {
+              gross: payrollData.earnings.totalEarnings,
+              net: payrollData.netPay,
+              totalDeductions: payrollData.deductions.totalDeductions + payrollData.deductions.lateDeduction + payrollData.deductions.absenceDeduction
             }
-          }
+          };
+          console.log(`[EMP_SUMMARY] ${JSON.stringify(employeeSummaryLog)}`);
           
-          // Calculate absences
-          try {
-            const schedule = await this.workScheduleService.getByEmployeeId(employee.id);
-            if (schedule) {
-              const expectedWorkDays = await this.workScheduleService.getWorkDaysForPeriod(
-                schedule,
-                periodStart,
-                periodEnd
-              );
-              
-              const datesWithEntries = new Set(
-                timeEntries.map(entry => entry.workDate.toISOString().split('T')[0])
-              );
-              
-              for (const workDay of expectedWorkDays) {
-                const dateStr = workDay.toISOString().split('T')[0];
-                if (!datesWithEntries.has(dateStr)) {
-                  employeeAbsenceTotal += dailyRate;
-                }
-              }
-            }
-          } catch (error) {
-            // No schedule, skip
-          }
-          
-          totalLate += employeeLateTotal;
-          totalAbsence += employeeAbsenceTotal;
+        } catch (error) {
+          console.error(`Error getting payroll for employee ${employee.id}:`, error);
+          // Skip this employee if payroll calculation fails
+          continue;
         }
       }
     }
 
     const governmentTotal = totalTax + totalPhilhealth + totalSSS + totalPagibig;
     const policyTotal = totalLate + totalAbsence;
+    const grandTotal = governmentTotal + policyTotal;
+
+    // Create structured log entry for organization summary
+    const organizationSummaryLog = {
+      type: 'ORGANIZATION_PAYROLL_SUMMARY',
+      timestamp: new Date().toISOString(),
+      organizationId,
+      summary: {
+        employeesProcessed: employees.length,
+        totalGross: employees.reduce((sum, e) => sum + (e.compensations?.[0]?.baseSalary || 0), 0),
+        totalDeductions: grandTotal,
+        governmentDeductions: governmentTotal,
+        policyDeductions: policyTotal,
+        breakdown: {
+          tax: totalTax,
+          sss: totalSSS,
+          philhealth: totalPhilhealth,
+          pagibig: totalPagibig,
+          late: totalLate,
+          absence: totalAbsence
+        }
+      }
+    };
+    console.log(`[ORG_SUMMARY] ${JSON.stringify(organizationSummaryLog)}`);
 
     return {
       totals: {
@@ -612,7 +558,7 @@ export class PayrollSummaryService {
         pagibig: totalPagibig,
         late: totalLate,
         absence: totalAbsence,
-        total: governmentTotal + policyTotal,
+        total: grandTotal,
       },
       breakdown: {
         government: governmentTotal,
