@@ -97,10 +97,18 @@ export class PayrollController {
       },
       select: {
         id: true,
+        employeeId: true,
         processedAt: true,
         periodStart: true,
         periodEnd: true,
         status: true,
+        taxDeduction: true,
+        philhealthDeduction: true,
+        sssDeduction: true,
+        pagibigDeduction: true,
+        totalDeductions: true,
+        grossPay: true,
+        netPay: true,
       },
       orderBy: {
         processedAt: 'desc',
@@ -133,7 +141,15 @@ export class PayrollController {
         periodStart: data.periodStart?.toISOString(),
         periodEnd: data.periodEnd?.toISOString(),
         grossPay: data.grossPay,
-        netPay: data.netPay
+        netPay: data.netPay,
+        governmentDeductions: {
+          tax: data.taxDeduction,
+          philhealth: data.philhealthDeduction,
+          sss: data.sssDeduction,
+          pagibig: data.pagibigDeduction,
+          total: data.totalDeductions
+        },
+        status: data.status
       },
       action: 'PAYROLL_CREATE_START'
     }));
@@ -149,7 +165,14 @@ export class PayrollController {
           periodEnd: data.periodEnd,
           grossPay: data.grossPay,
           netPay: data.netPay,
-        } as any,
+          taxableIncome: data.taxableIncome,
+          taxDeduction: data.taxDeduction,
+          philhealthDeduction: data.philhealthDeduction,
+          sssDeduction: data.sssDeduction,
+          pagibigDeduction: data.pagibigDeduction,
+          totalDeductions: data.totalDeductions,
+          status: data.status || PayrollStatus.COMPUTED,
+        },
         include: {
           employee: {
             include: {
@@ -168,6 +191,14 @@ export class PayrollController {
         organizationId: payroll.organizationId,
         grossPay: payroll.grossPay,
         netPay: payroll.netPay,
+        savedGovernmentDeductions: {
+          tax: payroll.taxDeduction,
+          philhealth: payroll.philhealthDeduction,
+          sss: payroll.sssDeduction,
+          pagibig: payroll.pagibigDeduction,
+          total: payroll.totalDeductions
+        },
+        status: payroll.status,
         action: 'PAYROLL_CREATE_SUCCESS'
       }));
 

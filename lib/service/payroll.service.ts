@@ -93,7 +93,7 @@ export class PayrollService {
     );
 
     if (existingPayroll) {
-      console.log(`[PAYROLL_GENERATION] Payroll already exists`, JSON.stringify({
+      console.log(`[PAYROLL_GENERATION] Returning existing payroll`, JSON.stringify({
         timestamp: new Date().toISOString(),
         references: {
           organizationId,
@@ -104,23 +104,24 @@ export class PayrollService {
             end: periodEnd.toISOString().split('T')[0]
           }
         },
-        status: 'DUPLICATE_FOUND'
+        status: 'RETURNING_EXISTING'
       }));
-      throw new Error('Payroll already exists for this period');
+
+      // Get existing earnings and deductions
+      const payrollEarningService = getPayrollEarningService();
+      const deductionService = getDeductionService();
+      const earnings = await payrollEarningService.getAll(existingPayroll.organizationId, existingPayroll.id);
+      const deductions = await deductionService.getAll(existingPayroll.organizationId, existingPayroll.id);
+
+      return {
+        payroll: existingPayroll,
+        earnings: earnings.data,
+        deductions: deductions.data,
+        log: undefined
+      };
     }
 
-    // Calculate payroll using the calculation service
-    const container = getServiceContainer();
-    const payrollCalculationService = container.getPayrollCalculationService();
-    const calculationResult = await payrollCalculationService.calculateCompletePayroll(
-      organizationId,
-      employeeId,
-      periodStart,
-      periodEnd,
-      0 // Monthly salary will be determined from compensation
-    );
-
-    // Get employee department
+    // Get employee and compensation BEFORE calculation
     const employeeController = (await import('@/lib/controllers/employee.controller')).employeeController;
     const employee = await employeeController.getById(employeeId);
     if (!employee) {
@@ -135,7 +136,7 @@ export class PayrollService {
 
     // Validate that employee belongs to the organization
     if (employee.organizationId !== organizationId) {
-      console.log(`[PAYROLL_GENERATION] Employee does not belong to organization`, JSON.stringify({
+      console.log(`[PAYROLL_GENERATION] Organization mismatch`, JSON.stringify({
         timestamp: new Date().toISOString(),
         employeeId,
         employeeOrganizationId: employee.organizationId,
@@ -144,6 +145,29 @@ export class PayrollService {
       }));
       throw new Error('Employee does not belong to this organization');
     }
+
+    // Get the employee's compensation
+    const compensation = employee.compensations?.[0];
+    const monthlySalary = compensation?.baseSalary || 0;
+
+    console.log(`[PAYROLL_GENERATION] Using employee salary`, JSON.stringify({
+      timestamp: new Date().toISOString(),
+      employeeId,
+      monthlySalary,
+      hasCompensation: !!compensation,
+      compensationId: compensation?.id
+    }));
+
+    // Calculate payroll using the calculation service with actual salary
+    const container = getServiceContainer();
+    const payrollCalculationService = container.getPayrollCalculationService();
+    const calculationResult = await payrollCalculationService.calculateCompletePayroll(
+      organizationId,
+      employeeId,
+      periodStart,
+      periodEnd,
+      monthlySalary
+    );
 
     // Create payroll record
     const payrollData: CreatePayroll = {

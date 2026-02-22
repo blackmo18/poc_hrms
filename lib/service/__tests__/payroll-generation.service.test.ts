@@ -77,10 +77,12 @@ describe('PayrollService - Generation', () => {
 
     mockPayrollEarningService = {
       create: vi.fn(),
+      getAll: vi.fn(),
     };
 
     mockDeductionService = {
       create: vi.fn(),
+      getAll: vi.fn(),
     };
 
     // Mock the imports
@@ -197,29 +199,47 @@ describe('PayrollService - Generation', () => {
       });
     });
 
-    it('should throw error if payroll already exists for period', async () => {
+    it('should return existing payroll if it already exists for period', async () => {
       // Mock existing payroll
-      mockPayrollController.getAll.mockResolvedValue([
+      const existingPayroll = {
+        id: 'existing-payroll',
+        employeeId: mockEmployeeId,
+        organizationId: mockOrganizationId,
+        departmentId: mockDepartmentId,
+        periodStart,
+        periodEnd,
+        status: PayrollStatus.COMPUTED,
+        grossPay: 5000,
+        netPay: 4350,
+      };
+      mockPayrollController.getAll.mockResolvedValue([existingPayroll]);
+
+      // Mock existing earnings and deductions
+      const mockEarnings = [{ id: 'earning-1', type: 'BASE_SALARY', amount: 5000 }];
+      const mockDeductions = [{ id: 'deduction-1', type: 'TAX', amount: 250 }];
+      
+      mockPayrollEarningService.getAll.mockResolvedValue({ data: mockEarnings });
+      mockDeductionService.getAll.mockResolvedValue({ data: mockDeductions });
+
+      const result = await payrollService.generatePayroll(
         {
-          id: 'existing-payroll',
           employeeId: mockEmployeeId,
+          organizationId: mockOrganizationId,
           periodStart,
           periodEnd,
-          status: PayrollStatus.COMPUTED,
         },
-      ]);
+        mockUserId
+      );
 
-      await expect(
-        payrollService.generatePayroll(
-          {
-            employeeId: mockEmployeeId,
-            organizationId: mockOrganizationId,
-            periodStart,
-            periodEnd,
-          },
-          mockUserId
-        )
-      ).rejects.toThrow('Payroll already exists for this period');
+      // Should return existing payroll data
+      expect(result.payroll).toEqual(existingPayroll);
+      expect(result.earnings).toEqual(mockEarnings);
+      expect(result.deductions).toEqual(mockDeductions);
+      expect(result.log).toBeUndefined();
+
+      // Should not create new payroll or log generation
+      expect(mockPayrollController.create).not.toHaveBeenCalled();
+      expect(mockPayrollLogService.logAction).not.toHaveBeenCalled();
     });
 
     it('should include overtime earnings when present', async () => {

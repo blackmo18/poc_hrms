@@ -78,6 +78,18 @@ export class DeductionController {
     type: string;
     amount: number;
   }) {
+    console.log(`[DEDUCTION_CONTROLLER] Creating deduction record`, JSON.stringify({
+      timestamp: new Date().toISOString(),
+      data: {
+        payrollId: data.payrollId,
+        organizationId: data.organizationId,
+        employeeId: data.employeeId,
+        type: data.type,
+        amount: data.amount,
+        isGovernmentDeduction: ['TAX', 'PHILHEALTH', 'SSS', 'PAGIBIG'].includes(data.type)
+      },
+      action: 'DEDUCTION_CREATE_START'
+    }));
     // Verify payroll exists and belongs to organization
     const payroll = await this.prisma.payroll.findFirst({
       where: {
@@ -102,7 +114,7 @@ export class DeductionController {
       throw new Error('Employee not found or does not belong to this organization');
     }
 
-    return await this.prisma.deduction.create({
+    const deduction = await this.prisma.deduction.create({
       data: {
         id: generateULID(),
         payrollId: data.payrollId,
@@ -123,6 +135,18 @@ export class DeductionController {
         },
       },
     });
+
+    console.log(`[DEDUCTION_CONTROLLER] Deduction record created successfully`, JSON.stringify({
+      timestamp: new Date().toISOString(),
+      deductionId: deduction.id,
+      payrollId: deduction.payrollId,
+      type: deduction.type,
+      amount: deduction.amount,
+      isGovernmentDeduction: ['TAX', 'PHILHEALTH', 'SSS', 'PAGIBIG'].includes(deduction.type),
+      action: 'DEDUCTION_CREATE_SUCCESS'
+    }));
+
+    return deduction;
   }
 
   async update(id: string, organizationId: string, data: Partial<{
