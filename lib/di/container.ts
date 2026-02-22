@@ -122,8 +122,8 @@ export class DIContainer {
     return this.employeeGovernmentInfoController;
   }
 
-  public getGovernmentContributionController(): GovernmentContributionController {
-    return this.governmentContributionController;
+  public getPrisma(): PrismaClient {
+    return this.prisma;
   }
 
   /**

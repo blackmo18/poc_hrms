@@ -119,6 +119,245 @@ export class PayrollSummaryService {
     periodStart: Date,
     periodEnd: Date
   ): Promise<PayrollSummaryResponse> {
+    // Check for existing payroll data first
+    const existingPayrollData = await this.getExistingPayrollData(organizationId, departmentId, periodStart, periodEnd);
+
+    if (existingPayrollData.hasExistingPayrolls) {
+      // Use existing payroll data for summary
+      return this.generateSummaryFromExistingPayrolls(existingPayrollData, organizationId, departmentId, periodStart, periodEnd);
+    }
+
+    // Fall back to calculation-based summary if no existing payrolls
+    return this.generateSummaryFromCalculations(organizationId, departmentId, periodStart, periodEnd);
+  }
+
+  private async getExistingPayrollData(
+    organizationId: string,
+    departmentId: string | undefined,
+    periodStart: Date,
+    periodEnd: Date
+  ) {
+    // Get existing payrolls for the period
+    const existingPayrolls = await payrollController.getPayrollsByOrganizationAndPeriod(
+      organizationId,
+      departmentId,
+      periodStart,
+      periodEnd
+    );
+
+    const hasExistingPayrolls = existingPayrolls.length > 0;
+
+    return {
+      hasExistingPayrolls,
+      payrolls: existingPayrolls,
+      totalPayrolls: existingPayrolls.length,
+      generatedPayrolls: existingPayrolls.filter(p => p.status === 'COMPUTED' || p.status === 'APPROVED' || p.status === 'RELEASED'),
+      approvedPayrolls: existingPayrolls.filter(p => p.status === 'APPROVED' || p.status === 'RELEASED'),
+      releasedPayrolls: existingPayrolls.filter(p => p.status === 'RELEASED')
+    };
+  }
+
+  private async generateSummaryFromExistingPayrolls(
+    payrollData: any,
+    organizationId: string,
+    departmentId: string | undefined,
+    periodStart: Date,
+    periodEnd: Date
+  ): Promise<PayrollSummaryResponse> {
+    // Log critical flow decision - using existing payroll data
+    console.log(`[PAYROLL_SUMMARY_EXISTING] Using existing payroll data for summary`, JSON.stringify({
+      timestamp: new Date().toISOString(),
+      organizationId,
+      departmentId,
+      period: {
+        start: periodStart.toISOString().split('T')[0],
+        end: periodEnd.toISOString().split('T')[0]
+      },
+      existingPayrollData: {
+        totalPayrolls: payrollData.totalPayrolls,
+        generatedPayrolls: payrollData.generatedPayrolls.length,
+        approvedPayrolls: payrollData.approvedPayrolls.length,
+        releasedPayrolls: payrollData.releasedPayrolls.length
+      },
+      status: 'USING_EXISTING_DATA'
+    }));
+
+    // Get total employees in organization/department
+    const totalEmployees = await this.getEmployeeCount(organizationId, departmentId);
+
+    // Get employee eligibility data (still needed for employee list)
+    const employeeEligibility = await this.getEmployeeEligibility(organizationId, departmentId);
+
+    // Get attendance statistics
+    const attendanceStats = await this.getAttendanceStats(organizationId, departmentId, periodStart, periodEnd);
+
+    // Get overtime statistics
+    const overtimeStats = await this.getOvertimeStats(organizationId, departmentId, periodStart, periodEnd);
+
+    // Get holiday impacts
+    const holidayStats = await this.getHolidayStats(organizationId, departmentId, periodStart, periodEnd);
+
+    // Calculate deduction totals from existing payroll data
+    const deductions = await this.calculateDeductionTotalsFromPayrolls(payrollData.payrolls);
+
+    // Calculate metrics from existing payroll data
+    const metrics = await this.calculatePayrollMetricsFromPayrolls(payrollData.payrolls);
+
+    // Determine readiness based on existing payroll status
+    const readiness = this.calculateReadinessFromPayrolls(payrollData);
+
+    // Get payroll status from existing data
+    const payrollStatus = {
+      currentStatus: payrollData.totalPayrolls > 0 ? 'COMPLETED' as const : 'PENDING' as const,
+      lastGeneratedAt: payrollData.payrolls[0]?.processedAt?.toISOString(),
+      hasExistingRun: payrollData.hasExistingPayrolls,
+      generatedCount: payrollData.generatedPayrolls.length,
+      approvedCount: payrollData.approvedPayrolls.length,
+      releasedCount: payrollData.releasedPayrolls.length
+    };
+
+    return {
+      organizationId,
+      departmentId,
+      cutoffPeriod: {
+        start: periodStart.toISOString().split('T')[0],
+        end: periodEnd.toISOString().split('T')[0],
+      },
+      employees: {
+        total: totalEmployees,
+        eligible: employeeEligibility.eligible,
+        ineligible: employeeEligibility.ineligible,
+        eligibleEmployees: employeeEligibility.eligibleEmployees,
+        exclusionReasons: {
+          ...employeeEligibility.exclusionReasons,
+          missingAttendance: attendanceStats.missingEmployeesCount,
+          missingWorkSchedule: employeeEligibility.exclusionReasons.missingWorkSchedule || 0,
+        },
+      },
+      attendance: attendanceStats,
+      overtime: overtimeStats,
+      holidays: holidayStats,
+      readiness,
+      payrollStatus,
+      deductions,
+      metrics,
+    };
+  }
+
+  private async calculateDeductionTotalsFromPayrolls(payrolls: any[]) {
+    let totalTax = 0;
+    let totalPhilhealth = 0;
+    let totalSSS = 0;
+    let totalPagibig = 0;
+    let totalLate = 0;
+    let totalAbsence = 0;
+
+    // Aggregate deductions from existing payrolls
+    for (const payroll of payrolls) {
+      totalTax += payroll.taxDeduction || 0;
+      totalPhilhealth += payroll.philhealthDeduction || 0;
+      totalSSS += payroll.sssDeduction || 0;
+      totalPagibig += payroll.pagibigDeduction || 0;
+
+      // Get policy deductions from related deduction records
+      const deductions = await prisma.deduction.findMany({
+        where: { payrollId: payroll.id }
+      });
+
+      for (const deduction of deductions) {
+        if (deduction.type === 'LATE') {
+          totalLate += deduction.amount;
+        } else if (deduction.type === 'ABSENCE') {
+          totalAbsence += deduction.amount;
+        }
+      }
+    }
+
+    const governmentTotal = totalTax + totalPhilhealth + totalSSS + totalPagibig;
+    const policyTotal = totalLate + totalAbsence;
+    const grandTotal = governmentTotal + policyTotal;
+
+    return {
+      totals: {
+        tax: totalTax,
+        philhealth: totalPhilhealth,
+        sss: totalSSS,
+        pagibig: totalPagibig,
+        late: totalLate,
+        absence: totalAbsence,
+        total: grandTotal,
+      },
+      breakdown: {
+        government: governmentTotal,
+        policy: policyTotal,
+      },
+    };
+  }
+
+  private async calculatePayrollMetricsFromPayrolls(payrolls: any[]) {
+    let totalLateInstances = 0;
+    let totalLateMinutes = 0;
+    let lateAffectedEmployees = 0;
+
+    let totalAbsences = 0;
+    let absenceAffectedEmployees = 0;
+
+    let totalUndertimeMinutes = 0;
+    let undertimeAffectedEmployees = 0;
+
+    // This is a simplified implementation - in a real system you'd need to track
+    // lateness/absence metrics separately or derive them from time entries
+    // For now, we'll return zeros since we don't have this data in payroll records
+
+    return {
+      lateness: {
+        totalLateInstances,
+        totalLateMinutes,
+        affectedEmployees: lateAffectedEmployees,
+      },
+      absence: {
+        totalAbsences,
+        affectedEmployees: absenceAffectedEmployees,
+      },
+      undertime: {
+        totalUndertimeMinutes,
+        affectedEmployees: undertimeAffectedEmployees,
+      },
+    };
+  }
+
+  private calculateReadinessFromPayrolls(payrollData: any) {
+    const blockingIssues: string[] = [];
+    const warnings: string[] = [];
+
+    // Check if all payrolls are in a final state
+    const nonFinalPayrolls = payrollData.payrolls.filter((p: any) =>
+      p.status !== 'RELEASED' && p.status !== 'VOIDED'
+    );
+
+    if (nonFinalPayrolls.length > 0) {
+      warnings.push(`${nonFinalPayrolls.length} payrolls are not yet finalized`);
+    }
+
+    if (payrollData.payrolls.some((p: any) => p.status === 'VOIDED')) {
+      warnings.push('Some payrolls have been voided');
+    }
+
+    const canGenerate = true; // Payrolls are already generated
+
+    return {
+      canGenerate,
+      blockingIssues,
+      warnings,
+    };
+  }
+
+  private async generateSummaryFromCalculations(
+    organizationId: string,
+    departmentId: string | undefined,
+    periodStart: Date,
+    periodEnd: Date
+  ): Promise<PayrollSummaryResponse> {
     // Get total employees in organization/department
     const totalEmployees = await this.getEmployeeCount(organizationId, departmentId);
 

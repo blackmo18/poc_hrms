@@ -73,6 +73,17 @@ async function cleanupPayrollTestData() {
         where: { employeeId: { in: employeeIds } }
       });
       console.log(`✓ Deleted ${deletedPayrolls.count} payroll records`);
+      
+      // Delete payroll logs for these employees/payrolls
+      const deletedPayrollLogs = await prisma.payrollLog.deleteMany({
+        where: {
+          OR: [
+            { payroll: { employeeId: { in: employeeIds } } },
+            { userId: { in: testEmployees.map(emp => emp.id) } }
+          ]
+        }
+      });
+      console.log(`✓ Deleted ${deletedPayrollLogs.count} payroll log records`);
     }
     
     // Also clean up any standalone payroll_earning records for these employees

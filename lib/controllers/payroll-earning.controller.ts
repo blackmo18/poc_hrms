@@ -80,7 +80,30 @@ export class PayrollEarningController {
     rate: number;
     amount: number;
   }) {
+    console.log(`[PAYROLL_EARNING_CONTROLLER] Creating earning`, JSON.stringify({
+      timestamp: new Date().toISOString(),
+      data: {
+        payrollId: data.payrollId,
+        organizationId: data.organizationId,
+        employeeId: data.employeeId,
+        type: data.type,
+        hours: data.hours,
+        rate: data.rate,
+        amount: data.amount
+      },
+      action: 'CREATE_EARNING_START'
+    }));
+
     // Verify payroll exists and belongs to organization
+    console.log(`[PAYROLL_EARNING_CONTROLLER] Looking up payroll`, JSON.stringify({
+      timestamp: new Date().toISOString(),
+      query: {
+        id: data.payrollId,
+        organizationId: data.organizationId
+      },
+      action: 'PAYROLL_LOOKUP_START'
+    }));
+
     const payroll = await this.prisma.payroll.findFirst({
       where: {
         id: data.payrollId,
@@ -88,7 +111,46 @@ export class PayrollEarningController {
       },
     });
 
+    console.log(`[PAYROLL_EARNING_CONTROLLER] Payroll lookup result`, JSON.stringify({
+      timestamp: new Date().toISOString(),
+      query: {
+        id: data.payrollId,
+        organizationId: data.organizationId
+      },
+      found: !!payroll,
+      payrollData: payroll ? {
+        id: payroll.id,
+        organizationId: payroll.organizationId,
+        employeeId: payroll.employeeId,
+        status: payroll.status,
+        grossPay: payroll.grossPay,
+        netPay: payroll.netPay
+      } : null,
+      action: 'PAYROLL_LOOKUP_RESULT'
+    }));
+
     if (!payroll) {
+      // Additional debugging - try to find the payroll with just the ID
+      const payrollById = await this.prisma.payroll.findUnique({
+        where: { id: data.payrollId }
+      });
+
+      console.log(`[PAYROLL_EARNING_CONTROLLER] Payroll not found - additional debug`, JSON.stringify({
+        timestamp: new Date().toISOString(),
+        originalQuery: {
+          id: data.payrollId,
+          organizationId: data.organizationId
+        },
+        payrollById: payrollById ? {
+          id: payrollById.id,
+          organizationId: payrollById.organizationId,
+          employeeId: payrollById.employeeId,
+          status: payrollById.status
+        } : null,
+        organizationMismatch: payrollById ? payrollById.organizationId !== data.organizationId : null,
+        action: 'PAYROLL_NOT_FOUND_DEBUG'
+      }));
+
       throw new Error('Payroll not found or does not belong to this organization');
     }
 

@@ -22,6 +22,7 @@ function getPayrollCalculationService(): PayrollCalculationService {
 }
 
 export class PayrollController {
+  constructor(private prisma: any) {}
   async getAll(employeeId?: string, periodStart?: Date, periodEnd?: Date) {
     const where: any = {};
 
@@ -99,6 +100,7 @@ export class PayrollController {
         processedAt: true,
         periodStart: true,
         periodEnd: true,
+        status: true,
       },
       orderBy: {
         processedAt: 'desc',
@@ -122,27 +124,72 @@ export class PayrollController {
   }
 
   async create(data: CreatePayroll) {
-    return await prisma.payroll.create({
+    console.log(`[PAYROLL_CONTROLLER] Creating payroll record`, JSON.stringify({
+      timestamp: new Date().toISOString(),
       data: {
-        id: generateULID(),
         employeeId: data.employeeId,
         organizationId: data.organizationId,
         departmentId: data.departmentId,
-        periodStart: data.periodStart,
-        periodEnd: data.periodEnd,
+        periodStart: data.periodStart?.toISOString(),
+        periodEnd: data.periodEnd?.toISOString(),
         grossPay: data.grossPay,
-        netPay: data.netPay,
-      } as any,
-      include: {
-        employee: {
-          include: {
-            department: true,
-            jobTitle: true,
-          },
-        },
-        deductions: true,
+        netPay: data.netPay
       },
-    });
+      action: 'PAYROLL_CREATE_START'
+    }));
+
+    try {
+      const payroll = await this.prisma.payroll.create({
+        data: {
+          id: generateULID(),
+          employeeId: data.employeeId,
+          organizationId: data.organizationId,
+          departmentId: data.departmentId,
+          periodStart: data.periodStart,
+          periodEnd: data.periodEnd,
+          grossPay: data.grossPay,
+          netPay: data.netPay,
+        } as any,
+        include: {
+          employee: {
+            include: {
+              department: true,
+              jobTitle: true,
+            },
+          },
+          deductions: true,
+        },
+      });
+
+      console.log(`[PAYROLL_CONTROLLER] Payroll record created successfully`, JSON.stringify({
+        timestamp: new Date().toISOString(),
+        payrollId: payroll.id,
+        employeeId: payroll.employeeId,
+        organizationId: payroll.organizationId,
+        grossPay: payroll.grossPay,
+        netPay: payroll.netPay,
+        action: 'PAYROLL_CREATE_SUCCESS'
+      }));
+
+      return payroll;
+    } catch (error) {
+      console.error(`[PAYROLL_CONTROLLER] Payroll creation failed`, JSON.stringify({
+        timestamp: new Date().toISOString(),
+        error: error.message,
+        stack: error.stack,
+        data: {
+          employeeId: data.employeeId,
+          organizationId: data.organizationId,
+          departmentId: data.departmentId,
+          periodStart: data.periodStart?.toISOString(),
+          periodEnd: data.periodEnd?.toISOString(),
+          grossPay: data.grossPay,
+          netPay: data.netPay
+        },
+        action: 'PAYROLL_CREATE_ERROR'
+      }));
+      throw error;
+    }
   }
 
   async update(id: string, data: UpdatePayroll) {
@@ -426,4 +473,4 @@ export class PayrollController {
   }
 }
 
-export const payrollController = new PayrollController();
+export const payrollController = new PayrollController(prisma);

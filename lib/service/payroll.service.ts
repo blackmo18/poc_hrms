@@ -1,8 +1,25 @@
 import { payrollController } from '@/lib/controllers/payroll.controller';
 import { CreatePayroll, UpdatePayroll } from '@/lib/models/payroll';
-import { Payroll } from '@prisma/client';
+import { Payroll, PayrollEarning, Deduction, PayrollLog, PayrollStatus } from '@prisma/client';
 import { PaginationOptions, PaginatedResponse } from './organization.service';
-import { generateULID } from '@/lib/utils/ulid.service';
+import { getPayrollEarningService } from './payroll-earning.service';
+import { getDeductionService } from './deduction.service';
+import { PayrollLogService } from './payroll-log.service';
+import { getServiceContainer } from '@/lib/di/container';
+
+export interface PayrollGenerationInput {
+  employeeId: string;
+  organizationId: string;
+  periodStart: Date;
+  periodEnd: Date;
+}
+
+export interface PayrollGenerationResult {
+  payroll: Payroll;
+  earnings: PayrollEarning[];
+  deductions: Deduction[];
+  log?: any; // Made optional since logAction returns void
+}
 
 export class PayrollService {
   async getById(id: string): Promise<Payroll | null> {
@@ -41,6 +58,477 @@ export class PayrollService {
 
   async delete(id: string): Promise<Payroll> {
     return await payrollController.delete(id);
+  }
+
+  /**
+   * Generate payroll for an employee for a given period
+   * Creates payroll record, earnings, deductions, and logs the generation
+   */
+  async generatePayroll(input: PayrollGenerationInput, userId: string): Promise<PayrollGenerationResult> {
+    const { employeeId, organizationId, periodStart, periodEnd } = input;
+
+    // Log critical flow start
+    console.log(`[PAYROLL_GENERATION] Starting payroll generation`, JSON.stringify({
+      timestamp: new Date().toISOString(),
+      references: {
+        organizationId,
+        employeeId,
+        period: {
+          start: periodStart.toISOString().split('T')[0],
+          end: periodEnd.toISOString().split('T')[0]
+        }
+      },
+      userId,
+      status: 'STARTED'
+    }));
+
+    // Check if payroll already exists for this period
+    const existingPayroll = await payrollController.getAll().then(payrolls =>
+      payrolls.find(p =>
+        p.employeeId === employeeId &&
+        p.periodStart.getTime() === periodStart.getTime() &&
+        p.periodEnd.getTime() === periodEnd.getTime() &&
+        p.status !== PayrollStatus.VOIDED
+      )
+    );
+
+    if (existingPayroll) {
+      console.log(`[PAYROLL_GENERATION] Payroll already exists`, JSON.stringify({
+        timestamp: new Date().toISOString(),
+        references: {
+          organizationId,
+          employeeId,
+          existingPayrollId: existingPayroll.id,
+          period: {
+            start: periodStart.toISOString().split('T')[0],
+            end: periodEnd.toISOString().split('T')[0]
+          }
+        },
+        status: 'DUPLICATE_FOUND'
+      }));
+      throw new Error('Payroll already exists for this period');
+    }
+
+    // Calculate payroll using the calculation service
+    const container = getServiceContainer();
+    const payrollCalculationService = container.getPayrollCalculationService();
+    const calculationResult = await payrollCalculationService.calculateCompletePayroll(
+      organizationId,
+      employeeId,
+      periodStart,
+      periodEnd,
+      0 // Monthly salary will be determined from compensation
+    );
+
+    // Get employee department
+    const employeeController = (await import('@/lib/controllers/employee.controller')).employeeController;
+    const employee = await employeeController.getById(employeeId);
+    if (!employee) {
+      console.log(`[PAYROLL_GENERATION] Employee not found`, JSON.stringify({
+        timestamp: new Date().toISOString(),
+        employeeId,
+        organizationId,
+        status: 'EMPLOYEE_NOT_FOUND'
+      }));
+      throw new Error('Employee not found');
+    }
+
+    // Validate that employee belongs to the organization
+    if (employee.organizationId !== organizationId) {
+      console.log(`[PAYROLL_GENERATION] Employee does not belong to organization`, JSON.stringify({
+        timestamp: new Date().toISOString(),
+        employeeId,
+        employeeOrganizationId: employee.organizationId,
+        requestedOrganizationId: organizationId,
+        status: 'ORGANIZATION_MISMATCH'
+      }));
+      throw new Error('Employee does not belong to this organization');
+    }
+
+    // Create payroll record
+    const payrollData: CreatePayroll = {
+      employeeId,
+      organizationId,
+      departmentId: employee.departmentId,
+      periodStart,
+      periodEnd,
+      grossPay: calculationResult.total_gross_pay,
+      netPay: calculationResult.total_net_pay,
+      taxableIncome: calculationResult.taxable_income,
+      taxDeduction: calculationResult.government_deductions.tax,
+      philhealthDeduction: calculationResult.government_deductions.philhealth,
+      sssDeduction: calculationResult.government_deductions.sss,
+      pagibigDeduction: calculationResult.government_deductions.pagibig,
+      totalDeductions: calculationResult.total_deductions,
+      status: PayrollStatus.COMPUTED
+    };
+
+    const payroll = await payrollController.create(payrollData);
+
+    // Use the actual payroll ID returned from creation
+    const payrollId = payroll.id;
+
+    // Create payroll earnings
+    const earnings: PayrollEarning[] = [];
+    const payrollEarningService = getPayrollEarningService();
+
+    // Regular pay earning
+    earnings.push(await payrollEarningService.create({
+      payrollId,
+      organizationId,
+      employeeId,
+      type: 'BASE_SALARY',
+      hours: calculationResult.total_regular_minutes / 60, // Convert to hours
+      rate: calculationResult.total_regular_pay / (calculationResult.total_regular_minutes / 60), // Hourly rate
+      amount: calculationResult.total_regular_pay
+    }));
+
+    // Overtime earning (if any)
+    if (calculationResult.total_overtime_pay > 0) {
+      earnings.push(await payrollEarningService.create({
+        payrollId,
+        organizationId,
+        employeeId,
+        type: 'OVERTIME',
+        hours: calculationResult.total_overtime_minutes / 60,
+        rate: (calculationResult.total_overtime_pay / (calculationResult.total_overtime_minutes / 60)),
+        amount: calculationResult.total_overtime_pay
+      }));
+    }
+
+    // Night differential earning (if any)
+    if (calculationResult.total_night_diff_pay > 0) {
+      earnings.push(await payrollEarningService.create({
+        payrollId,
+        organizationId,
+        employeeId,
+        type: 'NIGHT_DIFFERENTIAL',
+        hours: calculationResult.total_night_diff_minutes / 60,
+        rate: (calculationResult.total_night_diff_pay / (calculationResult.total_night_diff_minutes / 60)),
+        amount: calculationResult.total_night_diff_pay
+      }));
+    }
+
+    // Create deductions
+    const deductions: Deduction[] = [];
+    const deductionService = getDeductionService();
+
+    // Government deductions
+    deductions.push(await deductionService.create({
+      payrollId,
+      organizationId,
+      employeeId,
+      type: 'TAX',
+      amount: calculationResult.government_deductions.tax
+    }));
+
+    deductions.push(await deductionService.create({
+      payrollId,
+      organizationId,
+      employeeId,
+      type: 'PHILHEALTH',
+      amount: calculationResult.government_deductions.philhealth
+    }));
+
+    deductions.push(await deductionService.create({
+      payrollId,
+      organizationId,
+      employeeId,
+      type: 'SSS',
+      amount: calculationResult.government_deductions.sss
+    }));
+
+    deductions.push(await deductionService.create({
+      payrollId,
+      organizationId,
+      employeeId,
+      type: 'PAGIBIG',
+      amount: calculationResult.government_deductions.pagibig
+    }));
+
+    // Policy deductions (late/absence)
+    deductions.push(await deductionService.create({
+      payrollId,
+      organizationId,
+      employeeId,
+      type: 'LATE',
+      amount: calculationResult.policy_deductions.late
+    }));
+
+    deductions.push(await deductionService.create({
+      payrollId,
+      organizationId,
+      employeeId,
+      type: 'ABSENCE',
+      amount: calculationResult.policy_deductions.absence
+    }));
+
+    // Create payroll log
+    const payrollLogService = PayrollLogService.getInstance();
+    await payrollLogService.logAction({
+      payrollId,
+      action: 'GENERATED',
+      previousStatus: null,
+      newStatus: 'COMPUTED',
+      reason: 'Payroll generated from time entries',
+      userId
+    });
+
+    // Log critical flow completion
+    console.log(`[PAYROLL_GENERATION] Payroll generation completed`, JSON.stringify({
+      timestamp: new Date().toISOString(),
+      references: {
+        organizationId,
+        employeeId,
+        payrollId,
+        period: {
+          start: periodStart.toISOString().split('T')[0],
+          end: periodEnd.toISOString().split('T')[0]
+        }
+      },
+      summary: {
+        grossPay: calculationResult.total_gross_pay,
+        netPay: calculationResult.total_net_pay,
+        totalDeductions: calculationResult.total_deductions,
+        earningsCount: earnings.length,
+        deductionsCount: deductions.length
+      },
+      status: 'COMPLETED'
+    }));
+
+    return {
+      payroll,
+      earnings,
+      deductions,
+      log: undefined // logAction returns void, so no log object to return
+    };
+  }
+
+  /**
+   * Approve payroll - changes status from COMPUTED to APPROVED
+   */
+  async approvePayroll(payrollId: string, userId: string, reason?: string): Promise<Payroll> {
+    const payroll = await this.getById(payrollId);
+    if (!payroll) {
+      console.log(`[PAYROLL_APPROVAL] Payroll not found`, JSON.stringify({
+        timestamp: new Date().toISOString(),
+        payrollId,
+        userId,
+        status: 'PAYROLL_NOT_FOUND'
+      }));
+      throw new Error('Payroll not found');
+    }
+
+    if (payroll.status !== PayrollStatus.COMPUTED) {
+      console.log(`[PAYROLL_APPROVAL] Invalid status for approval`, JSON.stringify({
+        timestamp: new Date().toISOString(),
+        payrollId,
+        userId,
+        currentStatus: payroll.status,
+        requiredStatus: 'COMPUTED',
+        status: 'INVALID_STATUS'
+      }));
+      throw new Error(`Cannot approve payroll with status ${payroll.status}`);
+    }
+
+    // Log approval decision
+    console.log(`[PAYROLL_APPROVAL] Approving payroll`, JSON.stringify({
+      timestamp: new Date().toISOString(),
+      references: {
+        payrollId,
+        employeeId: payroll.employeeId,
+        organizationId: payroll.organizationId,
+        period: {
+          start: payroll.periodStart.toISOString().split('T')[0],
+          end: payroll.periodEnd.toISOString().split('T')[0]
+        }
+      },
+      userId,
+      reason: reason || 'Approved for release',
+      status: 'APPROVING'
+    }));
+
+    const updatedPayroll = await payrollController.update(payrollId, {
+      status: PayrollStatus.APPROVED,
+      approvedAt: new Date(),
+      approvedBy: userId
+    });
+
+    // Log the approval
+    const payrollLogService = PayrollLogService.getInstance();
+    await payrollLogService.logAction({
+      payrollId,
+      action: 'APPROVED',
+      previousStatus: payroll.status,
+      newStatus: 'APPROVED',
+      reason: reason || 'Payroll approved for release',
+      userId
+    });
+
+    console.log(`[PAYROLL_APPROVAL] Payroll approved successfully`, JSON.stringify({
+      timestamp: new Date().toISOString(),
+      payrollId,
+      userId,
+      newStatus: 'APPROVED',
+      status: 'COMPLETED'
+    }));
+
+    return updatedPayroll;
+  }
+
+  /**
+   * Release payroll - changes status from APPROVED to RELEASED
+   */
+  async releasePayroll(payrollId: string, userId: string, reason?: string): Promise<Payroll> {
+    const payroll = await this.getById(payrollId);
+    if (!payroll) {
+      console.log(`[PAYROLL_RELEASE] Payroll not found`, JSON.stringify({
+        timestamp: new Date().toISOString(),
+        payrollId,
+        userId,
+        status: 'PAYROLL_NOT_FOUND'
+      }));
+      throw new Error('Payroll not found');
+    }
+
+    if (payroll.status !== PayrollStatus.APPROVED) {
+      console.log(`[PAYROLL_RELEASE] Invalid status for release`, JSON.stringify({
+        timestamp: new Date().toISOString(),
+        payrollId,
+        userId,
+        currentStatus: payroll.status,
+        requiredStatus: 'APPROVED',
+        status: 'INVALID_STATUS'
+      }));
+      throw new Error(`Cannot release payroll with status ${payroll.status}`);
+    }
+
+    // Log release decision
+    console.log(`[PAYROLL_RELEASE] Releasing payroll`, JSON.stringify({
+      timestamp: new Date().toISOString(),
+      references: {
+        payrollId,
+        employeeId: payroll.employeeId,
+        organizationId: payroll.organizationId,
+        period: {
+          start: payroll.periodStart.toISOString().split('T')[0],
+          end: payroll.periodEnd.toISOString().split('T')[0]
+        }
+      },
+      userId,
+      reason: reason || 'Payroll released to employee',
+      status: 'RELEASING'
+    }));
+
+    const updatedPayroll = await payrollController.update(payrollId, {
+      status: PayrollStatus.RELEASED,
+      releasedAt: new Date(),
+      releasedBy: userId
+    });
+
+    // Log the release
+    const payrollLogService = PayrollLogService.getInstance();
+    await payrollLogService.logAction({
+      payrollId,
+      action: 'RELEASED',
+      previousStatus: payroll.status,
+      newStatus: 'RELEASED',
+      reason: reason || 'Payroll released to employee',
+      userId
+    });
+
+    console.log(`[PAYROLL_RELEASE] Payroll released successfully`, JSON.stringify({
+      timestamp: new Date().toISOString(),
+      payrollId,
+      userId,
+      newStatus: 'RELEASED',
+      status: 'COMPLETED'
+    }));
+
+    return updatedPayroll;
+  }
+
+  /**
+   * Void payroll - changes status to VOIDED
+   */
+  async voidPayroll(payrollId: string, userId: string, reason: string): Promise<Payroll> {
+    const payroll = await this.getById(payrollId);
+    if (!payroll) {
+      console.log(`[PAYROLL_VOID] Payroll not found`, JSON.stringify({
+        timestamp: new Date().toISOString(),
+        payrollId,
+        userId,
+        status: 'PAYROLL_NOT_FOUND'
+      }));
+      throw new Error('Payroll not found');
+    }
+
+    if (payroll.status === PayrollStatus.VOIDED) {
+      console.log(`[PAYROLL_VOID] Payroll already voided`, JSON.stringify({
+        timestamp: new Date().toISOString(),
+        payrollId,
+        userId,
+        status: 'ALREADY_VOIDED'
+      }));
+      throw new Error('Payroll is already voided');
+    }
+
+    if (payroll.status === PayrollStatus.RELEASED) {
+      console.log(`[PAYROLL_VOID] Cannot void released payroll`, JSON.stringify({
+        timestamp: new Date().toISOString(),
+        payrollId,
+        userId,
+        currentStatus: payroll.status,
+        status: 'CANNOT_VOID_RELEASED'
+      }));
+      throw new Error('Cannot void a released payroll');
+    }
+
+    // Log voiding decision
+    console.log(`[PAYROLL_VOID] Voiding payroll`, JSON.stringify({
+      timestamp: new Date().toISOString(),
+      references: {
+        payrollId,
+        employeeId: payroll.employeeId,
+        organizationId: payroll.organizationId,
+        period: {
+          start: payroll.periodStart.toISOString().split('T')[0],
+          end: payroll.periodEnd.toISOString().split('T')[0]
+        }
+      },
+      userId,
+      reason,
+      status: 'VOIDING'
+    }));
+
+    const updatedPayroll = await payrollController.update(payrollId, {
+      status: PayrollStatus.VOIDED,
+      voidedAt: new Date(),
+      voidedBy: userId,
+      voidReason: reason
+    });
+
+    // Log the voiding
+    const payrollLogService = PayrollLogService.getInstance();
+    await payrollLogService.logAction({
+      payrollId,
+      action: 'VOIDED',
+      previousStatus: payroll.status,
+      newStatus: 'VOIDED',
+      reason,
+      userId
+    });
+
+    console.log(`[PAYROLL_VOID] Payroll voided successfully`, JSON.stringify({
+      timestamp: new Date().toISOString(),
+      payrollId,
+      userId,
+      reason,
+      newStatus: 'VOIDED',
+      status: 'COMPLETED'
+    }));
+
+    return updatedPayroll;
   }
 }
 

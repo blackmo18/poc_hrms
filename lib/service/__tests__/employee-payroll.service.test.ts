@@ -1,15 +1,15 @@
 import { vi, describe, it, expect, beforeEach } from 'vitest';
-import { EmployeePayrollService } from '../lib/service/employee-payroll.service';
-import { PayrollController } from '../lib/controllers/payroll.controller';
-import { EmployeeController } from '../lib/controllers/employee.controller';
-import { CompensationController } from '../lib/controllers/compensation.controller';
-import { PayrollCalculationService } from '../lib/service/payroll-calculation.service';
-import { prisma } from '../lib/db';
+import { EmployeePayrollService } from '@/lib/service/employee-payroll.service';
+import { PayrollController } from '@/lib/controllers/payroll.controller';
+import { EmployeeController } from '@/lib/controllers/employee.controller';
+import { CompensationController } from '@/lib/controllers/compensation.controller';
+import { PayrollCalculationService } from '@/lib/service/payroll-calculation.service';
+import { prisma } from '@/lib/db';
 
-vi.mock('../lib/controllers/payroll.controller');
-vi.mock('../lib/controllers/employee.controller');
-vi.mock('../lib/controllers/compensation.controller');
-vi.mock('../lib/db', () => ({
+vi.mock('../controllers/payroll.controller');
+vi.mock('../controllers/employee.controller');
+vi.mock('../controllers/compensation.controller');
+vi.mock('../db', () => ({
   prisma: {
     organization: {
       findUnique: vi.fn(),

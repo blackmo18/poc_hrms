@@ -444,8 +444,9 @@ let payrollEarningService: PayrollEarningService;
 
 export function getPayrollEarningService(): PayrollEarningService {
   if (!payrollEarningService) {
-    const { prisma } = require('@/lib/db');
-    const controller = new PayrollEarningController(prisma);
+    const { getServiceContainer } = require('../di/container');
+    const container = getServiceContainer();
+    const controller = new PayrollEarningController(container.getPrisma());
     payrollEarningService = new PayrollEarningService(controller);
   }
   return payrollEarningService;

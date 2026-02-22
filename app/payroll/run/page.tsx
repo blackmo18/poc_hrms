@@ -230,21 +230,21 @@ function PayrollRunContent() {
       alert('Please select both cutoff period and department');
       return;
     }
-    
+
     const isConfirmed = window.confirm('Are you sure you want to generate payroll for all eligible employees?');
     if (!isConfirmed) return;
-    
+
     setIsGenerating(true);
-    
+
     try {
       const orgId = isSuperAdmin ? selectedOrganization : (user?.organizationId || null);
-      
+
       // Parse cutoff period
       const [year, month, startDay, endDay] = selectedCutoff.split('-').map(Number);
       const periodStart = new Date(year, month - 1, startDay);
       const periodEnd = new Date(year, month - 1, endDay);
-      
-      // Generate payroll for each eligible employee
+
+      // Generate payroll for each eligible employee using the new API
       const payrollPromises = eligibleEmployees.map(async (employee) => {
         const response = await fetch('/api/payroll', {
           method: 'POST',
@@ -253,7 +253,7 @@ function PayrollRunContent() {
           },
           credentials: 'include',
           body: JSON.stringify({
-            action: 'process',
+            action: 'generate',
             employeeId: employee.id,
             organizationId: orgId,
             departmentId: selectedDepartment,
@@ -261,22 +261,23 @@ function PayrollRunContent() {
             periodEnd: periodEnd.toISOString(),
           }),
         });
-        
+
         if (!response.ok) {
-          throw new Error(`Failed to generate payroll for ${employee.firstName} ${employee.lastName}`);
+          const errorData = await response.json();
+          throw new Error(`Failed to generate payroll for ${employee.firstName} ${employee.lastName}: ${errorData.error || 'Unknown error'}`);
         }
-        
+
         return response.json();
       });
-      
+
       const results = await Promise.all(payrollPromises);
       console.log('Generated payrolls:', results);
-      
-      alert(`Successfully generated payroll for ${results.length} employees!`);
-      
-      // Refresh the page to show updated status
-      window.location.reload();
-      
+
+      alert(`Successfully generated payroll for ${results.length} employees!\n\nPayrolls are now in COMPUTED status and ready for approval.`);
+
+      // Refresh the summary to show updated status
+      await handleGenerateSummary();
+
     } catch (error) {
       console.error('Error generating payroll:', error);
       alert('Error generating payroll. Please try again.');
@@ -297,6 +298,196 @@ function PayrollRunContent() {
     // TODO: Implement actual batch generation
     console.log('Batch generating payroll for eligible employees:', eligibleEmployees);
     alert('Batch payroll generation initiated (demo - no actual action performed)');
+  };
+
+  const handleApprovePayroll = async () => {
+    if (!selectedCutoff || !selectedDepartment) {
+      alert('Please select both cutoff period and department');
+      return;
+    }
+
+    const isConfirmed = window.confirm('Are you sure you want to approve payroll for all computed employees?');
+    if (!isConfirmed) return;
+
+    setIsGenerating(true);
+
+    try {
+      const orgId = isSuperAdmin ? selectedOrganization : (user?.organizationId || null);
+
+      // Parse cutoff period
+      const [year, month, startDay, endDay] = selectedCutoff.split('-').map(Number);
+      const periodStart = new Date(year, month - 1, startDay);
+      const periodEnd = new Date(year, month - 1, endDay);
+
+      // Approve payroll for each eligible employee with COMPUTED status
+      const approvalPromises = eligibleEmployees.map(async (employee) => {
+        const response = await fetch('/api/payroll', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          credentials: 'include',
+          body: JSON.stringify({
+            action: 'approve',
+            employeeId: employee.id,
+            organizationId: orgId,
+            departmentId: selectedDepartment,
+            periodStart: periodStart.toISOString(),
+            periodEnd: periodEnd.toISOString(),
+          }),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(`Failed to approve payroll for ${employee.firstName} ${employee.lastName}: ${errorData.error || 'Unknown error'}`);
+        }
+
+        return response.json();
+      });
+
+      const results = await Promise.all(approvalPromises);
+      console.log('Approved payrolls:', results);
+
+      alert(`Successfully approved payroll for ${results.length} employees!\n\nPayrolls are now in APPROVED status and ready for release.`);
+
+      // Refresh the summary to show updated status
+      await handleGenerateSummary();
+
+    } catch (error) {
+      console.error('Error approving payroll:', error);
+      alert('Error approving payroll. Please try again.');
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const handleReleasePayroll = async () => {
+    if (!selectedCutoff || !selectedDepartment) {
+      alert('Please select both cutoff period and department');
+      return;
+    }
+
+    const isConfirmed = window.confirm('Are you sure you want to release payroll for all approved employees?');
+    if (!isConfirmed) return;
+
+    setIsGenerating(true);
+
+    try {
+      const orgId = isSuperAdmin ? selectedOrganization : (user?.organizationId || null);
+
+      // Parse cutoff period
+      const [year, month, startDay, endDay] = selectedCutoff.split('-').map(Number);
+      const periodStart = new Date(year, month - 1, startDay);
+      const periodEnd = new Date(year, month - 1, endDay);
+
+      // Release payroll for each eligible employee with APPROVED status
+      const releasePromises = eligibleEmployees.map(async (employee) => {
+        const response = await fetch('/api/payroll', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          credentials: 'include',
+          body: JSON.stringify({
+            action: 'release',
+            employeeId: employee.id,
+            organizationId: orgId,
+            departmentId: selectedDepartment,
+            periodStart: periodStart.toISOString(),
+            periodEnd: periodEnd.toISOString(),
+          }),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(`Failed to release payroll for ${employee.firstName} ${employee.lastName}: ${errorData.error || 'Unknown error'}`);
+        }
+
+        return response.json();
+      });
+
+      const results = await Promise.all(releasePromises);
+      console.log('Released payrolls:', results);
+
+      alert(`Successfully released payroll for ${results.length} employees!\n\nPayrolls are now in RELEASED status and have been paid to employees.`);
+
+      // Refresh the summary to show updated status
+      await handleGenerateSummary();
+
+    } catch (error) {
+      console.error('Error releasing payroll:', error);
+      alert('Error releasing payroll. Please try again.');
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const handleVoidPayroll = async () => {
+    if (!selectedCutoff || !selectedDepartment) {
+      alert('Please select both cutoff period and department');
+      return;
+    }
+
+    const reason = prompt('Please provide a reason for voiding the payroll:');
+    if (!reason || !reason.trim()) {
+      alert('Reason is required to void payroll');
+      return;
+    }
+
+    const isConfirmed = window.confirm('Are you sure you want to void payroll for all approved/released employees?');
+    if (!isConfirmed) return;
+
+    setIsGenerating(true);
+
+    try {
+      const orgId = isSuperAdmin ? selectedOrganization : (user?.organizationId || null);
+
+      // Parse cutoff period
+      const [year, month, startDay, endDay] = selectedCutoff.split('-').map(Number);
+      const periodStart = new Date(year, month - 1, startDay);
+      const periodEnd = new Date(year, month - 1, endDay);
+
+      // Void payroll for each eligible employee with APPROVED/RELEASED status
+      const voidPromises = eligibleEmployees.map(async (employee) => {
+        const response = await fetch('/api/payroll', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          credentials: 'include',
+          body: JSON.stringify({
+            action: 'void',
+            employeeId: employee.id,
+            organizationId: orgId,
+            departmentId: selectedDepartment,
+            periodStart: periodStart.toISOString(),
+            periodEnd: periodEnd.toISOString(),
+            reason: reason.trim(),
+          }),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(`Failed to void payroll for ${employee.firstName} ${employee.lastName}: ${errorData.error || 'Unknown error'}`);
+        }
+
+        return response.json();
+      });
+
+      const results = await Promise.all(voidPromises);
+      console.log('Voided payrolls:', results);
+
+      alert(`Successfully voided payroll for ${results.length} employees!\n\nReason: ${reason}`);
+
+      // Refresh the summary to show updated status
+      await handleGenerateSummary();
+
+    } catch (error) {
+      console.error('Error voiding payroll:', error);
+      alert('Error voiding payroll. Please try again.');
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   const handleEmployeeClick = (employeeId: string) => {
@@ -338,11 +529,6 @@ function PayrollRunContent() {
                   value: period.value,
                   label: period.label
                 }))}
-                selectedOrganization={selectedOrganization}
-                organizationOptions={organizationOptions}
-                onOrganizationChange={handleOrganizationChange}
-                isOrganizationFilterLoading={isOrganizationFilterLoading}
-                showAllOption={showAllOption}
                 selectedDepartment={selectedDepartment}
                 onDepartmentChange={setSelectedDepartment}
                 departments={departments}
@@ -369,9 +555,15 @@ function PayrollRunContent() {
               <ActionButtons
                 onGeneratePayroll={handleGeneratePayroll}
                 onBatchGeneratePayroll={handleBatchGeneratePayroll}
+                onApprovePayroll={handleApprovePayroll}
+                onReleasePayroll={handleReleasePayroll}
+                onVoidPayroll={handleVoidPayroll}
                 isGenerating={isGenerating}
-                disabled={!selectedCutoff || !selectedDepartment}
+                disabled={!selectedCutoff}
                 eligibleCount={eligibleEmployees.length}
+                computedCount={payrollSummary?.payrollStatus?.generatedCount || 0}
+                approvedCount={payrollSummary?.payrollStatus?.approvedCount || 0}
+                releasedCount={payrollSummary?.payrollStatus?.releasedCount || 0}
               />
             </CardContent>
           </Card>
