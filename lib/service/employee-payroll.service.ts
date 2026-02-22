@@ -88,7 +88,7 @@ export class EmployeePayrollService {
   }
 
   constructor() {
-    this.payrollController = new PayrollController();
+    this.payrollController = new PayrollController(prisma);
     this.employeeController = new EmployeeController();
     this.compensationController = new CompensationController();
   }

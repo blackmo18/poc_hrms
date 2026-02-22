@@ -2,9 +2,19 @@ import { NextRequest, NextResponse } from 'next/server';
 import { GovernmentContributionController } from '@/lib/controllers/government-contribution.controller';
 import { requiresPermissions } from '@/lib/auth/middleware';
 import { DIContainer } from '@/lib/di/container';
+import { prisma } from '@/lib/db';
+import { TaxBracketPrismaController } from '@/lib/controllers/prisma/tax-bracket.prisma.controller';
+import { PhilhealthPrismaController } from '@/lib/controllers/prisma/philhealth.prisma.controller';
+import { SSSPrismaController } from '@/lib/controllers/prisma/sss.prisma.controller';
+import { PagibigPrismaController } from '@/lib/controllers/prisma/pagibig.prisma.controller';
 
 const diContainer = DIContainer.getInstance();
-const governmentContributionController = diContainer.getGovernmentContributionController();
+const governmentContributionController = new GovernmentContributionController(
+  new TaxBracketPrismaController(prisma),
+  new PhilhealthPrismaController(prisma),
+  new SSSPrismaController(prisma),
+  new PagibigPrismaController(prisma)
+);
 
 export async function GET(request: NextRequest) {
   return requiresPermissions(request, ['payroll.read'], async (authRequest) => {
