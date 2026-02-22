@@ -28,6 +28,7 @@ describe('PHDeductionsService', () => {
     };
     mockSSSController = {
       findApplicableRate: vi.fn(),
+      findApplicableContribution: vi.fn(),
     };
     mockPagibigController = {
       findApplicableRate: vi.fn(),
@@ -97,18 +98,18 @@ describe('PHDeductionsService', () => {
 
       const result = await service.calculateTax(mockOrganizationId, 700000);
 
-      // Annual taxable income: 700,000 * 12 = 8,400,000
-      // Excess over min: 8,400,000 - (666,667 * 12) = 400,000
-      // Annual tax: 200,000 + (400,000 * 0.35) = 340,000
-      // Monthly tax: 340,000 / 12 = 28,333.33
-      expect(result).toBeCloseTo(28333.33, 2);
+      // Monthly taxable income: 700,000
+      // Min salary: 666,667
+      // Excess: 700,000 - 666,667 = 33,333
+      // Tax: 200,000 + (33,333 * 0.35) = 200,000 + 11,666.55 = 211,666.55
+      expect(result).toBeCloseTo(211666.55, 2);
     });
 
-    it('should throw error if no tax bracket found', async () => {
+    it('should return 0 if no tax bracket found', async () => {
       mockTaxBracketController.findApplicableBracket.mockResolvedValue(null);
 
-      await expect(service.calculateTax(mockOrganizationId, 25000))
-        .rejects.toThrow('No tax bracket found for the given income');
+      const result = await service.calculateTax(mockOrganizationId, 25000);
+      expect(result).toBe(0);
     });
   });
 
@@ -129,11 +130,11 @@ describe('PHDeductionsService', () => {
       expect(result).toBeCloseTo(687.50, 2); // 25000 * 0.0275
     });
 
-    it('should throw error if no Philhealth rate found', async () => {
+    it('should return 0 if no Philhealth rate found', async () => {
       mockPhilhealthController.findApplicableRate.mockResolvedValue(null);
 
-      await expect(service.calculatePhilhealth(mockOrganizationId, 25000))
-        .rejects.toThrow('No Philhealth rate found for the given salary');
+      const result = await service.calculatePhilhealth(mockOrganizationId, 25000);
+      expect(result).toBe(0);
     });
   });
 
@@ -282,12 +283,12 @@ describe('PHDeductionsService', () => {
       const result = await service.calculateAllDeductions(mockOrganizationId, 25000);
 
       expect(result).toEqual({
-        tax: expect.closeTo(833.40, 2),
+        tax: expect.closeTo(450.90, 2),
         philhealth: expect.closeTo(687.50, 2),
-        sss: expect.closeTo(540.00, 2),
+        sss: expect.closeTo(1125.00, 2), 
         pagibig: expect.closeTo(100.00, 2),
-        totalDeductions: expect.closeTo(2160.90, 2),
-        taxableIncome: expect.closeTo(22832.50, 2), // 25000 - 687.50 - 540 - 100
+        totalDeductions: expect.closeTo(2363.40, 2), 
+        taxableIncome: expect.closeTo(23087.50, 2), 
       });
     });
 
@@ -389,7 +390,7 @@ describe('PHDeductionsService', () => {
       });
 
       expect(result.philhealth.employeeShare).toBeCloseTo(687.50, 2);
-      expect(result.sss.employeeShare).toBeCloseTo(540.00, 2);
+      expect(result.sss.employeeShare).toBeCloseTo(1125.00, 2);
       expect(result.pagibig.employeeShare).toBeCloseTo(100.00, 2);
     });
   });

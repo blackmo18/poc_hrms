@@ -128,8 +128,8 @@ export class TaxComputationService {
     }
 
     // Calculate tax on total income
-    const excessOverMin = Math.max(0, totalAnnualIncome - (taxBracket.minSalary * 12));
-    const totalTax = (taxBracket.baseTax * 12) + (excessOverMin * taxBracket.rate);
+    const excessOverMin = Math.max(0, totalAnnualIncome - taxBracket.minSalary);
+    const totalTax = taxBracket.baseTax + (excessOverMin * taxBracket.rate);
 
     // Calculate tax on regular income (already paid)
     let regularTax = 0;
@@ -141,8 +141,8 @@ export class TaxComputationService {
       );
       
       if (regularBracket) {
-        const regularExcess = Math.max(0, otherIncome - (regularBracket.minSalary * 12));
-        regularTax = (regularBracket.baseTax * 12) + (regularExcess * regularBracket.rate);
+        const regularExcess = Math.max(0, otherIncome - regularBracket.minSalary);
+        regularTax = regularBracket.baseTax + (regularExcess * regularBracket.rate);
       }
     }
 

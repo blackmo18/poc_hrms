@@ -9,6 +9,7 @@ import { seedDepartmentsAndJobTitles } from './seeds/departments';
 import { seedEmployeesAndUsers } from './seeds/employees';
 import { seedLeaveRequests } from './seeds/leaveRequests';
 import { seedCompensation } from './seeds/compensation';
+import { seedTimeEntries } from './seeds/timeEntries';
 import { seedHolidays } from './seeds/holidays';
 import { seedTaxBrackets } from './seeds/taxBrackets';
 import { seedPhilhealthContributions } from './seeds/philhealthContributions';
@@ -48,6 +49,8 @@ async function cleanDatabase() {
 
   // Tables to truncate - in dependency order (child tables first)
   const tables = [
+    'time_break',
+    'timeEntry',
     'payroll_earning',
     'deduction',
     'work_schedule',
@@ -197,6 +200,9 @@ async function seedDatabase() {
   await seedLateDeductionPolicies(prisma, generateULID, organization);
   await seedWorkSchedules(prisma, generateULID, organization, employees, compensations);
   await seedPayrollPeriods(prisma, generateULID, organization);
+  
+  // Seed time entries for payroll testing
+  await seedTimeEntries();
 
   console.log('🎉 Database seeding completed successfully!');
 

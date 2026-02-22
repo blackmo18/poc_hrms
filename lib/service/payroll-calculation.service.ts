@@ -9,6 +9,7 @@ import {
   calculateCompletePayroll as externalCalculateCompletePayroll
 } from '../utils/payroll-calculations';
 import { DIContainer } from '../di/container';
+import { prisma } from '../db';
 
 export interface PayrollCalculationResult {
   employeeId: string;
@@ -271,6 +272,19 @@ export class PayrollCalculationService {
     const workScheduleService = getWorkScheduleService();
     const container = DIContainer.getInstance();
     
+    // Validate employee exists
+    const employee = await prisma.employee.findUnique({
+      where: { id: employeeId },
+    });
+    
+    if (!employee) {
+      throw new Error('Employee not found');
+    }
+    
+    // Determine if this is semi-monthly or full month
+    const daysInPeriod = Math.ceil((periodEnd.getTime() - periodStart.getTime()) / (1000 * 60 * 60 * 24));
+    const isSemiMonthly = daysInPeriod <= 16;
+    
     // Get work schedule
     const workSchedule = await workScheduleService.getByEmployeeId(employeeId);
     
@@ -293,13 +307,10 @@ export class PayrollCalculationService {
     // If there are no time entries, return basic salary without deductions
     if (timeEntries.length === 0) {
       // Calculate pro-rated basic salary for the period
-      const daysInPeriod = Math.ceil((periodEnd.getTime() - periodStart.getTime()) / (1000 * 60 * 60 * 24));
       const dailyRate = workSchedule 
         ? await workScheduleService.calculateDailyRate(workSchedule, monthlySalary)
         : monthlySalary / 22; // Fallback: assume 22 working days
         
-      // Determine if this is semi-monthly or full month
-      const isSemiMonthly = daysInPeriod <= 16;
       let expectedWorkDays: number;
       let taxBase: number;
       
@@ -390,7 +401,10 @@ export class PayrollCalculationService {
       totalNightDiffMinutes += nightDiffMinutes;
 
       // Calculate daily pay
-      const regularPay = (regularMinutes / 60) * hourlyRate;
+      // For semi-monthly, use prorated daily rate from fixed salary
+      const expectedWorkDays = Math.ceil((periodEnd.getTime() - periodStart.getTime()) / (1000 * 60 * 60 * 24));
+      const fixedDailyRate = isSemiMonthly ? (monthlySalary / 2) / expectedWorkDays : dailyRate;
+      const regularPay = regularMinutes > 0 ? fixedDailyRate : 0;
       const overtimePay = (overtimeMinutes / 60) * hourlyRate * (workSchedule?.overtimeRate || 1.25);
       const nightDiffPay = (nightDiffMinutes / 60) * hourlyRate * (workSchedule?.nightDiffRate || 0.1);
 
@@ -412,7 +426,7 @@ export class PayrollCalculationService {
       });
     }
 
-    const totalRegularPay = (totalRegularMinutes / 60) * hourlyRate;
+    const totalRegularPay = isSemiMonthly ? monthlySalary / 2 : (totalRegularMinutes / 60) * hourlyRate;
     const totalOvertimePay = (totalOvertimeMinutes / 60) * hourlyRate * (workSchedule?.overtimeRate || 1.25);
     const totalNightDiffPay = (totalNightDiffMinutes / 60) * hourlyRate * (workSchedule?.nightDiffRate || 0.1);
     const totalGrossPay = totalRegularPay + totalOvertimePay + totalNightDiffPay;
@@ -495,8 +509,6 @@ export class PayrollCalculationService {
     );
     
     // For display, show monthly equivalent taxable income
-    const daysInPeriod = Math.ceil((periodEnd.getTime() - periodStart.getTime()) / (1000 * 60 * 60 * 24));
-    const isSemiMonthly = daysInPeriod <= 16;
     const displayTaxableIncome = isSemiMonthly 
       ? governmentDeductions.taxableIncome * 2 
       : governmentDeductions.taxableIncome;

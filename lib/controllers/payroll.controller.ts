@@ -3,6 +3,10 @@ import { CreatePayroll, UpdatePayroll } from '../models/payroll';
 import { generateULID } from '../utils/ulid.service';
 import { PayrollCalculationService } from '../service/payroll-calculation.service';
 import { employeePayrollService } from '../service/employee-payroll.service';
+import { payrollLogService } from '../service/payroll-log.service';
+import { PayrollStatus } from '@prisma/client';
+import { sharedPayrollCalculation } from '../service/shared-payroll-calculation';
+import { PayrollRecord } from '../types/payroll.types';
 
 function getDIContainer() {
   const { DIContainer } = require('../di/container');
@@ -163,7 +167,7 @@ export class PayrollController {
     });
   }
 
-  async processPayroll(employeeId: string, organizationId: string, departmentId: string | undefined, periodStart: Date, periodEnd: Date) {
+  async processPayroll(employeeId: string, organizationId: string, departmentId: string | undefined, periodStart: Date, periodEnd: Date, userId?: string) {
     // Log critical flow start
     console.log(`[PAYROLL_GENERATION] Starting payroll processing`, JSON.stringify({
       timestamp: new Date().toISOString(),
@@ -178,219 +182,247 @@ export class PayrollController {
       },
       status: 'STARTED'
     }));
-    
-    // Get employee data with compensation and work schedule
-    const employee = await prisma.employee.findUnique({
-      where: { id: employeeId },
-      include: {
-        department: true,
-        jobTitle: true,
-        compensations: {
-          where: {
-            effectiveDate: { lte: new Date() }
+
+    try {
+      // Use shared calculation logic
+      const result = await sharedPayrollCalculation.calculatePayroll({
+        employeeId,
+        organizationId,
+        departmentId,
+        periodStart,
+        periodEnd,
+        options: {
+          persistData: true,
+          userId: userId || 'system',
+          status: PayrollStatus.COMPUTED
+        }
+      });
+
+      // Update payroll period status if applicable
+      const payrollPeriod = await prisma.payrollPeriod.findFirst({
+        where: {
+          organizationId,
+          startDate: { lte: periodStart },
+          endDate: { gte: periodEnd },
+        },
+      });
+
+      if (payrollPeriod && payrollPeriod.status === 'PENDING') {
+        await prisma.payrollPeriod.update({
+          where: { 
+            organizationId_startDate_endDate: {
+              organizationId: payrollPeriod.organizationId,
+              startDate: payrollPeriod.startDate,
+              endDate: payrollPeriod.endDate,
+            }
           },
-          orderBy: { effectiveDate: 'desc' },
-          take: 1
-        }
-      },
+          data: { status: 'PROCESSING' },
+        });
+      }
+
+      // Log critical flow completion
+      console.log(`[PAYROLL_GENERATION] Payroll processing completed`, JSON.stringify({
+        timestamp: new Date().toISOString(),
+        references: {
+          organizationId,
+          employeeId,
+          payrollId: result.payrollRecord.id,
+          period: {
+            start: periodStart.toISOString().split('T')[0],
+            end: periodEnd.toISOString().split('T')[0]
+          }
+        },
+        summary: {
+          grossPay: result.calculationResult.total_gross_pay,
+          netPay: result.calculationResult.total_net_pay,
+          totalDeductions: result.calculationResult.total_deductions,
+          earningsCount: result.earnings.length || 0,
+          deductionsCount: result.deductions.length || 0
+        },
+        status: 'COMPLETED'
+      }));
+
+      return this.getById(result.payrollRecord.id);
+    } catch (error) {
+      console.error('[PAYROLL_GENERATION] Payroll processing failed', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Approve a computed payroll
+   */
+  async approvePayroll(payrollId: string, userId: string): Promise<PayrollRecord> {
+    const payroll = await prisma.payroll.findUnique({
+      where: { id: payrollId },
     });
 
-    if (!employee) {
-      console.log(`[PAYROLL_GENERATION] Payroll processing failed`, JSON.stringify({
-        timestamp: new Date().toISOString(),
-        references: {
-          organizationId,
-          employeeId,
-          period: {
-            start: periodStart.toISOString().split('T')[0],
-            end: periodEnd.toISOString().split('T')[0]
-          }
-        },
-        error: 'Employee not found',
-        status: 'FAILED'
-      }));
-      throw new Error('Employee not found');
+    if (!payroll) {
+      throw new Error('Payroll not found');
     }
 
-    // Get current compensation from the most recent record
-    const currentCompensation = employee.compensations[0];
-    if (!currentCompensation) {
-      console.log(`[PAYROLL_GENERATION] Payroll processing failed`, JSON.stringify({
-        timestamp: new Date().toISOString(),
-        references: {
-          organizationId,
-          employeeId,
-          period: {
-            start: periodStart.toISOString().split('T')[0],
-            end: periodEnd.toISOString().split('T')[0]
-          }
-        },
-        error: 'No compensation record found for employee',
-        status: 'FAILED'
-      }));
-      throw new Error('No compensation record found for employee');
+    if (payroll.status !== PayrollStatus.COMPUTED) {
+      throw new Error('Only computed payrolls can be approved');
     }
 
-    // Use the enhanced payroll calculation service
-    const calculationResult = await getPayrollCalculationService().calculateCompletePayroll(
-      organizationId,
-      employeeId,
-      periodStart,
-      periodEnd,
-      currentCompensation.baseSalary
-    );
-
-    // Create payroll record with enhanced data
-    const payroll = await prisma.payroll.create({
+    const updatedPayroll = await prisma.payroll.update({
+      where: { id: payrollId },
       data: {
-        id: generateULID(),
-        employeeId: employeeId,
-        organizationId: employee.department?.organizationId || organizationId, // Use employee's organization ID
-        departmentId: departmentId,
-        periodStart: periodStart,
-        periodEnd: periodEnd,
-        grossPay: calculationResult.total_gross_pay,
-        netPay: calculationResult.total_net_pay,
-        taxableIncome: calculationResult.taxable_income,
-        taxDeduction: calculationResult.government_deductions.tax,
-        philhealthDeduction: calculationResult.government_deductions.philhealth,
-        sssDeduction: calculationResult.government_deductions.sss,
-        pagibigDeduction: calculationResult.government_deductions.pagibig,
-        totalDeductions: calculationResult.total_deductions,
-        processedAt: new Date(),
-      } as any,
+        status: PayrollStatus.APPROVED,
+        approvedAt: new Date(),
+        approvedBy: userId,
+      },
     });
 
-    // Create detailed deduction records
-    const allDeductions = [
-      // Government deductions
-      { type: 'TAX', amount: calculationResult.government_deductions.tax },
-      { type: 'PHILHEALTH', amount: calculationResult.government_deductions.philhealth },
-      { type: 'SSS', amount: calculationResult.government_deductions.sss },
-      { type: 'PAGIBIG', amount: calculationResult.government_deductions.pagibig },
-      // Policy deductions
-      { type: 'LATE', amount: calculationResult.policy_deductions.late },
-      { type: 'ABSENCE', amount: calculationResult.policy_deductions.absence },
-    ].filter(d => d.amount > 0);
+    // Log approval
+    await payrollLogService.logAction({
+      payrollId,
+      action: 'APPROVED',
+      previousStatus: PayrollStatus.COMPUTED,
+      newStatus: PayrollStatus.APPROVED,
+      userId,
+    });
 
-    if (allDeductions.length > 0) {
-      await prisma.deduction.createMany({
-        data: allDeductions.map(deduction => ({
-          id: generateULID(),
-          payrollId: payroll.id,
-          employeeId,
-          organizationId,
-          type: deduction.type,
-          amount: deduction.amount,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        })),
-      });
+    return updatedPayroll as PayrollRecord;
+  }
+
+  /**
+   * Release an approved payroll
+   */
+  async releasePayroll(payrollId: string, userId: string): Promise<PayrollRecord> {
+    const payroll = await prisma.payroll.findUnique({
+      where: { id: payrollId },
+    });
+
+    if (!payroll) {
+      throw new Error('Payroll not found');
     }
 
-    // Create detailed earning records
-    const earnings = [];
-    
-    // Regular pay
-    if (calculationResult.total_regular_pay > 0) {
-      earnings.push({
-        id: generateULID(),
-        payrollId: payroll.id,
-        organizationId,
-        employeeId,
-        type: 'BASE_SALARY',
-        hours: calculationResult.total_regular_minutes / 60,
-        rate: currentCompensation.baseSalary / 160, // Assuming 160 hours per month
-        amount: calculationResult.total_regular_pay,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      });
+    if (payroll.status !== PayrollStatus.APPROVED) {
+      throw new Error('Only approved payrolls can be released');
     }
 
-    // Overtime pay
-    if (calculationResult.total_overtime_pay > 0) {
-      earnings.push({
-        id: generateULID(),
-        payrollId: payroll.id,
-        organizationId,
-        employeeId,
-        type: 'OVERTIME',
-        hours: calculationResult.total_overtime_minutes / 60,
-        rate: (currentCompensation.baseSalary / 160) * 1.25, // Overtime rate
-        amount: calculationResult.total_overtime_pay,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      });
+    const updatedPayroll = await prisma.payroll.update({
+      where: { id: payrollId },
+      data: {
+        status: PayrollStatus.RELEASED,
+        releasedAt: new Date(),
+        releasedBy: userId,
+      },
+    });
+
+    // Log release
+    await payrollLogService.logAction({
+      payrollId,
+      action: 'RELEASED',
+      previousStatus: PayrollStatus.APPROVED,
+      newStatus: PayrollStatus.RELEASED,
+      userId,
+    });
+
+    return updatedPayroll as PayrollRecord;
+  }
+
+  /**
+   * Void a released payroll
+   */
+  async voidPayroll(payrollId: string, userId: string, reason?: string): Promise<PayrollRecord> {
+    const payroll = await prisma.payroll.findUnique({
+      where: { id: payrollId },
+    });
+
+    if (!payroll) {
+      throw new Error('Payroll not found');
     }
 
-    // Night differential pay
-    if (calculationResult.total_night_diff_pay > 0) {
-      earnings.push({
-        id: generateULID(),
-        payrollId: payroll.id,
-        organizationId,
-        employeeId,
-        type: 'NIGHT_DIFFERENTIAL',
-        hours: calculationResult.total_night_diff_minutes / 60,
-        rate: (currentCompensation.baseSalary / 160) * 0.1, // Night diff rate
-        amount: calculationResult.total_night_diff_pay,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      });
+    if (payroll.status !== PayrollStatus.RELEASED) {
+      throw new Error('Only released payrolls can be voided');
     }
 
-    if (earnings.length > 0) {
-      await prisma.payrollEarning.createMany({
-        data: earnings,
-      });
+    const updatedPayroll = await prisma.payroll.update({
+      where: { id: payrollId },
+      data: {
+        status: PayrollStatus.VOIDED,
+        voidedAt: new Date(),
+        voidedBy: userId,
+        voidReason: reason,
+      },
+    });
+
+    // Log void
+    await payrollLogService.logAction({
+      payrollId,
+      action: 'VOIDED',
+      previousStatus: PayrollStatus.RELEASED,
+      newStatus: PayrollStatus.VOIDED,
+      reason,
+      userId,
+    });
+
+    return updatedPayroll as PayrollRecord;
+  }
+
+  /**
+   * Recalculate a draft payroll
+   */
+  async recalculatePayroll(payrollId: string, userId: string): Promise<PayrollRecord> {
+    const payroll = await prisma.payroll.findUnique({
+      where: { id: payrollId },
+    });
+
+    if (!payroll) {
+      throw new Error('Payroll not found');
     }
 
-    // Update payroll period status if applicable
-    // This would require finding the relevant payroll period
-    const payrollPeriod = await prisma.payrollPeriod.findFirst({
+    if (payroll.status !== PayrollStatus.DRAFT && payroll.status !== PayrollStatus.COMPUTED) {
+      throw new Error('Only draft or computed payrolls can be recalculated');
+    }
+
+    // Delete existing earnings and deductions
+    await prisma.payrollEarning.deleteMany({
+      where: { payrollId },
+    });
+    await prisma.deduction.deleteMany({
+      where: { payrollId },
+    });
+
+    // Recalculate payroll
+    return await this.processPayroll(
+      payroll.employeeId,
+      payroll.organizationId,
+      payroll.departmentId || undefined,
+      payroll.periodStart,
+      payroll.periodEnd,
+      userId
+    ) as PayrollRecord;
+  }
+
+  /**
+   * Get payroll logs
+   */
+  async getPayrollLogs(payrollId: string) {
+    return await payrollLogService.getPayrollHistory(payrollId);
+  }
+
+  /**
+   * Check if payroll exists for a period and employee
+   */
+  async checkExistingPayroll(
+    employeeId: string,
+    periodStart: Date,
+    periodEnd: Date
+  ): Promise<PayrollRecord | null> {
+    const payroll = await prisma.payroll.findFirst({
       where: {
-        organizationId,
-        startDate: { lte: periodStart },
-        endDate: { gte: periodEnd },
+        employeeId,
+        periodStart,
+        periodEnd,
+        status: {
+          not: PayrollStatus.VOIDED,
+        },
       },
     });
-
-    if (payrollPeriod && payrollPeriod.status === 'PENDING') {
-      await prisma.payrollPeriod.update({
-        where: { 
-          organizationId_startDate_endDate: {
-            organizationId: payrollPeriod.organizationId,
-            startDate: payrollPeriod.startDate,
-            endDate: payrollPeriod.endDate,
-          }
-        },
-        data: { status: 'PROCESSING' },
-      });
-    }
-
-    // Log critical flow completion
-    console.log(`[PAYROLL_GENERATION] Payroll processing completed`, JSON.stringify({
-      timestamp: new Date().toISOString(),
-      references: {
-        organizationId,
-        employeeId,
-        payrollId: payroll.id,
-        period: {
-          start: periodStart.toISOString().split('T')[0],
-          end: periodEnd.toISOString().split('T')[0]
-        }
-      },
-      summary: {
-        grossPay: calculationResult.total_gross_pay,
-        netPay: calculationResult.total_net_pay,
-        totalDeductions: calculationResult.total_deductions,
-        earningsCount: earnings.length,
-        deductionsCount: allDeductions.length
-      },
-      status: 'COMPLETED'
-    }));
-
-    return this.getById(payroll.id);
+    return payroll as PayrollRecord | null;
   }
 }
 

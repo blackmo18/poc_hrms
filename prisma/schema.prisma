@@ -74,6 +74,10 @@ model User {
   auditLogs         AuditLog[]
   userRoles         UserRole[]
   passwordResetLogs UserPasswordResetLog[]
+  payrollLogs       PayrollLog[]
+  approvedPayrolls  Payroll[] @relation("ApprovedPayrolls")
+  releasedPayrolls  Payroll[] @relation("ReleasedPayrolls")
+  voidedPayrolls    Payroll[] @relation("VoidedPayrolls")
 
   createdAt DateTime   @default(now()) @map("created_at")
   updatedAt DateTime   @updatedAt @map("updated_at")
@@ -341,11 +345,23 @@ model Payroll {
   pagibigDeduction    Float?   @map("pagibig_deduction")
   totalDeductions     Float?   @map("total_deductions")
   processedAt         DateTime @default(now()) @map("processed_at")
+  status              PayrollStatus @default(DRAFT)
+  approvedAt          DateTime? @map("approved_at")
+  approvedBy          String?   @map("approved_by")
+  releasedAt          DateTime? @map("released_at")
+  releasedBy          String?   @map("released_by")
+  voidedAt            DateTime? @map("voided_at")
+  voidedBy            String?   @map("voided_by")
+  voidReason          String?   @map("void_reason")
 
   employee      Employee         @relation(fields: [employeeId], references: [id], onDelete: Cascade)
   earnings      PayrollEarning[]
   deductions    Deduction[]
   payrollPeriod PayrollPeriod    @relation(fields: [periodStart, periodEnd], references: [startDate, endDate])
+  logs          PayrollLog[]
+  approvedByUser User?           @relation("ApprovedPayrolls", fields: [approvedBy], references: [id])
+  releasedByUser User?           @relation("ReleasedPayrolls", fields: [releasedBy], references: [id])
+  voidedByUser   User?           @relation("VoidedPayrolls", fields: [voidedBy], references: [id])
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -354,6 +370,7 @@ model Payroll {
   @@index([employeeId])
   @@index([departmentId])
   @@index([periodStart, periodEnd])
+  @@index([status])
   @@map("payrolls")
 }
 
@@ -380,6 +397,25 @@ model PayrollPeriod {
   @@index([year])
   @@index([status])
   @@map("payroll_periods")
+}
+
+model PayrollLog {
+  id             String   @id
+  payrollId      String   @map("payroll_id")
+  action         String   // GENERATED, APPROVED, RELEASED, VOIDED, RECALCULATED
+  previousStatus String?  @map("previous_status")
+  newStatus      String?  @map("new_status")
+  reason         String?
+  userId         String   @map("user_id")
+  timestamp      DateTime @default(now())
+  
+  payroll Payroll @relation(fields: [payrollId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id])
+  
+  @@index([payrollId])
+  @@index([userId])
+  @@index([timestamp])
+  @@map("payroll_logs")
 }
 
 model PayrollEarning {
@@ -1174,4 +1210,12 @@ enum OvertimeType {
   EMERGENCY
   SPECIAL_HOLIDAY
   REGULAR_HOLIDAY
+}
+
+enum PayrollStatus {
+  DRAFT
+  COMPUTED
+  APPROVED
+  RELEASED
+  VOIDED
 }

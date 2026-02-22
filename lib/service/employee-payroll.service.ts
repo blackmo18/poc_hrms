@@ -4,8 +4,9 @@ import { CompensationController } from '../controllers/compensation.controller';
 import { PayrollCalculationService, PayrollCalculationResult } from './payroll-calculation.service';
 import { prisma } from '../db';
 
+import { DIContainer } from '../di/container';
+
 function getDIContainer() {
-  const { DIContainer } = require('../di/container');
   return DIContainer.getInstance();
 }
 
@@ -81,13 +82,15 @@ export class EmployeePayrollService {
   private payrollController: PayrollController;
   private employeeController: EmployeeController;
   private compensationController: CompensationController;
-  private payrollCalculationService: PayrollCalculationService;
+  
+  private get payrollCalculationService(): PayrollCalculationService {
+    return getPayrollCalculationService();
+  }
 
   constructor() {
     this.payrollController = new PayrollController();
     this.employeeController = new EmployeeController();
     this.compensationController = new CompensationController();
-    this.payrollCalculationService = getPayrollCalculationService();
   }
 
   /**
@@ -148,6 +151,24 @@ export class EmployeePayrollService {
       where: { payrollId: payroll.id }
     });
 
+    // Get time entries to calculate attendance
+    const timeEntries = await prisma.timeEntry.findMany({
+      where: {
+        employeeId: payroll.employeeId,
+        workDate: {
+          gte: periodStart,
+          lte: periodEnd,
+        },
+        clockOutAt: { not: null },
+      },
+    });
+
+    // Calculate attendance from time entries
+    const presentDays = timeEntries.length;
+    const lateDays = storedDeductions.filter(d => d.type === 'LATE' && d.amount > 0).length;
+    const totalLateMinutes = 0; // TODO: Calculate from work schedule validation
+    const overtimeHours = Math.floor((storedEarnings.find(e => e.type === 'OVERTIME')?.hours || 0));
+
     // Calculate actual absent days using the service
     const actualAbsentDays = await this.payrollCalculationService.calculateActualAbsentDays(
       payroll.employeeId,
@@ -186,11 +207,11 @@ export class EmployeePayrollService {
         website: organization?.website || undefined,
       },
       attendance: {
-        presentDays: 0, // TODO: Calculate from time entries
+        presentDays: presentDays,
         absentDays: actualAbsentDays,
-        lateDays: 0, // TODO: Calculate from time entries
-        overtimeHours: Math.floor((overtimePay / (payroll.grossPay / 160)) * 1.25), // Estimate
-        lateMinutes: 0, // TODO: Calculate from time entries
+        lateDays: lateDays,
+        overtimeHours: overtimeHours,
+        lateMinutes: totalLateMinutes,
         undertimeMinutes: 0, // TODO: Calculate from time entries
       },
       earnings: {

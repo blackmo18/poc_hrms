@@ -184,14 +184,30 @@ describe('HolidayService', () => {
       // Assert
       expect(holidayController.createFullHoliday).toHaveBeenCalledWith(
         expect.objectContaining({
-          date: new Date('2025-01-01'),
+          date: expect.any(Date),
+          name: 'New Year\'s Day',
+          organizationId: 'org-123',
         })
       );
       expect(holidayController.createFullHoliday).toHaveBeenCalledWith(
         expect.objectContaining({
-          date: new Date('2025-02-17'),
+          date: expect.any(Date),
+          name: 'Chinese Lunar New Year',
+          organizationId: 'org-123',
         })
       );
+
+      // Check that the dates are correctly adjusted to 2025
+      const firstCall = vi.mocked(holidayController.createFullHoliday).mock.calls[0][0];
+      const secondCall = vi.mocked(holidayController.createFullHoliday).mock.calls[1][0];
+
+      expect(firstCall.date.getFullYear()).toBe(2025);
+      expect(firstCall.date.getMonth()).toBe(0); // January
+      expect(firstCall.date.getDate()).toBe(1);
+
+      expect(secondCall.date.getFullYear()).toBe(2025);
+      expect(secondCall.date.getMonth()).toBe(1); // February
+      expect(secondCall.date.getDate()).toBe(17);
 
       expect(result.holidays[0].date).toBe('2025-01-01');
       expect(result.holidays[1].date).toBe('2025-02-17');

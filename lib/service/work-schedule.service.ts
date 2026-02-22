@@ -1,5 +1,6 @@
 import { WorkScheduleController } from '@/lib/controllers';
 import { ScheduleType } from '@prisma/client';
+import { prisma } from '@/lib/db';
 
 export interface PaginationOptions {
   page?: number;
@@ -204,27 +205,6 @@ export class WorkScheduleService {
     }
   }
 
-  async calculateNightDifferentialMinutes(
-    clockIn: Date,
-    clockOut: Date,
-    schedule: any
-  ): Promise<number> {
-    let nightMinutes = 0;
-    let current = new Date(clockIn);
-
-    while (current < clockOut) {
-      const timeStr = `${current.getHours().toString().padStart(2, '0')}:${current.getMinutes().toString().padStart(2, '0')}`;
-      
-      if (await this.isNightShift(timeStr, schedule)) {
-        nightMinutes++;
-      }
-
-      current.setMinutes(current.getMinutes() + 1);
-    }
-
-    return nightMinutes;
-  }
-
   async getWorkDaysForPeriod(
     schedule: any,
     startDate: Date,
@@ -400,6 +380,32 @@ export class WorkScheduleService {
     }
   }
 
+  async calculateNightDifferentialMinutes(
+    clockInAt: Date,
+    clockOutAt: Date,
+    workSchedule?: any
+  ): Promise<number> {
+    // If no work schedule provided, return 0
+    if (!workSchedule) {
+      return 0;
+    }
+
+    let nightMinutes = 0;
+    const startTime = new Date(clockInAt);
+    const endTime = new Date(clockOutAt);
+
+    // Iterate through each minute of the work period
+    for (let current = new Date(startTime); current < endTime; current.setMinutes(current.getMinutes() + 1)) {
+      const timeStr = `${current.getHours().toString().padStart(2, '0')}:${current.getMinutes().toString().padStart(2, '0')}`;
+
+      if (await this.isNightShift(timeStr, workSchedule)) {
+        nightMinutes++;
+      }
+    }
+
+    return nightMinutes;
+  }
+
   private isValidTimeFormat(time: string): boolean {
     const timeRegex = /^([01]?[0-9]|2[0-3]):[0-5][0-9]$/;
     return timeRegex.test(time);
@@ -410,7 +416,6 @@ let workScheduleService: WorkScheduleService;
 
 export function getWorkScheduleService(): WorkScheduleService {
   if (!workScheduleService) {
-    const { prisma } = require('@/lib/db');
     const controller = new WorkScheduleController(prisma);
     workScheduleService = new WorkScheduleService(controller);
   }

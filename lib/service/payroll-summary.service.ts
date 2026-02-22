@@ -10,6 +10,7 @@ import { getWorkScheduleService } from '@/lib/service/work-schedule.service';
 import { getLateDeductionPolicyService } from '@/lib/service/late-deduction-policy.service';
 import { prisma } from '@/lib/db';
 import { getEmployeePayrollMetrics } from '@/lib/utils/payroll-calculations';
+import { sharedPayrollCalculation } from './shared-payroll-calculation';
 
 export interface PayrollSummaryRequest {
   organizationId: string;
@@ -162,26 +163,35 @@ export class PayrollSummaryService {
             
             if (compensation) {
               try {
-                // Use shared utility for metrics calculation
-                const metrics = await getEmployeePayrollMetrics(
-                  emp.id,
-                  organizationId,
+                // Use shared calculation service for consistency
+                const payrollData = await sharedPayrollCalculation.calculatePayroll({
+                  employeeId: emp.id,
+                  organizationId: organizationId,
+                  departmentId: departmentId,
+                  periodStart: periodStart,
+                  periodEnd: periodEnd,
+                  options: {
+                    persistData: false // Preview mode
+                  }
+                });
+                
+                const transformedData = await sharedPayrollCalculation.transformToEmployeePayrollData(
+                  payrollData,
                   periodStart,
-                  periodEnd,
-                  compensation
+                  periodEnd
                 );
 
                 // Set late data
-                if (metrics.lateMinutes > 0) {
+                if (transformedData.attendance.lateMinutes > 0) {
                   latenessData.set(emp.id, { 
-                    minutes: metrics.lateMinutes, 
-                    instances: metrics.lateInstances 
+                    minutes: transformedData.attendance.lateMinutes, 
+                    instances: transformedData.attendance.lateDays 
                   });
                 }
 
                 // Set absence data
-                if (metrics.absentDays > 0) {
-                  absenceData.set(emp.id, metrics.absentDays);
+                if (transformedData.attendance.absentDays > 0) {
+                  absenceData.set(emp.id, transformedData.attendance.absentDays);
                 }
               } catch (error) {
                 console.error(`Error checking eligibility for employee ${emp.id}:`, error);
@@ -479,46 +489,32 @@ export class PayrollSummaryService {
     let totalLate = 0;
     let totalAbsence = 0;
 
-    // Calculate deductions for each employee
+    // Calculate deductions for each employee using shared calculation logic
     for (const employee of employees) {
       if (employee.compensations && employee.compensations.length > 0) {
-        // Use the same service as employee payroll page for consistency
         try {
-          const payrollData = await employeePayrollService.getEmployeePayroll(
-            employee.id,
-            organizationId,
-            periodStart,
-            periodEnd
-          );
-          
-          // Add the actual values from payroll data
-          totalTax += payrollData.deductions.withholdingTax;
-          totalPhilhealth += payrollData.deductions.philhealth;
-          totalSSS += payrollData.deductions.sss;
-          totalPagibig += payrollData.deductions.pagibig;
-          
-          // Add policy deductions
-          totalLate += payrollData.deductions.lateDeduction;
-          totalAbsence += payrollData.deductions.absenceDeduction;
-          
-          // Create structured log entry for employee summary
-          const employeeSummaryLog = {
-            type: 'EMPLOYEE_PAYROLL_SUMMARY',
-            timestamp: new Date().toISOString(),
-            organizationId,
+          // Use shared calculation for preview (persistData=false)
+          const calculationResult = await sharedPayrollCalculation.calculatePayroll({
             employeeId: employee.id,
-            payroll: {
-              gross: payrollData.earnings.totalEarnings,
-              net: payrollData.netPay,
-              totalDeductions: payrollData.deductions.totalDeductions + payrollData.deductions.lateDeduction + payrollData.deductions.absenceDeduction
+            organizationId: organizationId,
+            departmentId: departmentId,
+            periodStart: periodStart,
+            periodEnd: periodEnd,
+            options: {
+              persistData: false // Preview mode - don't persist
             }
-          };
-          console.log(`[EMP_SUMMARY] ${JSON.stringify(employeeSummaryLog)}`);
+          });
           
+          // Add the actual values from calculation result
+          totalTax += calculationResult.calculationResult.government_deductions.tax;
+          totalPhilhealth += calculationResult.calculationResult.government_deductions.philhealth;
+          totalSSS += calculationResult.calculationResult.government_deductions.sss;
+          totalPagibig += calculationResult.calculationResult.government_deductions.pagibig;
+          totalLate += calculationResult.calculationResult.policy_deductions.late;
+          totalAbsence += calculationResult.calculationResult.policy_deductions.absence;
         } catch (error) {
-          console.error(`Error getting payroll for employee ${employee.id}:`, error);
-          // Skip this employee if payroll calculation fails
-          continue;
+          console.error(`[PAYROLL_SUMMARY] Error calculating deductions for employee ${employee.id}:`, error);
+          // Continue with other employees
         }
       }
     }
@@ -527,7 +523,7 @@ export class PayrollSummaryService {
     const policyTotal = totalLate + totalAbsence;
     const grandTotal = governmentTotal + policyTotal;
 
-    // Create structured log entry for organization summary
+    // Log organization summary
     const organizationSummaryLog = {
       type: 'ORGANIZATION_PAYROLL_SUMMARY',
       timestamp: new Date().toISOString(),
@@ -599,29 +595,38 @@ export class PayrollSummaryService {
       if (!compensation) continue; // Skip if no compensation
 
       try {
-        // Use shared utility to get all metrics at once
-        const metrics = await getEmployeePayrollMetrics(
-          employee.id,
-          organizationId,
+        // Use shared calculation service for consistency
+        const payrollData = await sharedPayrollCalculation.calculatePayroll({
+          employeeId: employee.id,
+          organizationId: organizationId,
+          departmentId: departmentId,
+          periodStart: periodStart,
+          periodEnd: periodEnd,
+          options: {
+            persistData: false // Preview mode
+          }
+        });
+        
+        const transformedData = await sharedPayrollCalculation.transformToEmployeePayrollData(
+          payrollData,
           periodStart,
-          periodEnd,
-          compensation
+          periodEnd
         );
         
         // Update totals
-        if (metrics.lateInstances > 0) {
-          totalLateInstances += metrics.lateInstances;
-          totalLateMinutes += metrics.lateMinutes;
+        if (transformedData.attendance.lateDays > 0) {
+          totalLateInstances += transformedData.attendance.lateDays;
+          totalLateMinutes += transformedData.attendance.lateMinutes;
           lateAffectedEmployees++;
         }
         
-        if (metrics.absentDays > 0) {
-          totalAbsences += metrics.absentDays;
+        if (transformedData.attendance.absentDays > 0) {
+          totalAbsences += transformedData.attendance.absentDays;
           absenceAffectedEmployees++;
         }
         
-        if (metrics.undertimeMinutes > 0) {
-          totalUndertimeMinutes += metrics.undertimeMinutes;
+        if (transformedData.attendance.undertimeMinutes > 0) {
+          totalUndertimeMinutes += transformedData.attendance.undertimeMinutes;
           undertimeAffectedEmployees++;
         }
       } catch (error) {

@@ -196,15 +196,10 @@ export async function getEmployeePayrollMetrics(
 }
 
 /**
- * Get payroll calculation service instance (lazy loaded)
+ * Get payroll calculation service instance
  */
-let payrollCalculationService: PayrollCalculationService;
 function getPayrollCalculationService(): PayrollCalculationService {
-  if (!payrollCalculationService) {
-    const container = getServiceContainer();
-    payrollCalculationService = container.getPayrollCalculationService();
-  }
-  return payrollCalculationService;
+  return getServiceContainer().getPayrollCalculationService();
 }
 
 /**

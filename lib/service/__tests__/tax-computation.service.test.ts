@@ -14,6 +14,7 @@ describe('TaxComputationService', () => {
     mockTaxBracketController = {
       findApplicableBracket: vi.fn(),
       findMany: vi.fn(),
+      findBracketsByDateRange: vi.fn(),
     };
     
     service = new TaxComputationService(mockTaxBracketController);
@@ -51,10 +52,10 @@ describe('TaxComputationService', () => {
           rate: 0.20,
         },
         annualBaseTax: 0, // 0 * 12
-        excessOverMin: 33674, // 284070 - (20833 * 12)
-        taxOnExcess: 6734.80, // 33674 * 0.20
-        annualTax: 6734.80,
-        monthlyTax: 561.23, // 6734.80 / 12
+        excessOverMin: 34074, // 284070 - (20833 * 12)
+        taxOnExcess: 6814.80, // 34074 * 0.20
+        annualTax: 6814.80,
+        monthlyTax: 567.90, // 6814.80 / 12
         isMinimumWage: false,
       });
     });
@@ -171,7 +172,11 @@ describe('TaxComputationService', () => {
       );
 
       // Should calculate tax based on bonus alone
-      expect(result).toBeCloseTo(8333.33, 2); // 50,000 * 0.20 (annual)
+      // 50,000 total income
+      // minSalary in mock is 20,833
+      // excess = 50,000 - 20,833 = 29,167
+      // tax = 29,167 * 0.20 = 5833.40
+      expect(result).toBeCloseTo(5833.40, 2);
     });
 
     it('should handle bonus that pushes to higher tax bracket', async () => {
@@ -218,7 +223,7 @@ describe('TaxComputationService', () => {
         },
       ];
 
-      mockTaxBracketController.findMany.mockResolvedValue(mockTaxBrackets);
+      mockTaxBracketController.findBracketsByDateRange.mockResolvedValue(mockTaxBrackets);
 
       const payrollPeriod = {
         start: new Date('2024-01-01'),
@@ -258,12 +263,21 @@ describe('TaxComputationService', () => {
           rate: 0.20,
         },
         annualBaseTax: 0,
-        excessOverMin: 33674,
-        taxOnExcess: 6734.80,
-        annualTax: 6734.80,
-        monthlyTax: 561.23,
+        excessOverMin: 34074,
+        taxOnExcess: 6814.80,
+        annualTax: 6814.80,
+        monthlyTax: 567.90,
         isMinimumWage: false,
       };
+
+      // Mock the currentBracket check in validation
+      mockTaxBracketController.findApplicableBracket.mockResolvedValue({
+        id: '20833', // Matches minSalary
+        minSalary: 20833,
+        maxSalary: 33333,
+        baseTax: 0,
+        rate: 0.20,
+      });
 
       const result = await service.validateTaxComputation(
         mockOrganizationId,
@@ -375,7 +389,7 @@ describe('TaxComputationService', () => {
         },
       ];
 
-      mockTaxBracketController.findMany.mockResolvedValue(mockTaxBrackets);
+      mockTaxBracketController.findBracketsByDateRange.mockResolvedValue(mockTaxBrackets);
 
       const result = await service.getTaxSummary(mockOrganizationId, 2024);
 

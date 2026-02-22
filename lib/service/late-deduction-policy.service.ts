@@ -1,6 +1,7 @@
 import { LateDeductionPolicyController } from '@/lib/controllers';
 import { LatePolicyType, DeductionMethod } from '@prisma/client';
 import { generateULID } from '@/lib/utils/ulid.service';
+import { prisma } from '@/lib/db';
 
 export interface PaginationOptions {
   page?: number;
@@ -274,7 +275,6 @@ let lateDeductionPolicyService: LateDeductionPolicyService;
 
 export function getLateDeductionPolicyService(): LateDeductionPolicyService {
   if (!lateDeductionPolicyService) {
-    const { prisma } = require('@/lib/db');
     const controller = new LateDeductionPolicyController(prisma);
     lateDeductionPolicyService = new LateDeductionPolicyService(controller);
   }
