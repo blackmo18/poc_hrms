@@ -592,4 +592,313 @@ describe('PayrollSummaryService', () => {
       expect(employeeController.getAll).toHaveBeenCalledWith('org-123', 'dept-456', { page: 1, limit: 1 });
       expect(result).toBe(3);
     });
-});
+  });
+
+  describe('getStatusCounts', () => {
+    let service: PayrollSummaryService;
+    let mockOrganizationId: string;
+    let mockDepartmentId: string;
+    let mockPeriodStart: Date;
+    let mockPeriodEnd: Date;
+
+    beforeEach(() => {
+      service = new PayrollSummaryService();
+      mockOrganizationId = 'org-123';
+      mockDepartmentId = 'dept-456';
+      mockPeriodStart = new Date('2024-01-01');
+      mockPeriodEnd = new Date('2024-01-31');
+    });
+
+    it('should return status counts from existing payrolls', async () => {
+      const mockPayrolls = [
+        { 
+          id: '1', 
+          status: 'DRAFT',
+          employeeId: 'emp1',
+          periodStart: mockPeriodStart,
+          periodEnd: mockPeriodEnd,
+          totalDeductions: 0,
+          taxDeduction: 0,
+          philhealthDeduction: 0,
+          sssDeduction: 0,
+          pagibigDeduction: 0,
+          grossPay: 0,
+          netPay: 0,
+          processedAt: new Date(),
+          employee: {
+            id: 'emp1',
+            employeeId: 'EMP001',
+            firstName: 'John',
+            lastName: 'Doe',
+            department: { name: 'IT' }
+          },
+          deductions: []
+        },
+        { 
+          id: '2', 
+          status: 'COMPUTED',
+          employeeId: 'emp2',
+          periodStart: mockPeriodStart,
+          periodEnd: mockPeriodEnd,
+          totalDeductions: 0,
+          taxDeduction: 0,
+          philhealthDeduction: 0,
+          sssDeduction: 0,
+          pagibigDeduction: 0,
+          grossPay: 0,
+          netPay: 0,
+          processedAt: new Date(),
+          employee: {
+            id: 'emp2',
+            employeeId: 'EMP002',
+            firstName: 'Jane',
+            lastName: 'Smith',
+            department: { name: 'HR' }
+          },
+          deductions: []
+        },
+        { 
+          id: '3', 
+          status: 'APPROVED',
+          employeeId: 'emp3',
+          periodStart: mockPeriodStart,
+          periodEnd: mockPeriodEnd,
+          totalDeductions: 0,
+          taxDeduction: 0,
+          philhealthDeduction: 0,
+          sssDeduction: 0,
+          pagibigDeduction: 0,
+          grossPay: 0,
+          netPay: 0,
+          processedAt: new Date(),
+          employee: {
+            id: 'emp3',
+            employeeId: 'EMP003',
+            firstName: 'Bob',
+            lastName: 'Johnson',
+            department: { name: 'Finance' }
+          },
+          deductions: []
+        },
+        { 
+          id: '4', 
+          status: 'RELEASED',
+          employeeId: 'emp4',
+          periodStart: mockPeriodStart,
+          periodEnd: mockPeriodEnd,
+          totalDeductions: 0,
+          taxDeduction: 0,
+          philhealthDeduction: 0,
+          sssDeduction: 0,
+          pagibigDeduction: 0,
+          grossPay: 0,
+          netPay: 0,
+          processedAt: new Date(),
+          employee: {
+            id: 'emp4',
+            employeeId: 'EMP004',
+            firstName: 'Alice',
+            lastName: 'Brown',
+            department: { name: 'IT' }
+          },
+          deductions: []
+        },
+        { 
+          id: '5', 
+          status: 'COMPUTED',
+          employeeId: 'emp5',
+          periodStart: mockPeriodStart,
+          periodEnd: mockPeriodEnd,
+          totalDeductions: 0,
+          taxDeduction: 0,
+          philhealthDeduction: 0,
+          sssDeduction: 0,
+          pagibigDeduction: 0,
+          grossPay: 0,
+          netPay: 0,
+          processedAt: new Date(),
+          employee: {
+            id: 'emp5',
+            employeeId: 'EMP005',
+            firstName: 'Charlie',
+            lastName: 'Wilson',
+            department: { name: 'HR' }
+          },
+          deductions: []
+        },
+      ];
+
+      vi.mocked(payrollController.getPayrollsByOrganizationAndPeriod).mockResolvedValue(mockPayrolls);
+
+      const result = await service.getStatusCounts(
+        mockOrganizationId,
+        mockDepartmentId,
+        mockPeriodStart,
+        mockPeriodEnd
+      );
+
+      expect(result).toEqual({
+        DRAFT: 1,
+        COMPUTED: 2,
+        APPROVED: 1,
+        RELEASED: 1,
+        VOIDED: 0,
+      });
+    });
+
+    it('should return zeros when no existing payrolls', async () => {
+      vi.mocked(payrollController.getPayrollsByOrganizationAndPeriod).mockResolvedValue([]);
+
+      const result = await service.getStatusCounts(
+        mockOrganizationId,
+        mockDepartmentId,
+        mockPeriodStart,
+        mockPeriodEnd
+      );
+
+      expect(result).toEqual({
+        DRAFT: 0,
+        COMPUTED: 0,
+        APPROVED: 0,
+        RELEASED: 0,
+        VOIDED: 0,
+      });
+    });
+
+    it('should handle errors gracefully', async () => {
+      vi.mocked(payrollController.getPayrollsByOrganizationAndPeriod).mockRejectedValue(new Error('Database error'));
+
+      const result = await service.getStatusCounts(
+        mockOrganizationId,
+        mockDepartmentId,
+        mockPeriodStart,
+        mockPeriodEnd
+      );
+
+      expect(result).toEqual({
+        DRAFT: 0,
+        COMPUTED: 0,
+        APPROVED: 0,
+        RELEASED: 0,
+        VOIDED: 0,
+      });
+    });
+  });
+
+  describe('generateSummary with API compatibility', () => {
+    let service: PayrollSummaryService;
+    let mockOrganizationId: string;
+    let mockDepartmentId: string;
+    let mockPeriodStart: Date;
+    let mockPeriodEnd: Date;
+
+    beforeEach(() => {
+      service = new PayrollSummaryService();
+      mockOrganizationId = 'org-123';
+      mockDepartmentId = 'dept-456';
+      mockPeriodStart = new Date('2024-01-01');
+      mockPeriodEnd = new Date('2024-01-31');
+    });
+
+    it('should include summary, payrolls, and pagination fields for existing payrolls', async () => {
+      const mockPayrolls = [
+        {
+          id: '1',
+          employeeId: 'emp1',
+          periodStart: mockPeriodStart,
+          periodEnd: mockPeriodEnd,
+          grossPay: 5000,
+          totalDeductions: 1000,
+          netPay: 4000,
+          status: 'RELEASED',
+          taxDeduction: 500,
+          philhealthDeduction: 300,
+          sssDeduction: 150,
+          pagibigDeduction: 50,
+          processedAt: new Date(),
+          employee: { 
+            id: 'emp1',
+            employeeId: 'EMP001', 
+            firstName: 'John', 
+            lastName: 'Doe', 
+            department: { name: 'IT' } 
+          },
+          deductions: [{ type: 'TAX', amount: 500 }, { type: 'SSS', amount: 500 }]
+        }
+      ];
+
+      vi.mocked(payrollController.getPayrollsByOrganizationAndPeriod).mockResolvedValue(mockPayrolls);
+      vi.mocked(employeeController.getAll).mockResolvedValue({
+        data: [],
+        pagination: { total: 1, page: 1, limit: 50, totalPages: 1, hasNext: false, hasPrev: false }
+      });
+
+      const result = await service.generateSummary(
+        mockOrganizationId,
+        mockDepartmentId,
+        mockPeriodStart,
+        mockPeriodEnd,
+        { page: 1, limit: 50 }
+      );
+
+      // Check API compatibility fields
+      expect(result.summary).toBeDefined();
+      expect(result.summary?.totalPayrolls).toBe(1);
+      expect(result.summary?.totalGrossPay).toBe(5000);
+      expect(result.summary?.totalDeductions).toBe(1000);
+      expect(result.summary?.totalNetPay).toBe(4000);
+      expect(result.summary?.statusCounts).toEqual({
+        DRAFT: 0,
+        COMPUTED: 1,
+        APPROVED: 1,
+        RELEASED: 1,
+        VOIDED: 0,
+      });
+
+      expect(result.payrolls).toBeDefined();
+      expect(result.payrolls).toEqual(mockPayrolls);
+
+      expect(result.pagination).toBeDefined();
+      expect(result.pagination?.page).toBe(1);
+      expect(result.pagination?.limit).toBe(50);
+      expect(result.pagination?.totalPages).toBe(1);
+      expect(result.pagination?.totalRecords).toBe(1);
+    });
+
+    it('should include empty summary, payrolls, and pagination for calculation mode', async () => {
+      vi.mocked(payrollController.getPayrollsByOrganizationAndPeriod).mockResolvedValue([]);
+      vi.mocked(employeeController.getAll).mockResolvedValue({
+        data: [],
+        pagination: { total: 0, page: 1, limit: 50, totalPages: 0, hasNext: false, hasPrev: false }
+      });
+
+      const result = await service.generateSummary(
+        mockOrganizationId,
+        mockDepartmentId,
+        mockPeriodStart,
+        mockPeriodEnd,
+        { page: 2, limit: 25 }
+      );
+
+      // Check API compatibility fields for calculation mode
+      expect(result.summary).toBeDefined();
+      expect(result.summary?.totalPayrolls).toBe(0);
+      expect(result.summary?.totalGrossPay).toBe(0);
+      expect(result.summary?.totalDeductions).toBe(0);
+      expect(result.summary?.totalNetPay).toBe(0);
+      expect(result.summary?.statusCounts).toEqual({
+        DRAFT: 0,
+        COMPUTED: 0,
+        APPROVED: 0,
+        RELEASED: 0,
+        VOIDED: 0,
+      });
+
+      expect(result.payrolls).toEqual([]);
+
+      expect(result.pagination?.page).toBe(2);
+      expect(result.pagination?.limit).toBe(25);
+      expect(result.pagination?.totalPages).toBe(0);
+      expect(result.pagination?.totalRecords).toBe(0);
+    });
+  });

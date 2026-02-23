@@ -50,35 +50,12 @@ const logger = winston.createLogger({
   ),
   defaultMeta: { service: 'hr-payroll-system' },
   transports: [
-    // Console transport for development
+    // Console transport for development and production
     new winston.transports.Console({
       format: logFormat,
     }),
-    // File transport for errors
-    new winston.transports.File({
-      filename: 'logs/error.log',
-      level: 'error',
-      format: winston.format.combine(
-        winston.format.timestamp(),
-        winston.format.json()
-      ),
-    }),
-    // File transport for all logs
-    new winston.transports.File({
-      filename: 'logs/combined.log',
-      format: winston.format.combine(
-        winston.format.timestamp(),
-        winston.format.json()
-      ),
-    }),
   ],
 });
-
-// Create logs directory if it doesn't exist
-import { existsSync, mkdirSync } from 'fs';
-if (!existsSync('logs')) {
-  mkdirSync('logs');
-}
 
 // Helper function to get caller information
 const getCaller = () => {

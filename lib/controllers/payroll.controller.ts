@@ -109,6 +109,26 @@ export class PayrollController {
         totalDeductions: true,
         grossPay: true,
         netPay: true,
+        employee: {
+          select: {
+            id: true,
+            employeeId: true,
+            firstName: true,
+            lastName: true,
+            department: {
+              select: {
+                name: true
+              }
+            }
+          }
+        },
+        deductions: {
+          select: {
+            id: true,
+            type: true,
+            amount: true
+          }
+        }
       },
       orderBy: {
         processedAt: 'desc',

@@ -75,8 +75,11 @@ export interface PayrollSummaryResponse {
     currentStatus: 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED';
     lastGeneratedAt?: string;
     hasExistingRun: boolean;
+    generatedCount?: number;
+    approvedCount?: number;
+    releasedCount?: number;
   };
-  deductions: {
+  deductions?: {
     totals: {
       tax: number;
       philhealth: number;
@@ -91,7 +94,7 @@ export interface PayrollSummaryResponse {
       policy: number;
     };
   };
-  metrics: {
+  metrics?: {
     lateness: {
       totalLateInstances: number;
       totalLateMinutes: number;
@@ -106,6 +109,27 @@ export interface PayrollSummaryResponse {
       affectedEmployees: number;
     };
   };
+  // API compatibility fields
+  summary?: {
+    totalPayrolls: number;
+    totalGrossPay: number;
+    totalDeductions: number;
+    totalNetPay: number;
+    statusCounts: {
+      DRAFT: number;
+      COMPUTED: number;
+      APPROVED: number;
+      RELEASED: number;
+      VOIDED: number;
+    };
+  };
+  payrolls?: any[];
+  pagination?: {
+    page: number;
+    limit: number;
+    totalPages: number;
+    totalRecords: number;
+  };
 }
 
 export class PayrollSummaryService {
@@ -118,18 +142,76 @@ export class PayrollSummaryService {
     organizationId: string,
     departmentId: string | undefined,
     periodStart: Date,
-    periodEnd: Date
+    periodEnd: Date,
+    options?: { status?: string; employeeId?: string; page?: number; limit?: number }
   ): Promise<PayrollSummaryResponse> {
     // Check for existing payroll data first
     const existingPayrollData = await this.getExistingPayrollData(organizationId, departmentId, periodStart, periodEnd);
 
     if (existingPayrollData.hasExistingPayrolls) {
       // Use existing payroll data for summary
-      return this.generateSummaryFromExistingPayrolls(existingPayrollData, organizationId, departmentId, periodStart, periodEnd);
+      return this.generateSummaryFromExistingPayrolls(existingPayrollData, organizationId, departmentId, periodStart, periodEnd, options);
     }
 
     // Fall back to calculation-based summary if no existing payrolls
-    return this.generateSummaryFromCalculations(organizationId, departmentId, periodStart, periodEnd);
+    return this.generateSummaryFromCalculations(organizationId, departmentId, periodStart, periodEnd, options);
+  }
+
+  async getStatusCounts(
+    organizationId: string,
+    departmentId: string | undefined,
+    periodStart: Date,
+    periodEnd: Date
+  ): Promise<{
+    DRAFT: number;
+    COMPUTED: number;
+    APPROVED: number;
+    RELEASED: number;
+    VOIDED: number;
+  }> {
+    try {
+      // Get existing payroll data for the period
+      const existingPayrollData = await this.getExistingPayrollData(organizationId, departmentId, periodStart, periodEnd);
+
+      if (!existingPayrollData.hasExistingPayrolls) {
+        // No existing payrolls, return all zeros
+        return {
+          DRAFT: 0,
+          COMPUTED: 0,
+          APPROVED: 0,
+          RELEASED: 0,
+          VOIDED: 0,
+        };
+      }
+
+      // Count by status from existing payrolls
+      const statusCounts = {
+        DRAFT: 0,
+        COMPUTED: 0,
+        APPROVED: 0,
+        RELEASED: 0,
+        VOIDED: 0,
+      };
+
+      existingPayrollData.payrolls.forEach(payroll => {
+        const status = payroll.status as keyof typeof statusCounts;
+        if (status in statusCounts) {
+          statusCounts[status]++;
+        }
+      });
+
+      return statusCounts;
+    } catch (error) {
+      console.error('Error getting status counts:', error);
+      // Return zeros on error
+      return {
+        DRAFT: 0,
+        COMPUTED: 0,
+        APPROVED: 0,
+        RELEASED: 0,
+        VOIDED: 0,
+      };
+    }
   }
 
   private async getExistingPayrollData(
@@ -152,9 +234,11 @@ export class PayrollSummaryService {
       hasExistingPayrolls,
       payrolls: existingPayrolls,
       totalPayrolls: existingPayrolls.length,
+      draftPayrolls: existingPayrolls.filter(p => p.status === 'DRAFT'),
       generatedPayrolls: existingPayrolls.filter(p => p.status === 'COMPUTED' || p.status === 'APPROVED' || p.status === 'RELEASED'),
       approvedPayrolls: existingPayrolls.filter(p => p.status === 'APPROVED' || p.status === 'RELEASED'),
-      releasedPayrolls: existingPayrolls.filter(p => p.status === 'RELEASED')
+      releasedPayrolls: existingPayrolls.filter(p => p.status === 'RELEASED'),
+      voidedPayrolls: existingPayrolls.filter(p => p.status === 'VOIDED')
     };
   }
 
@@ -163,7 +247,8 @@ export class PayrollSummaryService {
     organizationId: string,
     departmentId: string | undefined,
     periodStart: Date,
-    periodEnd: Date
+    periodEnd: Date,
+    options?: { status?: string; employeeId?: string; page?: number; limit?: number }
   ): Promise<PayrollSummaryResponse> {
     // Log critical flow decision - using existing payroll data
     logWarn('Using existing payroll data for summary', {
@@ -235,6 +320,27 @@ export class PayrollSummaryService {
       payrollStatus,
       deductions,
       metrics,
+      // Add summary and pagination for API compatibility
+      summary: {
+        totalPayrolls: payrollData.totalPayrolls,
+        totalGrossPay: payrollData.payrolls.reduce((sum: number, p: any) => sum + (p.grossPay || 0), 0),
+        totalDeductions: payrollData.payrolls.reduce((sum: number, p: any) => sum + (p.totalDeductions || 0), 0),
+        totalNetPay: payrollData.payrolls.reduce((sum: number, p: any) => sum + (p.netPay || 0), 0),
+        statusCounts: {
+          DRAFT: payrollData.draftPayrolls.length,
+          COMPUTED: payrollData.generatedPayrolls.length,
+          APPROVED: payrollData.approvedPayrolls.length,
+          RELEASED: payrollData.releasedPayrolls.length,
+          VOIDED: payrollData.voidedPayrolls.length,
+        }
+      },
+      payrolls: payrollData.payrolls,
+      pagination: {
+        page: options?.page || 1,
+        limit: options?.limit || 50,
+        totalPages: Math.ceil(payrollData.totalPayrolls / (options?.limit || 50)),
+        totalRecords: payrollData.totalPayrolls,
+      }
     };
   }
 
@@ -258,11 +364,13 @@ export class PayrollSummaryService {
         where: { payrollId: payroll.id }
       });
 
-      for (const deduction of deductions) {
-        if (deduction.type === 'LATE') {
-          totalLate += deduction.amount;
-        } else if (deduction.type === 'ABSENCE') {
-          totalAbsence += deduction.amount;
+      if (deductions && Array.isArray(deductions)) {
+        for (const deduction of deductions) {
+          if (deduction.type === 'LATE') {
+            totalLate += deduction.amount;
+          } else if (deduction.type === 'ABSENCE') {
+            totalAbsence += deduction.amount;
+          }
         }
       }
     }
@@ -350,7 +458,8 @@ export class PayrollSummaryService {
     organizationId: string,
     departmentId: string | undefined,
     periodStart: Date,
-    periodEnd: Date
+    periodEnd: Date,
+    options?: { status?: string; employeeId?: string; page?: number; limit?: number }
   ): Promise<PayrollSummaryResponse> {
     // Get total employees in organization/department
     const totalEmployees = await this.getEmployeeCount(organizationId, departmentId);
@@ -487,6 +596,27 @@ export class PayrollSummaryService {
       payrollStatus,
       deductions,
       metrics,
+      // Add summary and pagination for API compatibility
+      summary: {
+        totalPayrolls: 0, // No payrolls generated yet in calculation mode
+        totalGrossPay: 0,
+        totalDeductions: 0,
+        totalNetPay: 0,
+        statusCounts: {
+          DRAFT: 0,
+          COMPUTED: 0,
+          APPROVED: 0,
+          RELEASED: 0,
+          VOIDED: 0,
+        }
+      },
+      payrolls: [], // No payrolls in calculation mode
+      pagination: {
+        page: options?.page || 1,
+        limit: options?.limit || 50,
+        totalPages: 0,
+        totalRecords: 0,
+      }
     };
   }
 
