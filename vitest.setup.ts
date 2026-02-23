@@ -340,3 +340,23 @@ global.createMockPayrollPeriod = (overrides = {}) => ({
 // Console warnings for tests
 console.warn = vi.fn();
 console.error = vi.fn();
+
+// Mock Winston logger to prevent actual log output during tests
+vi.mock('@/lib/utils/logger', () => ({
+  logger: {
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+    debug: vi.fn(),
+  },
+  logInfo: vi.fn(),
+  logWarn: vi.fn(),
+  logError: vi.fn(),
+  logDebug: vi.fn(),
+  default: {
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+    debug: vi.fn(),
+  },
+}));

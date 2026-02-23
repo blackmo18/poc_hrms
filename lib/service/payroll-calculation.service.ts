@@ -8,6 +8,7 @@ import {
   calculateActualAbsentDays as sharedCalculateActualAbsentDays,
   calculateCompletePayroll as externalCalculateCompletePayroll
 } from '../utils/payroll-calculations';
+import { logInfo } from '@/lib/utils/logger';
 import { DIContainer } from '../di/container';
 import { prisma } from '../db';
 
@@ -581,7 +582,7 @@ export class PayrollCalculationService {
       }
     };
 
-    console.log(`[PAYROLL] ${JSON.stringify(payrollLog)}`);
+    logInfo('PAYROLL_CALCULATION', payrollLog);
 
     return {
       employeeId,

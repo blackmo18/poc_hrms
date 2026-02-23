@@ -4,11 +4,13 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import OrganizationFilter from '@/components/common/OrganizationFilter';
 import { Card, CardHeader, CardContent } from '@/components/ui/card';
+import { TooltipProvider } from '@/components/ui/tooltip';
 import { PayrollSelectionPanel } from './components/PayrollSelectionPanel';
 import { PayrollSummaryButton } from './components/PayrollSummaryButton';
 import { PayrollSummaryResults } from './components/PayrollSummaryResults';
 import { ActionButtons } from './components/ActionButtons';
 import { MissingAttendanceModal } from './components/MissingAttendanceModal';
+import { PayrollInformationPanel } from './components/PayrollInformationPanel';
 import { ProtectedRoute } from '@/components/protected-route';
 import PageBreadcrumb from '@/components/common/PageBreadCrumb';
 import { ADMINSTRATIVE_ROLES } from '@/lib/constants/roles';
@@ -16,7 +18,6 @@ import { useAuth } from '@/components/providers/auth-provider';
 import { usePayrollPeriods } from '@/hooks/usePayrollPeriods';
 import { useOrganizationFilter } from '@/hooks/useOrganizationFilter';
 import RoleComponentWrapper from '@/components/common/RoleComponentWrapper';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 function PayrollRunContent() {
   console.log('PayrollRunContent render - new render');
@@ -48,6 +49,75 @@ function PayrollRunContent() {
   
   // Modal state
   const [isMissingAttendanceModalOpen, setIsMissingAttendanceModalOpen] = useState(false);
+  
+  // Track if payroll was just generated
+  const [justGeneratedPayroll, setJustGeneratedPayroll] = useState(false);
+
+  // Function to determine period status based on payroll summary
+  const getPeriodStatus = (): 'DRAFT' | 'COMPUTED' | 'APPROVED' | 'RELEASED' | 'VOIDED' | undefined => {
+    // If no cutoff selected, no status
+    if (!selectedCutoff) return undefined;
+    
+    // If we just generated payroll, show as computed
+    if (justGeneratedPayroll) return 'COMPUTED';
+    
+    // If no payroll summary, assume draft
+    if (!payrollSummary) return 'DRAFT';
+    
+    const { payrollStatus } = payrollSummary;
+    if (!payrollStatus) return 'DRAFT';
+    
+    // Check if we have the detailed counts (from ActionButtons usage)
+    if (payrollStatus.generatedCount !== undefined || 
+        payrollStatus.approvedCount !== undefined || 
+        payrollStatus.releasedCount !== undefined) {
+      
+      const { generatedCount, approvedCount, releasedCount, voidedCount, totalCount } = payrollStatus;
+      
+      // If any are voided, show as voided (this is the most critical status)
+      if (voidedCount > 0) return 'VOIDED';
+      
+      // If all are released, show as released
+      if (releasedCount === totalCount && totalCount > 0) return 'RELEASED';
+      
+      // If all are approved, show as approved
+      if (approvedCount === totalCount && totalCount > 0) return 'APPROVED';
+      
+      // If any are computed/generated, show as computed
+      if (generatedCount > 0) return 'COMPUTED';
+      
+      // If no payrolls exist, it's draft
+      return 'DRAFT';
+    }
+    // Otherwise use the currentStatus field
+    else if (payrollStatus.currentStatus) {
+      const { currentStatus, hasExistingRun } = payrollStatus;
+      
+      // Map the currentStatus to our period status
+      switch (currentStatus) {
+        case 'PENDING':
+          return hasExistingRun ? 'COMPUTED' : 'DRAFT';
+        case 'PROCESSING':
+          return 'COMPUTED';
+        case 'COMPLETED':
+          return 'RELEASED';
+        case 'FAILED':
+          return 'VOIDED';
+        default:
+          return 'DRAFT';
+      }
+    }
+    
+    // Default to draft if we have a cutoff but no clear status
+    return 'DRAFT';
+  };
+
+  // Log period status for debugging
+  useEffect(() => {
+    const status = getPeriodStatus();
+    console.log('[PayrollRun] Period status:', status);
+    console.log('[PayrollRun] Full payrollStatus data:', payrollSummary?.payrollStatus);
+  }, [payrollSummary, selectedCutoff]);
   const [selectedEmployeeForAttendance, setSelectedEmployeeForAttendance] = useState<string | null>(null);
   
   const { user } = useAuth();
@@ -110,15 +180,17 @@ function PayrollRunContent() {
   useEffect(() => {
     const orgId = isSuperAdmin ? selectedOrganization : (user?.organizationId || null);
     fetchDepartments(orgId);
-    // Reset payroll summary when organization changes
+    // Reset payroll summary and generated flag when organization changes
     setPayrollSummary(null);
     setEligibleEmployees([]);
+    setJustGeneratedPayroll(false);
   }, [selectedOrganization, isSuperAdmin, user?.organizationId, fetchDepartments]);
 
-  // Reset payroll summary when organization or department changes
+  // Reset payroll summary when cutoff changes
   useEffect(() => {
     setPayrollSummary(null);
     setEligibleEmployees([]);
+    setJustGeneratedPayroll(false);
   }, [selectedDepartment]);
 
   // Listen for payroll summary generated event
@@ -195,6 +267,9 @@ function PayrollRunContent() {
       if (response.ok) {
         const summary = await response.json();
         console.log('Payroll Summary received:', summary);
+        console.log('[PayrollRun] Before update - Current payrollStatus:', payrollSummary?.payrollStatus);
+        console.log('[PayrollRun] New summary payrollStatus:', summary.payrollStatus);
+        
         setPayrollSummary(summary);
         
         // Set eligible employees from summary response
@@ -272,10 +347,15 @@ function PayrollRunContent() {
 
       const results = await Promise.all(payrollPromises);
       console.log('Generated payrolls:', results);
+      console.log('[PayrollRun] Generated payroll data structure:', results[0]); // Log first result structure
+      
+      // Mark that payroll was just generated
+      setJustGeneratedPayroll(true);
 
       alert(`Successfully generated payroll for ${results.length} employees!\n\nPayrolls are now in COMPUTED status and ready for approval.`);
 
       // Refresh the summary to show updated status
+      console.log('[PayrollRun] About to refresh summary after payroll generation');
       await handleGenerateSummary();
 
     } catch (error) {
@@ -569,92 +649,15 @@ function PayrollRunContent() {
           </Card>
 
           {/* Info Panel */}
-          <Card>
-            <CardHeader>
-              <h3 className="text-sm font-semibold">Payroll Information</h3>
-            </CardHeader>
-            <CardContent className="space-y-4 text-sm">
-              <div>
-                <p className="text-gray-600 dark:text-gray-400">Current Period</p>
-                <p className="font-medium">
-                  {selectedCutoff ? (() => {
-                    const parts = selectedCutoff.split('-');
-                    const year = parts[0];
-                    const month = parseInt(parts[1]) - 1;
-                    const startDay = parts[2];
-                    const endDay = parts[3];
-                    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-                    return `${monthNames[month]} ${startDay} - ${endDay}, ${year}`;
-                  })() : 'Not selected'}
-                </p>
-              </div>
-              <div>
-                <p className="text-gray-600 dark:text-gray-400">Employees Ready for Payroll</p>
-                <p className="font-medium">{eligibleEmployees.length} eligible employees</p>
-              </div>
-              <div>
-                <p className="text-gray-600 dark:text-gray-400">Status</p>
-                <p className={`font-medium ${payrollSummary?.readiness?.canGenerate ? 'text-green-600' : 'text-yellow-600'}`}>
-                  {payrollSummary?.readiness?.canGenerate ? 'Ready to Generate' : 'Pending Generation'}
-                </p>
-              </div>
-              
-              {/* Display eligible employees list */}
-              {eligibleEmployees.length > 0 && (
-                <div className="pt-4 border-t">
-                  <p className="text-xs text-gray-500 mb-2">Eligible Employees ({eligibleEmployees.length})</p>
-                  <div className="max-h-64 overflow-y-auto space-y-1">
-                    {eligibleEmployees.map((employee) => (
-                      <Tooltip key={employee.id}>
-                        <TooltipTrigger asChild>
-                          <div 
-                            onClick={() => handleEmployeeClick(employee.id)}
-                            className="flex items-center justify-between text-xs p-2 bg-gray-50 dark:bg-gray-800 rounded hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer transition-colors"
-                          >
-                            <div className="flex items-center space-x-2">
-                              <span className="font-medium">{employee.lastName}, {employee.firstName}</span>
-                              <span className="text-gray-400">({employee.employeeId})</span>
-                              <div className="flex items-center space-x-1">
-                                {employee.hasAttendance ? (
-                                  <span className="text-green-600" title="Has attendance">✓</span>
-                                ) : (
-                                  <span className="text-red-600" title="Missing attendance">✗</span>
-                                )}
-                                {employee.hasWorkSchedule ? (
-                                  <span className="text-blue-600" title="Has work schedule">◉</span>
-                                ) : (
-                                  <span className="text-orange-600" title="Missing work schedule">○</span>
-                                )}
-                                {employee.lateMinutes > 0 && (
-                                  <span className="text-yellow-600" title={`Late: ${employee.lateMinutes} minutes`}>⏰</span>
-                                )}
-                                {employee.absenceCount > 0 && (
-                                  <span className="text-red-600" title={`Absent: ${employee.absenceCount} days`}>⚠</span>
-                                )}
-                              </div>
-                            </div>
-                            <span className="text-gray-500">₱{employee.baseSalary.toLocaleString()}</span>
-                          </div>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>Click to generate employee payroll summary</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    ))}
-                  </div>
-                </div>
-              )}
-              
-              <div className="pt-4 border-t">
-                <p className="text-xs text-gray-500">
-                  Last generated: {payrollSummary?.payrollStatus?.lastGeneratedAt 
-                    ? new Date(payrollSummary.payrollStatus.lastGeneratedAt).toLocaleDateString()
-                    : 'Never'
-                  }
-                </p>
-              </div>
-            </CardContent>
-          </Card>
+          <PayrollInformationPanel
+            selectedCutoff={selectedCutoff}
+            eligibleEmployeesCount={eligibleEmployees.length}
+            canGenerate={payrollSummary?.readiness?.canGenerate || false}
+            lastGeneratedAt={payrollSummary?.payrollStatus?.lastGeneratedAt}
+            eligibleEmployees={eligibleEmployees}
+            onEmployeeClick={handleEmployeeClick}
+            periodStatus={getPeriodStatus()}
+          />
         </div>
       </div>
 

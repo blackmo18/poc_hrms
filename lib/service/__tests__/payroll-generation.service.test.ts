@@ -18,6 +18,18 @@ vi.mock('../payroll-log.service');
 vi.mock('../payroll-earning.service');
 vi.mock('../deduction.service');
 vi.mock('@/lib/di/container');
+// Mock the logger to prevent actual log output
+vi.mock('@/lib/utils/logger', () => ({
+  logInfo: vi.fn(),
+  logWarn: vi.fn(),
+  logError: vi.fn(),
+  logger: {
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+    debug: vi.fn(),
+  },
+}));
 // Import after mocking
 import { payrollController } from '@/lib/controllers/payroll.controller';
 import { PayrollEarningController } from '@/lib/controllers/payroll-earning.controller';

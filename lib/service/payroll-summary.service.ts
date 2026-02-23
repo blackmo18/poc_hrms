@@ -8,6 +8,7 @@ import { holidayService } from '@/lib/service/holiday.service';
 import { getServiceContainer } from '@/lib/di/container';
 import { getWorkScheduleService } from '@/lib/service/work-schedule.service';
 import { getLateDeductionPolicyService } from '@/lib/service/late-deduction-policy.service';
+import { logInfo, logWarn } from '@/lib/utils/logger';
 import { prisma } from '@/lib/db';
 import { getEmployeePayrollMetrics } from '@/lib/utils/payroll-calculations';
 import { sharedPayrollCalculation } from './shared-payroll-calculation';
@@ -165,22 +166,15 @@ export class PayrollSummaryService {
     periodEnd: Date
   ): Promise<PayrollSummaryResponse> {
     // Log critical flow decision - using existing payroll data
-    console.log(`[PAYROLL_SUMMARY_EXISTING] Using existing payroll data for summary`, JSON.stringify({
-      timestamp: new Date().toISOString(),
+    logWarn('Using existing payroll data for summary', {
       organizationId,
       departmentId,
       period: {
         start: periodStart.toISOString().split('T')[0],
         end: periodEnd.toISOString().split('T')[0]
       },
-      existingPayrollData: {
-        totalPayrolls: payrollData.totalPayrolls,
-        generatedPayrolls: payrollData.generatedPayrolls.length,
-        approvedPayrolls: payrollData.approvedPayrolls.length,
-        releasedPayrolls: payrollData.releasedPayrolls.length
-      },
-      status: 'USING_EXISTING_DATA'
-    }));
+      existingPayrollCount: payrollData.payrolls.length
+    });
 
     // Get total employees in organization/department
     const totalEmployees = await this.getEmployeeCount(organizationId, departmentId);
@@ -783,7 +777,7 @@ export class PayrollSummaryService {
         }
       }
     };
-    console.log(`[ORG_SUMMARY] ${JSON.stringify(organizationSummaryLog)}`);
+    logInfo('ORGANIZATION_PAYROLL_SUMMARY', organizationSummaryLog);
 
     return {
       totals: {

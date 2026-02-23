@@ -2,6 +2,7 @@ import { ITaxBracketPrismaController } from '../controllers/prisma/tax-bracket.p
 import { IPhilhealthPrismaController } from '../controllers/prisma/philhealth.prisma.controller';
 import { ISSSPrismaController } from '../controllers/prisma/sss.prisma.controller';
 import { IPagibigPrismaController } from '../controllers/prisma/pagibig.prisma.controller';
+import { logInfo } from '@/lib/utils/logger';
 
 export interface PHDeductionResult {
   tax: number;
@@ -102,7 +103,7 @@ export class PHDeductionsService {
       monthlyRate: monthlyRate || null
     };
 
-    console.log(`[DEDUCTIONS] ${JSON.stringify(deductionLog)}`);
+    logInfo('DEDUCTION_CALCULATION', deductionLog);
 
     return {
       tax,

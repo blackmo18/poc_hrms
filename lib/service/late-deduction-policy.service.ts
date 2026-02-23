@@ -2,6 +2,7 @@ import { LateDeductionPolicyController } from '@/lib/controllers';
 import { LatePolicyType, DeductionMethod } from '@prisma/client';
 import { generateULID } from '@/lib/utils/ulid.service';
 import { prisma } from '@/lib/db';
+import { logInfo, logWarn } from '@/lib/utils/logger';
 
 export interface PaginationOptions {
   page?: number;
@@ -126,7 +127,7 @@ export class LateDeductionPolicyService {
     const policy = await this.getPolicyByType(organizationId, policyType, date);
     
     if (!policy) {
-      console.log(`[PAYROLL] No ${policyType} policy found for organization ${organizationId}`);
+      logWarn(`No ${policyType} policy found for organization ${organizationId}`);
       return 0;
     }
 
@@ -182,7 +183,7 @@ export class LateDeductionPolicyService {
           deduction
         }
       };
-      console.log(`[POLICY] ${JSON.stringify(policyLog)}`);
+      logInfo('POLICY_APPLICATION', policyLog);
     }
     
     return Math.round(deduction * 100) / 100; // Round to 2 decimal places
