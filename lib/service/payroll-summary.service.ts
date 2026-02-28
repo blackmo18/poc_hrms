@@ -146,7 +146,7 @@ export class PayrollSummaryService {
     options?: { status?: string; employeeId?: string; page?: number; limit?: number }
   ): Promise<PayrollSummaryResponse> {
     // Check for existing payroll data first
-    const existingPayrollData = await this.getExistingPayrollData(organizationId, departmentId, periodStart, periodEnd);
+    const existingPayrollData = await this.getExistingPayrollData(organizationId, departmentId, periodStart, periodEnd, options);
 
     if (existingPayrollData.hasExistingPayrolls) {
       // Use existing payroll data for summary
@@ -161,7 +161,8 @@ export class PayrollSummaryService {
     organizationId: string,
     departmentId: string | undefined,
     periodStart: Date,
-    periodEnd: Date
+    periodEnd: Date,
+    options?: { status?: string; employeeId?: string; page?: number; limit?: number }
   ): Promise<{
     DRAFT: number;
     COMPUTED: number;
@@ -171,7 +172,7 @@ export class PayrollSummaryService {
   }> {
     try {
       // Get existing payroll data for the period
-      const existingPayrollData = await this.getExistingPayrollData(organizationId, departmentId, periodStart, periodEnd);
+      const existingPayrollData = await this.getExistingPayrollData(organizationId, departmentId, periodStart, periodEnd, options);
 
       if (!existingPayrollData.hasExistingPayrolls) {
         // No existing payrolls, return all zeros
@@ -218,14 +219,19 @@ export class PayrollSummaryService {
     organizationId: string,
     departmentId: string | undefined,
     periodStart: Date,
-    periodEnd: Date
+    periodEnd: Date,
+    options?: { status?: string; employeeId?: string; page?: number; limit?: number }
   ) {
     // Get existing payrolls for the period
     const existingPayrolls = await payrollController.getPayrollsByOrganizationAndPeriod(
       organizationId,
       departmentId,
       periodStart,
-      periodEnd
+      periodEnd,
+      options?.status,
+      options?.employeeId,
+      options?.page,
+      options?.limit
     );
 
     const hasExistingPayrolls = existingPayrolls.length > 0;

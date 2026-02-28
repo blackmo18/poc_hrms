@@ -80,26 +80,34 @@ export class PayrollController {
     organizationId: string,
     departmentId: string | undefined,
     periodStart: Date,
-    periodEnd: Date
+    periodEnd: Date,
+    status?: string,
+    employeeId?: string,
+    page?: number,
+    limit?: number
   ) {
-    return await prisma.payroll.findMany({
-      where: {
-        organizationId,
-        ...(departmentId && { departmentId }),
-        // Check if payroll period overlaps with the filter period
-        AND: [
-          {
-            periodStart: {
-              lte: periodEnd, // Payroll start is before or equal to filter end
-            },
+    const whereClause = {
+      organizationId,
+      ...(departmentId && { departmentId }),
+      ...(status && { status }),
+      ...(employeeId && { employeeId }),
+      // Check if payroll period overlaps with the filter period
+      AND: [
+        {
+          periodStart: {
+            lte: periodEnd, // Payroll start is before or equal to filter end
           },
-          {
-            periodEnd: {
-              gte: periodStart, // Payroll end is after or equal to filter start
-            },
+        },
+        {
+          periodEnd: {
+            gte: periodStart, // Payroll end is after or equal to filter start
           },
-        ],
-      },
+        },
+      ],
+    };
+
+    const query: any = {
+      where: whereClause,
       select: {
         id: true,
         employeeId: true,
@@ -140,7 +148,15 @@ export class PayrollController {
       orderBy: {
         processedAt: 'desc',
       },
-    });
+    };
+
+    // Add pagination if provided
+    if (page && limit) {
+      query.skip = (page - 1) * limit;
+      query.take = limit;
+    }
+
+    return await prisma.payroll.findMany(query);
   }
 
   async getById(id: string) {
@@ -357,7 +373,7 @@ export class PayrollController {
   /**
    * Approve a computed payroll
    */
-  async approvePayroll(payrollId: string, userId: string): Promise<PayrollRecord> {
+  async approvePayroll(payrollId: string, userId: string, reason?: string): Promise<PayrollRecord> {
     const payroll = await prisma.payroll.findUnique({
       where: { id: payrollId },
     });
@@ -394,7 +410,7 @@ export class PayrollController {
   /**
    * Release an approved payroll
    */
-  async releasePayroll(payrollId: string, userId: string): Promise<PayrollRecord> {
+  async releasePayroll(payrollId: string, userId: string, reason?: string): Promise<PayrollRecord> {
     const payroll = await prisma.payroll.findUnique({
       where: { id: payrollId },
     });
@@ -440,8 +456,9 @@ export class PayrollController {
       throw new Error('Payroll not found');
     }
 
-    if (payroll.status !== PayrollStatus.RELEASED) {
-      throw new Error('Only released payrolls can be voided');
+    // Allow voiding of DRAFT, COMPUTED, APPROVED, and RELEASED payrolls
+    if (!['DRAFT', 'COMPUTED', 'APPROVED', 'RELEASED'].includes(payroll.status)) {
+      throw new Error('Payroll cannot be voided in its current status');
     }
 
     const updatedPayroll = await prisma.payroll.update({
@@ -458,7 +475,7 @@ export class PayrollController {
     await payrollLogService.logAction({
       payrollId,
       action: 'VOIDED',
-      previousStatus: PayrollStatus.RELEASED,
+      previousStatus: payroll.status,
       newStatus: PayrollStatus.VOIDED,
       reason,
       userId,

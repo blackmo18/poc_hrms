@@ -9,8 +9,10 @@ export async function POST(
   return requiresPermissions(request, ['payroll.approve'], async (authRequest) => {
     try {
       const { id } = await params;
+      const body = await request.json();
+      const { reason } = body;
       
-      const payroll = await payrollController.approvePayroll(id, authRequest.user.id);
+      const payroll = await payrollController.approvePayroll(id, authRequest.user.id, reason);
       return NextResponse.json(payroll);
     } catch (error) {
       console.error('Error approving payroll:', error);
