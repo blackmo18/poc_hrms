@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { CheckCircleIcon, XCircleIcon, FilterIcon } from 'lucide-react';
 import Select from '@/components/form/Select';
 import Badge from '@/components/ui/badge/Badge';
@@ -14,9 +13,11 @@ import { useAuth } from '@/components/providers/auth-provider';
 import { useOrganizationFilter } from '@/hooks/useOrganizationFilter';
 import { payrollSummaryApiService, type PayrollRecord, type PayrollSummaryResponse, type PayrollSummaryFilters, type PayrollStatusCounts } from '@/lib/service/payroll-summary-api.service';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { PayrollSelectionPanel } from '../run/components/PayrollSelectionPanel';
 import PageBreadcrumb from '@/components/common/PageBreadCrumb';
 import { usePayrollPeriods } from '@/hooks/usePayrollPeriods';
+import Button from '@/components/ui/button/Button';
+import PeriodSelection from '@/components/common/PeriodSelection';
+import { formatDateToYYYYMMDD } from '@/lib/utils/date-utils';
 
 function PayrollSummaryContent() {
   const [payrollData, setPayrollData] = useState<PayrollRecord[]>([]);
@@ -164,6 +165,22 @@ function PayrollSummaryContent() {
   useEffect(() => {
     fetchDepartments(selectedOrganization);
   }, [selectedOrganization, fetchDepartments]);
+
+  // Update dateRange when selectedPeriod changes
+  useEffect(() => {
+    if (selectedPeriod) {
+      // Find the selected period from payrollPeriods
+      const period = payrollPeriods.find(p => p.value === selectedPeriod);
+      if (period) {
+        setDateRange({
+          start: formatDateToYYYYMMDD(period.startDate),
+          end: formatDateToYYYYMMDD(period.endDate)
+        });
+      }
+    } else {
+      setDateRange({ start: '', end: '' });
+    }
+  }, [selectedPeriod, payrollPeriods]);
   const fetchStatusCounts = async () => {
     try {
       const counts = await payrollSummaryApiService.getStatusCounts({
@@ -405,19 +422,26 @@ function PayrollSummaryContent() {
                       />
                     </RoleComponentWrapper>
 
-                    {/* Payroll Selection Panel */}
-                    <PayrollSelectionPanel
+                    {/* Payroll Period Selection */}
+                    <PeriodSelection
                       selectedCutoff={selectedPeriod}
                       onCutoffChange={setSelectedPeriod}
-                      payrollPeriods={payrollPeriods.map(period => ({
-                        value: period.value,
-                        label: period.label
-                      }))}
-                      selectedDepartment={selectedDepartment}
-                      onDepartmentChange={setSelectedDepartment}
-                      departments={departments}
-                      isLoadingDepartments={isLoadingDepartments}
-                      userOrganizationId={user?.organizationId}
+                      payrollPeriods={payrollPeriods}
+                    />
+
+                    {/* Department Selection */}
+                    <Select
+                      value={selectedDepartment}
+                      onChange={(value: any) => setSelectedDepartment(value)}
+                      options={[
+                        { value: '', label: 'Select department...' },
+                        ...departments.map(dept => ({
+                          value: dept.id,
+                          label: dept.name
+                        }))
+                      ]}
+                      placeholder="Select department"
+                      disabled={isLoadingDepartments}
                     />
                     
                     {/* Status Filter */}
@@ -545,19 +569,26 @@ function PayrollSummaryContent() {
                   />
                 </RoleComponentWrapper>
 
-                {/* Payroll Selection Panel */}
-                <PayrollSelectionPanel
+                {/* Payroll Period Selection */}
+                <PeriodSelection
                   selectedCutoff={selectedPeriod}
                   onCutoffChange={setSelectedPeriod}
-                  payrollPeriods={payrollPeriods.map(period => ({
-                    value: period.value,
-                    label: period.label
-                  }))}
-                  selectedDepartment={selectedDepartment}
-                  onDepartmentChange={setSelectedDepartment}
-                  departments={departments}
-                  isLoadingDepartments={isLoadingDepartments}
-                  userOrganizationId={user?.organizationId}
+                  payrollPeriods={payrollPeriods}
+                />
+
+                {/* Department Selection */}
+                <Select
+                  value={selectedDepartment}
+                  onChange={(value: any) => setSelectedDepartment(value)}
+                  options={[
+                    { value: '', label: 'Select department...' },
+                    ...departments.map(dept => ({
+                      value: dept.id,
+                      label: dept.name
+                    }))
+                  ]}
+                  placeholder="Select department"
+                  disabled={isLoadingDepartments}
                 />
                 
                 {/* Status Filter */}

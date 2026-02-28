@@ -86,14 +86,19 @@ export class PayrollController {
       where: {
         organizationId,
         ...(departmentId && { departmentId }),
-        periodStart: {
-          gte: periodStart,
-          lte: periodEnd,
-        },
-        periodEnd: {
-          gte: periodStart,
-          lte: periodEnd,
-        },
+        // Check if payroll period overlaps with the filter period
+        AND: [
+          {
+            periodStart: {
+              lte: periodEnd, // Payroll start is before or equal to filter end
+            },
+          },
+          {
+            periodEnd: {
+              gte: periodStart, // Payroll end is after or equal to filter start
+            },
+          },
+        ],
       },
       select: {
         id: true,
