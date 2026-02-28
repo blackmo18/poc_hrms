@@ -289,7 +289,7 @@ export function EditTemplateModal({
                           <Label>Rate Multiplier</Label>
                           <Input
                             type="number"
-                            step="0.1"
+                            step={0.1}
                             value={holiday.rateMultiplier.toString()}
                             onChange={(e) => handleHolidayChange(index, 'rateMultiplier', parseFloat(e.target.value))}
                           />
