@@ -757,7 +757,9 @@ function PayrollSummaryContent() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b">
-                      <th className="text-left py-2 px-4">Employee</th>
+                      <th className="text-left py-2 px-4">Name</th>
+                      <th className="text-left py-2 px-4">ID</th>
+                      <th className="text-left py-2 px-4">Department</th>
                       <th className="text-center py-2 px-4">Status</th>
                       <th className="text-right py-2 px-4">Gross Pay</th>
                       <th className="text-right py-2 px-4 text-xs text-blue-600">Tax</th>
@@ -778,10 +780,13 @@ function PayrollSummaryContent() {
                       return (
                         <tr key={payroll.id} className="border-b hover:bg-gray-50 dark:hover:bg-gray-800">
                           <td className="py-3 px-4">
-                            <div>
-                              <p className="font-medium">{payroll.employee.firstName} {payroll.employee.lastName}</p>
-                              <p className="text-xs text-gray-500">{payroll.employee.employeeId} • {payroll.employee.departmentName}</p>
-                            </div>
+                            <p className="font-medium">{payroll.employee.firstName} {payroll.employee.lastName}</p>
+                          </td>
+                          <td className="py-3 px-4">
+                            <p className="text-sm text-gray-600">{payroll.employee.employeeId}</p>
+                          </td>
+                          <td className="py-3 px-4">
+                            <p className="text-sm">{payroll.employee.department?.name || 'No Department'}</p>
                           </td>
                           <td className="text-center py-3 px-4">
                             <Badge>

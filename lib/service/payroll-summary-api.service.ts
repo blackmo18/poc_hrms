@@ -7,7 +7,9 @@ export interface PayrollRecord {
     firstName: string;
     lastName: string;
     employeeId: string;
-    departmentName: string;
+    department?: {
+      name: string;
+    };
   };
   period: {
     start: string;

@@ -114,12 +114,14 @@ export class PayrollController {
         totalDeductions: true,
         grossPay: true,
         netPay: true,
+        taxableIncome: true,
         employee: {
           select: {
             id: true,
             employeeId: true,
             firstName: true,
             lastName: true,
+            email: true,
             department: {
               select: {
                 name: true
