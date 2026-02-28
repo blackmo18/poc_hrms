@@ -19,11 +19,12 @@ import ConfirmationModal from '@/components/ui/modal/ConfirmationModal';
 import DetailsConfirmationModal from '@/components/ui/modal/DetailsConfirmationModal';
 import ErrorModal from '@/components/ui/modal/ErrorModal';
 import { DetailItem, GroupedItem } from '@/lib/models/modal';
+import { createDateFromYYYYMMDD } from '@/lib/utils/date-utils';
 
 interface Holiday {
   id: string;
   name: string;
-  date: string;
+  date: string | Date;
   type: 'REGULAR' | 'SPECIAL_NON_WORKING' | 'SPECIAL_WORKING' | 'COMPANY' | 'LGU';
   rateMultiplier: number;
   isPaidIfNotWorked: boolean;
@@ -154,7 +155,7 @@ function CreateTemplateContent() {
   templateData.holidays.forEach((holiday, index) => {
     const holidayDetails: DetailItem[] = [
       { label: 'Name', value: holiday.name || 'Not specified' },
-      { label: 'Date', value: holiday.date || 'Not selected' },
+      { label: 'Date', value: holiday.date instanceof Date ? holiday.date.toLocaleDateString() : (holiday.date || 'Not selected') },
       { label: 'Type', value: holiday.type || 'Not selected' },
       { label: 'Rate Multiplier', value: holiday.rateMultiplier?.toString() || '1.0' },
       { label: 'Paid if Not Worked', value: holiday.isPaidIfNotWorked ? 'Yes' : 'No' },
@@ -188,6 +189,20 @@ function CreateTemplateContent() {
     setShowConfirmModal(false);
     setSaving(true);
     try {
+      // Format holidays with proper date handling to avoid timezone issues
+      const formattedHolidays = templateData.holidays.map(holiday => {
+        const dateStr = holiday.date instanceof Date 
+          ? holiday.date.getFullYear() + '-' + 
+            String(holiday.date.getMonth() + 1).padStart(2, '0') + '-' + 
+            String(holiday.date.getDate()).padStart(2, '0')
+          : holiday.date;
+        
+        return {
+          ...holiday,
+          date: dateStr // Send as YYYY-MM-DD string, not ISO string
+        };
+      });
+
       const response = await fetch('/api/holiday-templates', {
         method: 'POST',
         headers: {
@@ -197,7 +212,7 @@ function CreateTemplateContent() {
           name: templateData.name,
           description: templateData.description,
           organizationId: templateData.organizationId,
-          holidays: templateData.holidays,
+          holidays: formattedHolidays,
         }),
       });
 
@@ -373,7 +388,8 @@ function CreateTemplateContent() {
                             if (selectedDates && selectedDates.length > 0) {
                               const date = selectedDates[0];
                               if (date instanceof Date) {
-                                updateHoliday(holiday.id, 'date', date.toISOString().split('T')[0]);
+                                // Use date utility to avoid timezone issues
+                                updateHoliday(holiday.id, 'date', date);
                               }
                             }
                           }}

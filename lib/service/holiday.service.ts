@@ -88,9 +88,9 @@ export class HolidayService {
   /**
    * Get all holidays for an organization within a date range
    */
-  async getHolidays(organizationId: string, startDate: Date, endDate: Date) {
+  async getHolidays(organizationId: string, startDate: Date, endDate: Date, includeTemplate: boolean = false) {
     try {
-      const holidays = await holidayController.getHolidaysInRange(organizationId, startDate, endDate);
+      const holidays = await holidayController.getHolidaysInRange(organizationId, startDate, endDate, includeTemplate);
 
       // Filter recurring holidays to only include those that fall within the date range
       return holidays.filter(holiday => {

@@ -92,3 +92,58 @@ export function getEndOfDay(date: Date): Date {
   newDate.setHours(23, 59, 59, 999);
   return newDate;
 }
+
+/**
+ * Creates a Date object from a YYYY-MM-DD string at midnight UTC (ignores time component)
+ * This is useful for storing dates in databases without timezone issues
+ * 
+ * @param dateString - The date string in YYYY-MM-DD format
+ * @returns A Date object set to midnight UTC
+ */
+export function createDateAtMidnightUTC(dateString: string): Date {
+  const [year, month, day] = dateString.split('-').map(Number);
+  return new Date(Date.UTC(year, month - 1, day));
+}
+
+/**
+ * Creates a Date object at midnight UTC from any Date object (ignores time component)
+ * This is useful for normalizing dates to ignore time components
+ * 
+ * @param date - The date object
+ * @returns A Date object set to midnight UTC
+ */
+export function createDateAtMidnightUTCFromDate(date: Date): Date {
+  return new Date(Date.UTC(
+    date.getUTCFullYear(), 
+    date.getUTCMonth(), 
+    date.getUTCDate()
+  ));
+}
+
+/**
+ * Formats a UTC date string to readable format without timezone conversion
+ * This should be used for displaying dates stored at midnight UTC
+ * 
+ * @param dateString - The date string (from database)
+ * @returns The formatted date string in readable format
+ */
+export function formatUTCDateToReadable(dateString: string): string {
+  const date = new Date(dateString);
+  return date.toLocaleDateString('en-US', { 
+    month: 'short', 
+    day: 'numeric', 
+    year: 'numeric',
+    timeZone: 'UTC' // Important: use UTC to avoid timezone conversion
+  });
+}
+
+/**
+ * Formats a UTC date string to YYYY-MM-DD format without timezone conversion
+ * 
+ * @param dateString - The date string (from database)
+ * @returns The formatted date string in YYYY-MM-DD format
+ */
+export function formatUTCDateToYYYYMMDD(dateString: string): string {
+  const date = new Date(dateString);
+  return date.toISOString().split('T')[0]; // This works correctly for UTC dates
+}

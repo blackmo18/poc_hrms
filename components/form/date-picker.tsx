@@ -44,7 +44,7 @@ export default function DatePicker({
   useEffect(() => {
     const flatPickr = flatpickr(`#${id}`, {
       mode: mode || "single",
-      static: true,
+      static: false, // Changed to false to allow popup above modal
       monthSelectorType: "static",
       dateFormat: "Y-m-d",
       defaultDate: finalDefaultDate,
@@ -53,7 +53,26 @@ export default function DatePicker({
       ...(dateOffset !== undefined && dateOffset !== 0 && {
         defaultDate: finalDefaultDate,
       }),
+      // Add z-index to appear above modal
+      position: "auto center",
     });
+
+    // Add custom styles to ensure calendar appears above modal
+    const addStyles = () => {
+      const style = document.createElement('style');
+      style.innerHTML = `
+        .flatpickr-calendar {
+          z-index: 99999 !important;
+        }
+        .flatpickr-calendar.open {
+          z-index: 99999 !important;
+        }
+      `;
+      document.head.appendChild(style);
+      return style;
+    };
+
+    const styleElement = addStyles();
 
     // If we have an offset date, set the calendar to show that month/year
     if (dateOffset !== undefined && dateOffset !== 0 && finalDefaultDate) {
@@ -66,6 +85,10 @@ export default function DatePicker({
     return () => {
       if (!Array.isArray(flatPickr)) {
         flatPickr.destroy();
+      }
+      // Clean up the added styles
+      if (styleElement && styleElement.parentNode) {
+        styleElement.parentNode.removeChild(styleElement);
       }
     };
   }, [mode, onChange, id, finalDefaultDate, dateOffset]);

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import { CalendarIcon, PlusIcon, CopyIcon, EyeIcon } from 'lucide-react';
+import { CalendarIcon, PlusIcon, CopyIcon, EyeIcon, TrashIcon, EditIcon } from 'lucide-react';
 import { ProtectedRoute } from '@/components/protected-route';
 import { ADMINSTRATIVE_ROLES } from '@/lib/constants/roles';
 import { useOrganizationFilter } from '@/hooks/useOrganizationFilter';
@@ -10,12 +10,14 @@ import { Table, TableHeader, TableBody, TableRow, TableCell } from '@/components
 
 import PageBreadcrumb from '@/components/common/PageBreadCrumb';
 import Button from '@/components/ui/button/Button';
+import { formatUTCDateToReadable } from '@/lib/utils/date-utils';
 import Badge from '@/components/ui/badge/Badge';
 import OrganizationFilter from '@/components/common/OrganizationFilter';
 import ConfirmationModal from '@/components/ui/modal/ConfirmationModal';
 import { Modal } from '@/components/ui/modal';
 import Input from '@/components/form/input/InputField';
 import { DetailItem, GroupedItem } from '@/lib/models/modal';
+import { EditTemplateModal } from './components/EditTemplateModal';
 
 interface HolidayTemplate {
   id: string;
@@ -44,6 +46,10 @@ function HolidayTemplatesContent() {
   const [selectedTemplate, setSelectedTemplate] = useState<HolidayTemplate | null>(null);
   const [showCopyModal, setShowCopyModal] = useState(false);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [templateToDelete, setTemplateToDelete] = useState<HolidayTemplate | null>(null);
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [templateToEdit, setTemplateToEdit] = useState<HolidayTemplate | null>(null);
   const [copyYear, setCopyYear] = useState(new Date().getFullYear());
   const [copyTemplateName, setCopyTemplateName] = useState('');
   const [templateDetails, setTemplateDetails] = useState<DetailItem[]>([]);
@@ -55,34 +61,33 @@ function HolidayTemplatesContent() {
     showAllOption: true,
   });
 
+  const fetchTemplates = async () => {
+    if (!selectedOrganization) {
+      setTemplates([]);
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const response = await fetch(`/api/holiday-templates?organizationId=${selectedOrganization}`);
+      const data = await response.json();
+
+      if (data.success) {
+        setTemplates(data.data);
+      }
+    } catch (error) {
+      console.error('Error fetching holiday templates:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const fetchTemplates = async () => {
-      if (!selectedOrganization) {
-        setTemplates([]);
-        return;
-      }
-
-      setLoading(true);
-      try {
-        const response = await fetch(`/api/holiday-templates?organizationId=${selectedOrganization}`);
-        const data = await response.json();
-
-        if (data.success) {
-          setTemplates(data.data);
-        }
-      } catch (error) {
-        console.error('Error fetching holiday templates:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchTemplates();
   }, [selectedOrganization]);
 
   const formatDate = (dateStr: string) => {
-    const date = new Date(dateStr);
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    return formatUTCDateToReadable(dateStr);
   };
 
   const getTemplateTypeColor = (isDefault: boolean) => {
@@ -142,6 +147,46 @@ function HolidayTemplatesContent() {
     setShowDetailsModal(false);
     setSelectedTemplate(null);
     setTemplateDetails([]);
+  };
+
+  const handleEditClick = (template: HolidayTemplate) => {
+    setTemplateToEdit(template);
+    setEditModalOpen(true);
+  };
+
+  const handleEditSuccess = (result: any) => {
+    fetchTemplates();
+    setEditModalOpen(false);
+    setTemplateToEdit(null);
+  };
+
+  const handleDeleteClick = (template: HolidayTemplate) => {
+    setTemplateToDelete(template);
+    setDeleteModalOpen(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!templateToDelete) return;
+
+    try {
+      const response = await fetch(`/api/holiday-templates/${templateToDelete.id}`, {
+        method: 'DELETE',
+      });
+
+      const data = await response.json();
+      
+      if (data.success) {
+        fetchTemplates();
+        setDeleteModalOpen(false);
+        setTemplateToDelete(null);
+      } else {
+        console.error('Error deleting template:', data.error);
+        alert(data.error || 'Failed to delete template');
+      }
+    } catch (error) {
+      console.error('Error deleting template:', error);
+      alert('Failed to delete template');
+    }
   };
 
   const handleCopyTemplate = async (templateId: string) => {
@@ -221,6 +266,7 @@ function HolidayTemplatesContent() {
               selectedOrganization={selectedOrganization}
               organizationOptions={organizationOptions}
               onOrganizationChange={handleOrganizationChange}
+              showAllOption={false}
             />
           </div>
         </Card>
@@ -319,17 +365,34 @@ function HolidayTemplatesContent() {
                                     <EyeIcon className="w-4 h-4" />
                                   </Button>
                                   {!template.isDefault && (
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      onClick={() => {
-                                        setSelectedTemplate(template);
-                                        setCopyTemplateName(`${template.name} - Copy`);
-                                        setShowCopyModal(true);
-                                      }}
-                                    >
-                                      <CopyIcon className="w-4 h-4" />
-                                    </Button>
+                                    <>
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => handleEditClick(template)}
+                                      >
+                                        <EditIcon className="w-4 h-4" />
+                                      </Button>
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => {
+                                          setSelectedTemplate(template);
+                                          setCopyTemplateName(`${template.name} - Copy`);
+                                          setShowCopyModal(true);
+                                        }}
+                                      >
+                                        <CopyIcon className="w-4 h-4" />
+                                      </Button>
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => handleDeleteClick(template)}
+                                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                      >
+                                        <TrashIcon className="w-4 h-4" />
+                                      </Button>
+                                    </>
                                   )}
                                 </div>
                               </TableCell>
@@ -448,6 +511,39 @@ function HolidayTemplatesContent() {
             variant="info"
             size="default"
             confirmText="Copy Template"
+            cancelText="Cancel"
+            isLoading={loading}
+          />
+
+          {/* Edit Template Modal */}
+          <EditTemplateModal
+            isOpen={editModalOpen}
+            onClose={() => {
+              setEditModalOpen(false);
+              setTemplateToEdit(null);
+            }}
+            template={templateToEdit}
+            onSuccess={handleEditSuccess}
+          />
+
+          {/* Delete Confirmation Modal */}
+          <ConfirmationModal
+            isOpen={deleteModalOpen}
+            onClose={() => {
+              setDeleteModalOpen(false);
+              setTemplateToDelete(null);
+            }}
+            onConfirm={handleDeleteConfirm}
+            title="Delete Template"
+            message={`Are you sure you want to delete "${templateToDelete?.name}"?`}
+            details={[
+              { label: 'Template Name', value: templateToDelete?.name || 'Unknown' },
+              { label: 'Holidays', value: `${templateToDelete?.holidays.length || 0} holidays will be deleted` },
+              { label: 'Warning', value: 'This action cannot be undone' }
+            ]}
+            variant="error"
+            size="default"
+            confirmText="Delete Template"
             cancelText="Cancel"
             isLoading={loading}
           />

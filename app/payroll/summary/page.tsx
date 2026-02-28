@@ -9,13 +9,12 @@ import Select from '@/components/form/Select';
 import Badge from '@/components/ui/badge/Badge';
 import Button from '@/components/ui/button/Button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-
-// Layout and utility imports
+import { Table, TableHeader, TableBody, TableRow, TableCell } from '@/components/ui/table';
 import PageBreadcrumb from '@/components/common/PageBreadCrumb';
 import PeriodSelection from '@/components/common/PeriodSelection';
 import { formatDateToYYYYMMDD } from '@/lib/utils/date-utils';
 
-// Authentication and authorization
+// Layout and utility imports
 import { ProtectedRoute } from '@/components/protected-route';
 import { ADMINSTRATIVE_ROLES } from '@/lib/constants/roles';
 import { useAuth } from '@/components/providers/auth-provider';
@@ -604,7 +603,7 @@ function PayrollSummaryContent() {
       <>
         <PageBreadcrumb pageTitle="Payroll Summary" />
 
-        <div className="max-w-7xl mx-auto px-4 py-8">
+        <div className="max-w-7xl mx-aut py-8">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Filters Panel */}
             <Card className="lg:col-span-2">
@@ -753,68 +752,68 @@ function PayrollSummaryContent() {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b">
-                      <th className="text-left py-2 px-4">Name</th>
-                      <th className="text-left py-2 px-4">ID</th>
-                      <th className="text-left py-2 px-4">Department</th>
-                      <th className="text-center py-2 px-4">Status</th>
-                      <th className="text-right py-2 px-4">Gross Pay</th>
-                      <th className="text-right py-2 px-4 text-xs text-blue-600">Tax</th>
-                      <th className="text-right py-2 px-4 text-xs text-blue-600">Phil</th>
-                      <th className="text-right py-2 px-4 text-xs text-blue-600">SSS</th>
-                      <th className="text-right py-2 px-4 text-xs text-blue-600">PAG</th>
-                      <th className="text-right py-2 px-4 text-xs text-orange-600">Late</th>
-                      <th className="text-right py-2 px-4 text-xs text-orange-600">Abs</th>
-                      <th className="text-right py-2 px-4 text-xs font-semibold">Total</th>
-                      <th className="text-right py-2 px-4">Net Pay</th>
-                      <th className="text-center py-2 px-4">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
+              <div className="overflow-x-auto w-full">
+                <Table className="w-full text-sm min-w-max">
+                  <TableHeader>
+                    <TableRow className="border-b">
+                      <TableCell isHeader className="text-left py-2 px-4 min-w-[150px]">Name</TableCell>
+                      <TableCell isHeader className="text-left py-2 px-4 min-w-[100px]">ID</TableCell>
+                      <TableCell isHeader className="text-left py-2 px-4 min-w-[150px]">Department</TableCell>
+                      <TableCell isHeader className="text-center py-2 px-4 min-w-[100px]">Status</TableCell>
+                      <TableCell isHeader className="text-right py-2 px-4 min-w-[120px]">Gross Pay</TableCell>
+                      <TableCell isHeader className="text-right py-2 px-4 text-xs text-blue-600 min-w-[80px]">Tax</TableCell>
+                      <TableCell isHeader className="text-right py-2 px-4 text-xs text-blue-600 min-w-[80px]">Phil</TableCell>
+                      <TableCell isHeader className="text-right py-2 px-4 text-xs text-blue-600 min-w-[80px]">SSS</TableCell>
+                      <TableCell isHeader className="text-right py-2 px-4 text-xs text-blue-600 min-w-[80px]">PAG</TableCell>
+                      <TableCell isHeader className="text-right py-2 px-4 text-xs text-orange-600 min-w-[80px]">Late</TableCell>
+                      <TableCell isHeader className="text-right py-2 px-4 text-xs text-orange-600 min-w-[80px]">Abs</TableCell>
+                      <TableCell isHeader className="text-right py-2 px-4 text-xs font-semibold min-w-[100px]">Total</TableCell>
+                      <TableCell isHeader className="text-right py-2 px-4 min-w-[120px]">Net Pay</TableCell>
+                      <TableCell isHeader className="text-center py-2 px-4 min-w-[150px]">Actions</TableCell>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
                     {payrollData.map((payroll) => {
                       const grossPay = payroll.grossPay;
                       const totalDeductions = payroll.totalDeductions;
                       return (
-                        <tr key={payroll.id} className="border-b hover:bg-gray-50 dark:hover:bg-gray-800">
-                          <td className="py-3 px-4">
+                        <TableRow key={payroll.id} className="border-b hover:bg-gray-50 dark:hover:bg-gray-800">
+                          <TableCell className="py-3 px-4">
                             <p className="font-medium">{payroll.employee.firstName} {payroll.employee.lastName}</p>
-                          </td>
-                          <td className="py-3 px-4">
+                          </TableCell>
+                          <TableCell className="py-3 px-4">
                             <p className="text-sm text-gray-600">{payroll.employee.employeeId}</p>
-                          </td>
-                          <td className="py-3 px-4">
+                          </TableCell>
+                          <TableCell className="py-3 px-4">
                             <p className="text-sm">{payroll.employee.department?.name || 'No Department'}</p>
-                          </td>
-                          <td className="text-center py-3 px-4">
+                          </TableCell>
+                          <TableCell className="text-center py-3 px-4">
                             <Badge>
                               {payroll.status}
                             </Badge>
-                          </td>
-                          <td className="text-right py-3 px-4">₱ {payroll.grossPay.toLocaleString()}</td>
-                          <td className="text-right py-3 px-4 bg-blue-50 dark:bg-blue-900/20">
+                          </TableCell>
+                          <TableCell className="text-right py-3 px-4">₱ {payroll.grossPay.toLocaleString()}</TableCell>
+                          <TableCell className="text-right py-3 px-4 bg-blue-50 dark:bg-blue-900/20">
                             {payroll.deductions.find(d => d.type === 'TAX') ? `₱ ${payroll.deductions.find(d => d.type === 'TAX')!.amount.toLocaleString()}` : '-'}
-                          </td>
-                          <td className="text-right py-3 px-4 bg-blue-50 dark:bg-blue-900/20">
+                          </TableCell>
+                          <TableCell className="text-right py-3 px-4 bg-blue-50 dark:bg-blue-900/20">
                             {payroll.deductions.find(d => d.type === 'PHILHEALTH') ? `₱ ${payroll.deductions.find(d => d.type === 'PHILHEALTH')!.amount.toLocaleString()}` : '-'}
-                          </td>
-                          <td className="text-right py-3 px-4 bg-blue-50 dark:bg-blue-900/20">
+                          </TableCell>
+                          <TableCell className="text-right py-3 px-4 bg-blue-50 dark:bg-blue-900/20">
                             {payroll.deductions.find(d => d.type === 'SSS') ? `₱ ${payroll.deductions.find(d => d.type === 'SSS')!.amount.toLocaleString()}` : '-'}
-                          </td>
-                          <td className="text-right py-3 px-4 bg-blue-50 dark:bg-blue-900/20">
+                          </TableCell>
+                          <TableCell className="text-right py-3 px-4 bg-blue-50 dark:bg-blue-900/20">
                             {payroll.deductions.find(d => d.type === 'PAGIBIG') ? `₱ ${payroll.deductions.find(d => d.type === 'PAGIBIG')!.amount.toLocaleString()}` : '-'}
-                          </td>
-                          <td className="text-right py-3 px-4 bg-orange-50 dark:bg-orange-900/20">
+                          </TableCell>
+                          <TableCell className="text-right py-3 px-4 bg-orange-50 dark:bg-orange-900/20">
                             {payroll.deductions.find(d => d.type === 'LATE') ? `₱ ${payroll.deductions.find(d => d.type === 'LATE')!.amount.toLocaleString()}` : '-'}
-                          </td>
-                          <td className="text-right py-3 px-4 bg-orange-50 dark:bg-orange-900/20">
+                          </TableCell>
+                          <TableCell className="text-right py-3 px-4 bg-orange-50 dark:bg-orange-900/20">
                             {payroll.deductions.find(d => d.type === 'ABSENCE') ? `₱ ${payroll.deductions.find(d => d.type === 'ABSENCE')!.amount.toLocaleString()}` : '-'}
-                          </td>
-                          <td className="text-right py-3 px-4 font-semibold">₱ {totalDeductions.toLocaleString()}</td>
-                          <td className="text-right py-3 px-4 font-medium text-green-600">₱ {payroll.netPay.toLocaleString()}</td>
-                          <td className="text-center py-3 px-4">
+                          </TableCell>
+                          <TableCell className="text-right py-3 px-4 font-semibold">₱ {totalDeductions.toLocaleString()}</TableCell>
+                          <TableCell className="text-right py-3 px-4 font-medium text-green-600">₱ {payroll.netPay.toLocaleString()}</TableCell>
+                          <TableCell className="text-center py-3 px-4">
                             <div className="flex gap-1 justify-center">
                               {payroll.status === 'COMPUTED' && (
                                 <Button
@@ -852,12 +851,12 @@ function PayrollSummaryContent() {
                                 </Button>
                               )}
                             </div>
-                          </td>
-                        </tr>
+                          </TableCell>
+                        </TableRow>
                       );
                     })}
-                  </tbody>
-                </table>
+                  </TableBody>
+                </Table>
               </div>
             </CardContent>
           </Card>
