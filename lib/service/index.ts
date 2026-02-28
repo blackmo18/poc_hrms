@@ -45,6 +45,3 @@ export type { CreateEmployeeGovernmentInfo, UpdateEmployeeGovernmentInfo, BulkUp
 
 // UI-specific services (browser-based, DOM manipulation)
 export * from './ui';
-
-// PDF generation services
-export * from './pdf';
