@@ -6,6 +6,7 @@ import { PayrollTable } from './PayrollTable';
 import { ApproveModal } from './ApproveModal';
 import { ReleaseModal } from './ReleaseModal';
 import { VoidModal } from './VoidModal';
+import { ErrorModal } from './ErrorModal';
 import { PayrollRecord } from '@/lib/service/payroll-summary-api.service';
 
 interface SummaryStats {
@@ -81,6 +82,17 @@ export function PayrollResultPanel({
   });
 
   const [isProcessing, setIsProcessing] = useState(false);
+  const [errorModal, setErrorModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    details?: string;
+  }>({
+    isOpen: false,
+    title: 'Error',
+    message: '',
+    details: '',
+  });
 
   const handleApproveClick = (payrollId: string, employeeName: string, employeeId: string, department: string) => {
     setApproveModal({
@@ -117,6 +129,13 @@ export function PayrollResultPanel({
     try {
       await onApprovePayroll(approveModal.payrollId);
       setApproveModal({ isOpen: false, payrollId: '', employeeName: '', employeeId: '', department: '' });
+    } catch (error: any) {
+      setErrorModal({
+        isOpen: true,
+        title: 'Approval Failed',
+        message: 'Failed to approve payroll. Please try again.',
+        details: error?.message || 'Unknown error occurred'
+      });
     } finally {
       setIsProcessing(false);
     }
@@ -127,6 +146,13 @@ export function PayrollResultPanel({
     try {
       await onReleasePayroll(releaseModal.payrollId);
       setReleaseModal({ isOpen: false, payrollId: '', employeeName: '', employeeId: '', department: '' });
+    } catch (error: any) {
+      setErrorModal({
+        isOpen: true,
+        title: 'Release Failed',
+        message: 'Failed to release payroll. Please try again.',
+        details: error?.message || 'Unknown error occurred'
+      });
     } finally {
       setIsProcessing(false);
     }
@@ -137,6 +163,13 @@ export function PayrollResultPanel({
     try {
       await onVoidPayroll(voidModal.payrollId, reason);
       setVoidModal({ isOpen: false, payrollId: '', employeeName: '', employeeId: '', department: '' });
+    } catch (error: any) {
+      setErrorModal({
+        isOpen: true,
+        title: 'Void Failed',
+        message: 'Failed to void payroll. Please try again.',
+        details: error?.message || 'Unknown error occurred'
+      });
     } finally {
       setIsProcessing(false);
     }
@@ -244,6 +277,15 @@ export function PayrollResultPanel({
         employeeId={voidModal.employeeId}
         department={voidModal.department}
         isLoading={isProcessing}
+      />
+
+      {/* Error Modal */}
+      <ErrorModal
+        isOpen={errorModal.isOpen}
+        onClose={() => setErrorModal({ isOpen: false, title: 'Error', message: '', details: '' })}
+        title={errorModal.title}
+        message={errorModal.message}
+        details={errorModal.details}
       />
     </div>
   );

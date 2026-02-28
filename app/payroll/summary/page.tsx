@@ -249,7 +249,8 @@ function PayrollSummaryContent() {
       await fetchStatusCounts();
     } catch (error) {
       console.error('Failed to approve payroll:', error);
-      alert('Failed to approve payroll. Please try again.');
+      // Error will be handled by PayrollResultPanel
+      throw error;
     }
   };
 
@@ -260,7 +261,8 @@ function PayrollSummaryContent() {
       await fetchStatusCounts();
     } catch (error) {
       console.error('Failed to release payroll:', error);
-      alert('Failed to release payroll. Please try again.');
+      // Error will be handled by PayrollResultPanel
+      throw error;
     }
   };
 
@@ -271,7 +273,8 @@ function PayrollSummaryContent() {
       await fetchStatusCounts();
     } catch (error) {
       console.error('Failed to void payroll:', error);
-      alert('Failed to void payroll. Please try again.');
+      // Error will be handled by PayrollResultPanel
+      throw error;
     }
   };
 
@@ -327,7 +330,9 @@ function PayrollSummaryContent() {
       link.remove();
     } catch (error) {
       console.error('Failed to export payroll summary:', error);
-      alert('Failed to export payroll summary. Please try again.');
+      // For export, we might want a different error handling approach since it's not a modal action
+      // Could add error state to show inline message instead of alert
+      throw error;
     }
   };
 
@@ -373,6 +378,7 @@ function PayrollSummaryContent() {
   const handleBulkApprove = async () => {
     const computedPayrolls = payrollData.filter(p => p.status === 'COMPUTED');
     if (computedPayrolls.length === 0) {
+      // This could be handled by a more elegant UI feedback, but keeping alert for now as it's a validation check
       alert('No computed payrolls to approve.');
       return;
     }
@@ -392,7 +398,9 @@ function PayrollSummaryContent() {
       await fetchStatusCounts();
     } catch (error) {
       console.error('Failed to bulk approve payrolls:', error);
-      alert('Failed to bulk approve payrolls. Please try again.');
+      // Error will be handled by PayrollResultPanel for individual actions
+      // For bulk actions, we might need a separate error handling strategy
+      throw error;
     } finally {
       setBulkOperationProgress(prev => ({ ...prev, isActive: false }));
     }
@@ -401,6 +409,7 @@ function PayrollSummaryContent() {
   const handleBulkRelease = async () => {
     const approvedPayrolls = payrollData.filter(p => p.status === 'APPROVED');
     if (approvedPayrolls.length === 0) {
+      // This could be handled by a more elegant UI feedback, but keeping alert for now as it's a validation check
       alert('No approved payrolls to release.');
       return;
     }
@@ -420,7 +429,9 @@ function PayrollSummaryContent() {
       await fetchStatusCounts();
     } catch (error) {
       console.error('Failed to bulk release payrolls:', error);
-      alert('Failed to bulk release payrolls. Please try again.');
+      // Error will be handled by PayrollResultPanel for individual actions
+      // For bulk actions, we might need a separate error handling strategy
+      throw error;
     } finally {
       setBulkOperationProgress(prev => ({ ...prev, isActive: false }));
     }
