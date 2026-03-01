@@ -187,6 +187,9 @@ const AppSidebar: React.FC = () => {
     {}
   );
   const subMenuRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  
+  // Track manual submenu opens to prevent auto-close from overriding
+  const [manualOverride, setManualOverride] = useState<string | null>(null);
 
   const hasAccessToItem = (itemRoles?: string[]) => {
     if (!itemRoles || itemRoles.length === 0) return true;
@@ -217,10 +220,14 @@ const AppSidebar: React.FC = () => {
         if (nav.subItems) {
           nav.subItems.forEach((subItem) => {
             if (isActive(subItem.path)) {
-              setOpenSubmenu({
-                type: menuType as 'main' | 'others',
-                index,
-              });
+              const currentKey = `${menuType}-${index}`;
+              // Only auto-open if not manually overridden for this specific submenu
+              if (!manualOverride || manualOverride !== currentKey) {
+                setOpenSubmenu({
+                  type: menuType as 'main' | 'others',
+                  index,
+                });
+              }
               submenuMatched = true;
             }
           });
@@ -228,7 +235,9 @@ const AppSidebar: React.FC = () => {
       });
     });
 
-    if (!submenuMatched) {
+    // Only auto-close if no submenu is manually opened and no path matches
+    // This allows manual submenu opening while preserving auto-open for active pages
+    if (!submenuMatched && openSubmenu === null) {
       setOpenSubmenu(null);
     }
   }, [pathname, isActive, filteredNavItems, filteredOthersItems, user]);
@@ -246,6 +255,9 @@ const AppSidebar: React.FC = () => {
   }, [openSubmenu]);
 
   const handleSubmenuToggle = (index: number, menuType: 'main' | 'others') => {
+    const key = `${menuType}-${index}`;
+    setManualOverride(key);
+    
     setOpenSubmenu((prevOpenSubmenu) => {
       if (
         prevOpenSubmenu &&
@@ -256,6 +268,9 @@ const AppSidebar: React.FC = () => {
       }
       return { type: menuType, index };
     });
+    
+    // Reset manual override after a short delay to allow auto-open later
+    setTimeout(() => setManualOverride(null), 200);
   };
 
   const renderMenuItems = (items: NavItem[], menuType: 'main' | 'others') => (
@@ -384,7 +399,7 @@ const AppSidebar: React.FC = () => {
   return (
     <aside
       key={`${isLoading}-${roles.join(',')}`}
-      className={`fixed mt-16 flex flex-col lg:mt-0 top-0 px-5 left-0 bg-white dark:bg-gray-900 dark:border-gray-800 text-gray-900 h-screen transition-all duration-300 ease-in-out z-50 border-r border-gray-200 
+      className={`fixed flex flex-col top-16 lg:top-0 left-0 px-5 bg-white dark:bg-gray-900 dark:border-gray-800 text-gray-900 h-screen transition-all duration-300 ease-in-out z-50 border-r border-gray-200 
         ${
           isExpanded || isMobileOpen
             ? 'w-[290px]'

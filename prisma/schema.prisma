@@ -315,7 +315,7 @@ model TimeBreak {
   employeeId      String   @map("employee_id")
   breakType       BreakType // MEAL, REST, etc
   breakStartAt    DateTime @map("break_start_at") @db.Timestamptz(3)
-  breakEndAt      DateTime @map("break_end_at") @db.Timestamptz(3)
+  breakEndAt      DateTime? @map("break_end_at") @db.Timestamptz(3)
   isPaid          Boolean  @default(true)
   durationMinutes Int?     @map("duration_minutes")
 
