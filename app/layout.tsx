@@ -9,6 +9,12 @@ import IdleStatus from '../components/common/IdleStatus';
 export const metadata: Metadata = {
   title: 'HR Management System',
   description: 'A comprehensive HR management system',
+  icons: {
+    icon: '/favicon.svg',
+    shortcut: '/favicon.svg',
+    apple: '/favicon.svg',
+  },
+  manifest: '/manifest.json',
 };
 
 export default async function RootLayout({
