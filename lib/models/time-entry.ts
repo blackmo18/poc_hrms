@@ -12,7 +12,6 @@ export type TimeEntryStatusType = typeof TimeEntryStatus[keyof typeof TimeEntryS
 export const CreateTimeEntrySchema = z.object({
   employeeId: z.string(),
   organizationId: z.string(),
-  departmentId: z.string().optional(),
   clockInAt: z.date(),
   clockOutAt: z.date().optional(),
   workDate: z.date(),
@@ -34,7 +33,6 @@ export type UpdateTimeEntry = z.infer<typeof UpdateTimeEntrySchema>;
 export const TimeEntryFiltersSchema = z.object({
   employeeId: z.string().optional(),
   organizationId: z.string().optional(),
-  departmentId: z.string().optional(),
   workDate: z.date().optional(),
   status: z.enum([TimeEntryStatus.OPEN, TimeEntryStatus.CLOSED]).optional(),
   dateFrom: z.date().optional(),
@@ -48,7 +46,6 @@ export type TimeEntryWithRelations = {
   id: string;
   employeeId: string;
   organizationId: string;
-  departmentId: string;
   clockInAt: Date;
   clockOutAt: Date | null;
   workDate: Date;

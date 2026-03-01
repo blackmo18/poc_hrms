@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
@@ -191,21 +191,21 @@ const AppSidebar: React.FC = () => {
   // Track manual submenu opens to prevent auto-close from overriding
   const [manualOverride, setManualOverride] = useState<string | null>(null);
 
-  const hasAccessToItem = (itemRoles?: string[]) => {
+  const hasAccessToItem = useCallback((itemRoles?: string[]) => {
     if (!itemRoles || itemRoles.length === 0) return true;
     if (isLoading) return false; // Don't show role-based items while roles are loading
     return itemRoles.some(role => roles.includes(role));
-  };
+  }, [roles, isLoading]);
 
-  const filterNavItems = (items: NavItem[]) => {
+  const filterNavItems = useCallback((items: NavItem[]) => {
     return items.map(item => ({
       ...item,
       subItems: item.subItems ? item.subItems.filter(sub => hasAccessToItem(sub.roles)) : item.subItems
     })).filter(item => hasAccessToItem(item.roles));
-  };
+  }, [hasAccessToItem]);
 
-  const filteredNavItems = filterNavItems(navItems);
-  const filteredOthersItems = filterNavItems(othersItems);
+  const filteredNavItems = useMemo(() => filterNavItems(navItems), [filterNavItems]);
+  const filteredOthersItems = useMemo(() => filterNavItems(othersItems), [filterNavItems]);
 
   const isActive = useCallback(
     (path: string) => pathname === path,

@@ -45,18 +45,16 @@ export class TimeEntryService implements ITimeEntryService {
   }
 
   /**
-   * Get time entries by organization, department and date range
+   * Get time entries by organization and date range
    */
   async getTimeEntriesByOrganizationAndPeriod(
     organizationId: string,
-    departmentId: string | undefined,
     periodStart: Date,
     periodEnd: Date,
     status?: string
   ): Promise<TimeEntry[]> {
     return await timeEntryController.getByOrganizationAndPeriod(
       organizationId,
-      departmentId,
       periodStart,
       periodEnd,
       status

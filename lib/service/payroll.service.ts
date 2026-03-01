@@ -170,7 +170,6 @@ export class PayrollService {
     const payrollData: CreatePayroll = {
       employeeId,
       organizationId,
-      departmentId: employee.departmentId,
       periodStart,
       periodEnd,
       grossPay: calculationResult.total_gross_pay,

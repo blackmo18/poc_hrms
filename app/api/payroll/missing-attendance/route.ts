@@ -62,7 +62,6 @@ export async function POST(request: NextRequest) {
       // Get time entries for the period using the time entry service
       const timeEntries = await timeEntryService.getTimeEntriesByOrganizationAndPeriod(
         organizationId,
-        departmentId,
         periodStart,
         periodEnd,
         undefined // status parameter

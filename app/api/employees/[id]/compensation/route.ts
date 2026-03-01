@@ -94,7 +94,6 @@ export async function POST(
         ...body,
         employeeId,
         organizationId: employee.organizationId,
-        departmentId: employee.departmentId,
       };
 
       const validatedData = CreateCompensationSchema.parse(compensationData);

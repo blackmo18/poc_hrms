@@ -62,7 +62,6 @@ export async function seedPayrollTestFlow() {
       id: generateULID(),
       employeeId: employee.id,
       organizationId: employee.department!.organizationId,
-      departmentId: employee.departmentId,
       periodStart: payrollPeriods[0].startDate,
       periodEnd: payrollPeriods[0].endDate,
       grossPay: 50000,

@@ -37,7 +37,6 @@ export async function seedTimeEntries() {
       id: generateULID(),
       employeeId: employee.id,
       organizationId: employee.department?.organizationId || '',
-      departmentId: employee.departmentId,
       clockInAt: feb2ClockIn,
       clockOutAt: feb2ClockOut,
       workDate: feb2ClockIn, // Use clockIn date for consistency
@@ -54,8 +53,7 @@ export async function seedTimeEntries() {
       id: generateULID(),
       employeeId: employee.id,
       organizationId: employee.department?.organizationId || '',
-      departmentId: employee.departmentId,
-      clockInAt: feb3ClockIn,
+            clockInAt: feb3ClockIn,
       clockOutAt: feb3ClockOut,
       workDate: feb3ClockIn, // Use clockIn date for consistency
       totalWorkMinutes: 480,
@@ -71,8 +69,7 @@ export async function seedTimeEntries() {
       id: generateULID(),
       employeeId: employee.id,
       organizationId: employee.department?.organizationId || '',
-      departmentId: employee.departmentId,
-      clockInAt: feb4ClockIn,
+            clockInAt: feb4ClockIn,
       clockOutAt: feb4ClockOut,
       workDate: feb4ClockIn, // Use clockIn date for consistency
       totalWorkMinutes: 465, // 7h45m
@@ -89,8 +86,7 @@ export async function seedTimeEntries() {
       id: generateULID(),
       employeeId: employee.id,
       organizationId: employee.department?.organizationId || '',
-      departmentId: employee.departmentId,
-      clockInAt: feb6ClockIn,
+            clockInAt: feb6ClockIn,
       clockOutAt: feb6ClockOut,
       workDate: feb6ClockIn, // Use clockIn date for consistency
       totalWorkMinutes: 480,
@@ -106,8 +102,7 @@ export async function seedTimeEntries() {
       id: generateULID(),
       employeeId: employee.id,
       organizationId: employee.department?.organizationId || '',
-      departmentId: employee.departmentId,
-      clockInAt: feb9ClockIn,
+            clockInAt: feb9ClockIn,
       clockOutAt: feb9ClockOut,
       workDate: feb9ClockIn, // Use clockIn date for consistency
       totalWorkMinutes: 480,
@@ -123,8 +118,7 @@ export async function seedTimeEntries() {
       id: generateULID(),
       employeeId: employee.id,
       organizationId: employee.department?.organizationId || '',
-      departmentId: employee.departmentId,
-      clockInAt: feb10ClockIn,
+            clockInAt: feb10ClockIn,
       clockOutAt: feb10ClockOut,
       workDate: feb10ClockIn, // Use clockIn date for consistency
       totalWorkMinutes: 450, // 7h30m
@@ -140,8 +134,7 @@ export async function seedTimeEntries() {
       id: generateULID(),
       employeeId: employee.id,
       organizationId: employee.department?.organizationId || '',
-      departmentId: employee.departmentId,
-      clockInAt: feb11ClockIn,
+            clockInAt: feb11ClockIn,
       clockOutAt: feb11ClockOut,
       workDate: feb11ClockIn, // Use clockIn date for consistency
       totalWorkMinutes: 495, // 8h15m
@@ -158,8 +151,7 @@ export async function seedTimeEntries() {
       id: generateULID(),
       employeeId: employee.id,
       organizationId: employee.department?.organizationId || '',
-      departmentId: employee.departmentId,
-      clockInAt: feb13ClockIn,
+            clockInAt: feb13ClockIn,
       clockOutAt: feb13ClockOut,
       workDate: feb13ClockIn, // Use clockIn date for consistency
       totalWorkMinutes: 600, // 10 hours

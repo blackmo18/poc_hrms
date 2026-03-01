@@ -3,6 +3,7 @@ import { getTimeEntryService } from '@/lib/service/time-entry.service';
 import { getEmployeeService } from '@/lib/service/employee.service';
 import { requiresPermissions } from '@/lib/auth/middleware';
 import { getUserPermissionsForUser } from '@/lib/auth/middleware';
+import { formatDateToYYYYMMDD } from '@/lib/utils/date-utils';
 
 export async function GET(request: NextRequest) {
   return requiresPermissions(request, ['timesheet.own.read', 'timesheet.admin.read'], async (authRequest) => {
@@ -71,9 +72,12 @@ export async function GET(request: NextRequest) {
     // Create a map of existing time entries by date
     const entriesByDate = new Map();
     (entries || []).forEach((entry: any) => {
-      const dateStr = entry.workDate ? new Date(entry.workDate).toISOString().split('T')[0] : '';
-      if (dateStr) {
-        entriesByDate.set(dateStr, entry);
+      // Use utility function to avoid UTC timezone issues
+      if (entry.workDate) {
+        const dateStr = formatDateToYYYYMMDD(new Date(entry.workDate));
+        if (dateStr) {
+          entriesByDate.set(dateStr, entry);
+        }
       }
     });
 
@@ -81,7 +85,9 @@ export async function GET(request: NextRequest) {
     const allDates: string[] = [];
     const currentDate = new Date(startDate);
     while (currentDate <= endDate) {
-      allDates.push(currentDate.toISOString().split('T')[0]);
+      // Use utility function to avoid UTC timezone issues
+      const dateStr = formatDateToYYYYMMDD(currentDate);
+      allDates.push(dateStr);
       currentDate.setDate(currentDate.getDate() + 1);
     }
 
@@ -117,26 +123,46 @@ export async function GET(request: NextRequest) {
           lateHours: entry.lateHours || 0,
         };
       } else {
-        // No time entry - check if it's a weekday
+        // No time entry - check if it's a weekday and if it's a future date
         const date = new Date(dateStr);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0); // Set to start of day for comparison
+        const isFutureDate = date > today;
         const dayOfWeek = date.getDay();
         const isWeekday = dayOfWeek !== 0 && dayOfWeek !== 6; // 0 = Sunday, 6 = Saturday
         
         if (isWeekday) {
-          // Weekday with no entry = Absent
-          return {
-            id: `absent-${dateStr}`,
-            employeeId: targetEmployee.id,
-            employeeName: targetEmployee ? `${targetEmployee.firstName} ${targetEmployee.lastName}` : 'Unknown',
-            date: dateStr,
-            startTime: '-',
-            endTime: '-',
-            duration: 0,
-            status: 'absent',
-            otHours: 0,
-            nightDifferential: 0,
-            lateHours: 0,
-          };
+          if (isFutureDate) {
+            // Future weekday = Blank status
+            return {
+              id: `future-${dateStr}`,
+              employeeId: targetEmployee.id,
+              employeeName: targetEmployee ? `${targetEmployee.firstName} ${targetEmployee.lastName}` : 'Unknown',
+              date: dateStr,
+              startTime: '-',
+              endTime: '-',
+              duration: 0,
+              status: '-',
+              otHours: 0,
+              nightDifferential: 0,
+              lateHours: 0,
+            };
+          } else {
+            // Past weekday with no entry = Absent
+            return {
+              id: `absent-${dateStr}`,
+              employeeId: targetEmployee.id,
+              employeeName: targetEmployee ? `${targetEmployee.firstName} ${targetEmployee.lastName}` : 'Unknown',
+              date: dateStr,
+              startTime: '-',
+              endTime: '-',
+              duration: 0,
+              status: 'absent',
+              otHours: 0,
+              nightDifferential: 0,
+              lateHours: 0,
+            };
+          }
         } else {
           // Weekend = No Entry
           return {

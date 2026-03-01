@@ -23,10 +23,11 @@ export default function IdleStatus() {
     return () => clearInterval(interval);
   }, []);
 
-  // Only show in development - comment out to show in production
-  // if (process.env.NODE_ENV !== 'development') {
-  //   return null;
-  // }
+  // Show/hide based on environment variable
+  // NEXT_PUBLIC_SHOW_IDLE_STATUS=true to show, false or undefined to hide
+  const showIdleStatus = process.env.NEXT_PUBLIC_SHOW_IDLE_STATUS === 'true';
+  
+  if (!showIdleStatus) return null;
 
   const status = getIdleStatus();
 

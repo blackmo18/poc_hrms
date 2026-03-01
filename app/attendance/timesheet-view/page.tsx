@@ -3,13 +3,13 @@
 import { useState, useEffect } from 'react';
 import PageBreadcrumb from '@/components/common/PageBreadCrumb';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { DownloadIcon, FilterIcon } from 'lucide-react';
 import AttendanceRecordsSection from '@/components/employees/attendance/AttendanceRecordsSection';
 import { useAuth } from '@/components/providers/auth-provider';
 import Badge, { BadgeColor } from '@/components/ui/badge/Badge';
 import PeriodSelectionSection from '@/components/employees/attendance/PeriodSelectionSection';
 import { usePayrollPeriods } from '@/hooks/usePayrollPeriods';
+import Button from '@/components/ui/button/Button';
 
 interface AttendanceRecord {
   id: string;

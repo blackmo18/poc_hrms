@@ -4,8 +4,10 @@ import TimeClock from '@/components/TimeClock';
 
 export default function ClockInOutPage() {
   return (
-    <div className="max-w-4xl mx-auto px-4 py-8">
-      <TimeClock />
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 px-4 py-6 sm:px-6 sm:py-8">
+      <div className="max-w-lg mx-auto">
+        <TimeClock />
+      </div>
     </div>
   );
 }
