@@ -13,7 +13,7 @@ const prisma = new PrismaClient();
 export async function seedPayrollTestFlow() {
   console.log('🧪 Seeding payroll test flow...');
 
-  // Get test employee
+  // Get test employee with compensation
   const employee = await prisma.employee.findFirst({
     include: {
       department: true,
@@ -21,6 +21,13 @@ export async function seedPayrollTestFlow() {
         where: { effectiveDate: { lte: new Date() } },
         orderBy: { effectiveDate: 'desc' },
         take: 1
+      }
+    },
+    where: {
+      compensations: {
+        some: {
+          effectiveDate: { lte: new Date() }
+        }
       }
     }
   });
@@ -30,53 +37,24 @@ export async function seedPayrollTestFlow() {
     return;
   }
 
-  // Get test user
-  const testUser = await prisma.user.findFirst({
-    where: { email: 'admin@techcorp.com' }
-  });
+  // Get any test user
+  const testUser = await prisma.user.findFirst();
 
   if (!testUser) {
     console.log('⚠️  No test user found, skipping test flow');
     return;
   }
 
-  // Create test payroll period
-  const testPeriod = {
-    startDate: new Date('2024-02-01'),
-    endDate: new Date('2024-02-15'),
-    organizationId: employee.department!.organizationId,
-    payDate: new Date('2024-02-20'),
-    status: 'COMPLETED',
-    type: 'MONTHLY',
-    year: 2024,
-    month: 2,
-    periodNumber: 1
-  };
-
-  await (prisma as any).payrollPeriod.upsert({
-    where: {
-      organizationId_startDate_endDate: {
-        organizationId: testPeriod.organizationId,
-        startDate: testPeriod.startDate,
-        endDate: testPeriod.endDate
-      }
-    },
-    update: {
-      payDate: testPeriod.payDate,
-      status: testPeriod.status,
-      type: testPeriod.type,
-      year: testPeriod.year,
-      month: testPeriod.month,
-      periodNumber: testPeriod.periodNumber,
-      updatedAt: new Date()
-    },
-    create: {
-      id: generateULID(),
-      ...testPeriod,
-      createdAt: new Date(),
-      updatedAt: new Date()
-    }
+  // Get existing payroll periods
+  const payrollPeriods = await prisma.payrollPeriod.findMany({
+    take: 5,
+    orderBy: { startDate: 'desc' }
   });
+
+  if (payrollPeriods.length < 4) {
+    console.log('⚠️  Not enough payroll periods found, skipping test flow');
+    return;
+  }
 
   // Create payroll in DRAFT status
   const draftPayroll = await (prisma as any).payroll.create({
@@ -85,8 +63,8 @@ export async function seedPayrollTestFlow() {
       employeeId: employee.id,
       organizationId: employee.department!.organizationId,
       departmentId: employee.departmentId,
-      periodStart: testPeriod.startDate,
-      periodEnd: testPeriod.endDate,
+      periodStart: payrollPeriods[0].startDate,
+      periodEnd: payrollPeriods[0].endDate,
       grossPay: 50000,
       netPay: 42000,
       taxableIncome: 50000,
@@ -124,8 +102,8 @@ export async function seedPayrollTestFlow() {
       employeeId: employee.id,
       organizationId: employee.department!.organizationId,
       departmentId: employee.departmentId,
-      periodStart: new Date('2024-02-16'),
-      periodEnd: new Date('2024-02-29'),
+      periodStart: payrollPeriods[1].startDate,
+      periodEnd: payrollPeriods[1].endDate,
       grossPay: 50000,
       netPay: 42000,
       taxableIncome: 50000,
@@ -234,8 +212,8 @@ export async function seedPayrollTestFlow() {
       employeeId: employee.id,
       organizationId: employee.department!.organizationId,
       departmentId: employee.departmentId,
-      periodStart: new Date('2024-03-01'),
-      periodEnd: new Date('2024-03-15'),
+      periodStart: payrollPeriods[2].startDate,
+      periodEnd: payrollPeriods[2].endDate,
       grossPay: 50000,
       netPay: 42000,
       taxableIncome: 50000,
@@ -286,8 +264,8 @@ export async function seedPayrollTestFlow() {
       employeeId: employee.id,
       organizationId: employee.department!.organizationId,
       departmentId: employee.departmentId,
-      periodStart: new Date('2024-03-16'),
-      periodEnd: new Date('2024-03-31'),
+      periodStart: payrollPeriods[3].startDate,
+      periodEnd: payrollPeriods[3].endDate,
       grossPay: 50000,
       netPay: 42000,
       taxableIncome: 50000,
@@ -349,8 +327,8 @@ export async function seedPayrollTestFlow() {
       employeeId: employee.id,
       organizationId: employee.department!.organizationId,
       departmentId: employee.departmentId,
-      periodStart: new Date('2024-01-01'),
-      periodEnd: new Date('2024-01-15'),
+      periodStart: payrollPeriods[4]?.startDate || payrollPeriods[0].startDate,
+      periodEnd: payrollPeriods[4]?.endDate || payrollPeriods[0].endDate,
       grossPay: 50000,
       netPay: 42000,
       taxableIncome: 50000,
