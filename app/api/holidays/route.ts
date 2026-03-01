@@ -16,12 +16,15 @@ export async function GET(request: NextRequest) {
 
       // Get year from query params, default to current year
       const year = parseInt(searchParams.get('year') || new Date().getFullYear().toString());
+      
+      // Check if template information should be included
+      const includeTemplate = searchParams.get('includeTemplate') === 'true';
 
       // Create date range for the year
       const startDate = new Date(year, 0, 1); // January 1st
       const endDate = new Date(year, 11, 31); // December 31st
 
-      const holidays = await holidayService.getHolidays(organizationId, startDate, endDate);
+      const holidays = await holidayService.getHolidays(organizationId, startDate, endDate, includeTemplate);
 
       // Transform the data for the frontend
       const transformedHolidays = holidays.map(holiday => ({
@@ -32,6 +35,16 @@ export async function GET(request: NextRequest) {
         rateMultiplier: holiday.rateMultiplier,
         isPaidIfNotWorked: holiday.isPaidIfNotWorked,
         countsTowardOt: holiday.countsTowardOt,
+        ...(includeTemplate && holiday.holidayTemplate && {
+          holidayTemplate: {
+            id: holiday.holidayTemplate.id,
+            name: holiday.holidayTemplate.name,
+            isDefault: holiday.holidayTemplate.isDefault,
+            organization: holiday.holidayTemplate.organization ? {
+              name: holiday.holidayTemplate.organization.name
+            } : undefined
+          }
+        })
       }));
 
       return NextResponse.json({

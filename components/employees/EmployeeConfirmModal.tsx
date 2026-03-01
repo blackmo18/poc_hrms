@@ -27,7 +27,7 @@ interface EmployeeConfirmModalProps {
   onClose: () => void;
   onConfirm: () => void;
   employeeData: {
-    organization_id: string;
+    organizationId: string;
     department_id: string;
     job_title_id: string;
     manager_id: string;
@@ -129,7 +129,7 @@ export default function EmployeeConfirmModal({
                   <div className="flex justify-between">
                     <span className="text-sm text-gray-600 dark:text-gray-400">Organization:</span>
                     <span className="text-sm font-medium text-gray-900 dark:text-white">
-                      {getOrganizationName(employeeData.organization_id)}
+                      {getOrganizationName(employeeData.organizationId)}
                     </span>
                   </div>
                   <div className="flex justify-between">

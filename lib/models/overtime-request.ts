@@ -13,7 +13,7 @@ export type OvertimeRequestStatusType = typeof OvertimeRequestStatus[keyof typeo
 // OvertimeRequest create schema
 export const CreateOvertimeRequestSchema = z.object({
   employee_id: z.string(),
-  organization_id: z.string(),
+  organizationId: z.string(),
   work_date: z.date(),
   requested_minutes: z.number().int().min(1).max(1440), // Max 24 hours
   reason: z.string().optional(),
@@ -36,7 +36,7 @@ export type UpdateOvertimeRequest = z.infer<typeof UpdateOvertimeRequestSchema>;
 // OvertimeRequest filters
 export const OvertimeRequestFiltersSchema = z.object({
   employee_id: z.string().optional(),
-  organization_id: z.string().optional(),
+  organizationId: z.string().optional(),
   status: z.enum([OvertimeRequestStatus.PENDING, OvertimeRequestStatus.APPROVED, OvertimeRequestStatus.REJECTED, OvertimeRequestStatus.CANCELLED]).optional(),
   work_date: z.date().optional(),
   date_from: z.date().optional(),
@@ -50,7 +50,7 @@ export type OvertimeRequestFilters = z.infer<typeof OvertimeRequestFiltersSchema
 export type OvertimeRequestWithRelations = {
   id: string;
   employee_id: string;
-  organization_id: string;
+  organizationId: string;
   work_date: Date;
   requested_minutes: number;
   approved_minutes: number | null;

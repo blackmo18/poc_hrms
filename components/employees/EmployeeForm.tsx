@@ -4,7 +4,7 @@ import Select from '@/components/form/Select';
 import DatePicker from '@/components/form/date-picker';
 
 interface EmployeeFormData {
-  organization_id: string;
+  organizationId: string;
   department_id: string;
   job_title_id: string;
   manager_id: string;
@@ -109,15 +109,15 @@ export default function EmployeeForm({
             {isEdit && !isSuperAdmin ? (
               <Input
                 type='text'
-                value={availableOrganizations.find(org => org.id.toString() === formData.organization_id)?.name || ''}
+                value={availableOrganizations.find(org => org.id.toString() === formData.organizationId)?.name || ''}
                 disabled
                 className='bg-gray-100 dark:bg-gray-800'
               />
             ) : (
               <Select
                 options={organizationOptions(isEdit ? availableOrganizations : organizations)}
-                value={formData.organization_id}
-                onChange={(value) => handleInputChange('organization_id', value)}
+                value={formData.organizationId}
+                onChange={(value) => handleInputChange('organizationId', value)}
                 placeholder='Select organization'
                 required={!isEdit}
               />
@@ -173,7 +173,7 @@ export default function EmployeeForm({
               value={formData.department_id}
               onChange={(value) => handleInputChange('department_id', value)}
               placeholder='Select department'
-              disabled={!formData.organization_id}
+              disabled={!formData.organizationId}
               required={!isEdit}
             />
           </div>
@@ -185,7 +185,7 @@ export default function EmployeeForm({
               value={formData.job_title_id}
               onChange={(value) => handleInputChange('job_title_id', value)}
               placeholder='Select job title'
-              disabled={!formData.organization_id}
+              disabled={!formData.organizationId}
               required={!isEdit}
             />
           </div>
@@ -197,7 +197,7 @@ export default function EmployeeForm({
               value={formData.manager_id}
               onChange={(value) => handleInputChange('manager_id', value)}
               placeholder='Select manager (optional)'
-              disabled={!formData.organization_id}
+              disabled={!formData.organizationId}
             />
           </div>
 

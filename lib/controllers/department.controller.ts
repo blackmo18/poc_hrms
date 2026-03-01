@@ -168,7 +168,7 @@ export class DepartmentController {
       throw new Error('Access denied');
     }
 
-    // Set organization_id if not super admin
+    // Set organizationId if not super admin
     if (!isSuperAdmin) {
       data.organizationId = userWithRoles.organization.id;
     }

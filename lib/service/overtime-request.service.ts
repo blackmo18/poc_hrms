@@ -10,7 +10,7 @@ export class OvertimeRequestService implements IOvertimeRequestService {
    */
   async submitOvertimeRequest(data: {
     employee_id: string;
-    organization_id: string;
+    organizationId: string;
     work_date: Date;
     requested_minutes: number;
     reason?: string;
@@ -43,7 +43,7 @@ export class OvertimeRequestService implements IOvertimeRequestService {
       // Create the overtime request
       const overtimeRequest = await overtimeRequestController.create({
         employeeId: data.employee_id,
-        organizationId: data.organization_id,
+        organizationId: data.organizationId,
         workDate: data.work_date,
         requestedMinutes: data.requested_minutes,
         reason: data.reason,

@@ -3,7 +3,7 @@ import { CreateLeaveRequest, UpdateLeaveRequest } from '../models/leave-request'
 import { generateULID } from '../utils/ulid.service';
 
 export class LeaveRequestController {
-  async getAll(employeeId?: string, status?: string) {
+  async getAll(employeeId?: string, status?: string, options?: any) {
     return await prisma.leaveRequest.findMany({
       where: {
         ...(employeeId && { employeeId: employeeId }),
@@ -19,6 +19,43 @@ export class LeaveRequestController {
       },
       orderBy: {
         createdAt: 'desc',
+      },
+    });
+  }
+
+  async getApprovedByEmployeeAndDateRange(employeeId: string, startDate: Date, endDate: Date) {
+    return await prisma.leaveRequest.findMany({
+      where: {
+        employeeId: employeeId,
+        status: 'APPROVED',
+        OR: [
+          {
+            startDate: {
+              gte: startDate,
+              lte: endDate,
+            },
+          },
+          {
+            endDate: {
+              gte: startDate,
+              lte: endDate,
+            },
+          },
+          {
+            AND: [
+              {
+                startDate: {
+                  lte: startDate,
+                },
+              },
+              {
+                endDate: {
+                  gte: endDate,
+                },
+              },
+            ],
+          },
+        ],
       },
     });
   }

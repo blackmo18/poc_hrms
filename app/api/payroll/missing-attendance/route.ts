@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { requiresAdmin } from '@/lib/auth/middleware';
 import { getEmployeeService } from '@/lib/service/employee.service';
 import { timeEntryService } from '@/lib/service/time-entry.service';
-import { getDepartmentService } from '@/lib/service/department.service';
+import { sharedPayrollCalculation } from '@/lib/service/shared-payroll-calculation';
 
 const missingAttendanceRequestSchema = z.object({
   organizationId: z.string().min(1, 'Organization ID is required'),
@@ -68,34 +68,58 @@ export async function POST(request: NextRequest) {
         undefined // status parameter
       );
 
-      // Count unique employees with time entries
-      const employeesWithRecords = new Set(timeEntries.map(te => te.employeeId));
+      // Calculate employees who hit the absence threshold
+      const absenceThreshold = parseInt(process.env.ABSENCE_WARNING_THRESHOLD || '2');
+      
+      // Find employees who hit the absence threshold
+      const employeesHitAbsenceThreshold = await Promise.all(
+        employees.map(async (employee: any) => {
+          try {
+            // Get payroll data for this employee
+            const payrollData = await sharedPayrollCalculation.calculatePayroll({
+              employeeId: employee.id,
+              organizationId: organizationId,
+              departmentId: departmentId,
+              periodStart: periodStart,
+              periodEnd: periodEnd,
+              options: {
+                persistData: false // Preview mode
+              }
+            });
+            
+            const transformedData = await sharedPayrollCalculation.transformToEmployeePayrollData(
+              payrollData,
+              periodStart,
+              periodEnd
+            );
 
-      // Get department service for department names
-      // Note: Simplified to use departmentId directly since department service requires session
-      const departmentService = getDepartmentService();
+            // Check if employee hit the absence threshold
+            if (transformedData.attendance.absentDays >= absenceThreshold) {
+              // Use department name from the included relation
+              const departmentName = employee.department?.name || 'Unknown';
 
-      // Find employees missing attendance
-      const missingAttendanceEmployees = await Promise.all(
-        employees
-          .filter(employee => !employeesWithRecords.has(employee.id))
-          .map(async (employee: any) => {
-            // Use department name from the included relation
-            const departmentName = employee.department?.name || 'Unknown';
-
-            // Calculate expected work days and missing hours
-            const weekdays = countWeekdays(periodStart, periodEnd);
-            const expectedHours = weekdays * 8; // Assuming 8 hours per day
-
-            return {
-              id: employee.id,
-              employeeId: employee.employeeId || employee.id,
-              name: `${employee.firstName} ${employee.lastName}`,
-              department: departmentName,
-              missingHours: expectedHours,
-            };
-          })
+              return {
+                id: employee.id,
+                employeeId: employee.employeeId || employee.id,
+                name: `${employee.firstName} ${employee.lastName}`,
+                department: departmentName,
+                absentDays: transformedData.attendance.absentDays,
+                threshold: absenceThreshold,
+              };
+            }
+            
+            return null;
+          } catch (error) {
+            console.error(`Error checking attendance for employee ${employee.id}:`, error);
+            return null;
+          }
+        })
       );
+
+      // Filter out null values and sort by absent days (descending)
+      const missingAttendanceEmployees = employeesHitAbsenceThreshold
+        .filter(employee => employee !== null)
+        .sort((a: any, b: any) => b.absentDays - a.absentDays);
 
       return NextResponse.json({
         success: true,

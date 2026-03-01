@@ -9,7 +9,16 @@ import { seedDepartmentsAndJobTitles } from './seeds/departments';
 import { seedEmployeesAndUsers } from './seeds/employees';
 import { seedLeaveRequests } from './seeds/leaveRequests';
 import { seedCompensation } from './seeds/compensation';
+import { seedTimeEntries } from './seeds/timeEntries';
 import { seedHolidays } from './seeds/holidays';
+import { seedTaxBrackets } from './seeds/taxBrackets';
+import { seedPhilhealthContributions } from './seeds/philhealthContributions';
+import { seedSSSContributions } from './seeds/sssContributions';
+import { seedPagibigContributions } from './seeds/pagibigContributions';
+import { seedEmployeeGovernmentInfo } from './seeds/employeeGovernmentInfo';
+import { seedLateDeductionPolicies } from './seeds/lateDeductionPolicies';
+import { seedWorkSchedules } from './seeds/workSchedules';
+import { seedPayrollPeriods } from './seeds/payrollPeriods';
 
 // Load .env.local (which could be from .env or Vercel depending on the command used)
 config({ path: '.env.local' });
@@ -38,8 +47,20 @@ async function cleanDatabase() {
     console.log('ℹ️  Could not check table existence, proceeding anyway...');
   }
 
-  // Delete in correct order to respect foreign key constraints
+  // Tables to truncate - in dependency order (child tables first)
   const tables = [
+    'time_break',
+    'timeEntry',
+    'payroll_earning',
+    'deduction',
+    'work_schedule',
+    'late_deduction_policy',
+    'payroll_period',
+    'employee_government_info',
+    'pagibig_contribution',
+    'sss_contribution',
+    'philhealth_contribution',
+    'tax_bracket',
     'leave_request',
     'compensation', 
     'user_role',
@@ -53,18 +74,38 @@ async function cleanDatabase() {
     'organization'
   ];
 
+  // First, disable foreign key constraints temporarily
+  await prisma.$executeRawUnsafe('SET session_replication_role = replica;');
+
+  // Truncate all tables to reset auto-increment IDs
   for (const table of tables) {
     try {
-      await prisma.$executeRawUnsafe(`DELETE FROM "${table}";`);
-      console.log(`✅ Cleared ${table}`);
-    } catch (error: any) {
-      if (error.code === '42P01') {
-        console.log(`ℹ️  Table ${table} does not exist - skipping`);
+      // Check if table exists first
+      const tableExists = await prisma.$queryRawUnsafe(`
+        SELECT EXISTS (
+          SELECT FROM information_schema.tables 
+          WHERE table_schema = 'public' 
+          AND table_name = '${table}'
+        );
+      `);
+      
+      if (tableExists[0].exists) {
+        const result = await prisma.$executeRawUnsafe(`TRUNCATE TABLE "${table}" CASCADE;`);
+        console.log(`✅ Truncated ${table}`);
       } else {
-        console.log(`⚠️  Could not clear ${table}: ${error.message || error}`);
+        console.log(`ℹ️  Table ${table} does not exist - skipping`);
       }
+    } catch (error: any) {
+      console.log(`⚠️  Could not truncate ${table}: ${error.message || error}`);
     }
   }
+
+  // Re-enable foreign key constraints
+  await prisma.$executeRawUnsafe('SET session_replication_role = DEFAULT;');
+  
+  // Verify payroll_period table is empty
+  const periodCount = await prisma.payrollPeriod.count().catch(() => 0);
+  console.log(`📊 Payroll periods count after truncate: ${periodCount}`);
 }
 
 async function dropDatabase() {
@@ -136,9 +177,32 @@ async function seedDatabase() {
 
   // Seed compensation
   await seedCompensation(prisma, generateULID, employees, organization, seniorEngineer);
+  
+  // Get the created compensations for work schedules
+  const compensations = await prisma.compensation.findMany({
+    where: { organizationId: organization.id },
+    take: employees.length,
+  });
 
   // Seed holidays
   await seedHolidays(prisma, generateULID, systemOrg);
+
+  // Seed government contributions
+  await seedTaxBrackets(prisma, generateULID, organization);
+  await seedPhilhealthContributions(prisma, generateULID, organization);
+  await seedSSSContributions(prisma, generateULID, organization);
+  await seedPagibigContributions(prisma, generateULID, organization);
+  
+  // Seed employee government information
+  await seedEmployeeGovernmentInfo(prisma, generateULID, employees, organization);
+
+  // Seed new payroll-related entities
+  await seedLateDeductionPolicies(prisma, generateULID, organization);
+  await seedWorkSchedules(prisma, generateULID, organization, employees, compensations);
+  await seedPayrollPeriods(prisma, generateULID, organization);
+  
+  // Seed time entries for payroll testing
+  await seedTimeEntries();
 
   console.log('🎉 Database seeding completed successfully!');
 

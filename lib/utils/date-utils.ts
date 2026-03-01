@@ -1,0 +1,207 @@
+/**
+ * Date utility functions for consistent date formatting across the application
+ */
+
+/**
+ * Formats a Date object to YYYY-MM-DD format in local timezone
+ * This avoids timezone conversion issues that can occur with toISOString()
+ * 
+ * @param date - The date to format
+ * @returns The formatted date string in YYYY-MM-DD format
+ */
+export function formatDateToYYYYMMDD(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+/**
+ * Formats a Date object to a more readable format (e.g., "January 1, 2024")
+ * 
+ * @param date - The date to format
+ * @returns The formatted date string
+ */
+export function formatDateToReadable(date: Date): string {
+  return date.toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  });
+}
+
+/**
+ * Formats a Date object to a short readable format (e.g., "Jan 1, 2024")
+ * 
+ * @param date - The date to format
+ * @returns The formatted date string
+ */
+export function formatDateToShort(date: Date): string {
+  return date.toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric'
+  });
+}
+
+/**
+ * Creates a Date object from a YYYY-MM-DD string in local timezone
+ * 
+ * @param dateString - The date string in YYYY-MM-DD format
+ * @returns The Date object in local timezone
+ */
+export function createDateFromYYYYMMDD(dateString: string): Date {
+  const [year, month, day] = dateString.split('-').map(Number);
+  return new Date(year, month - 1, day);
+}
+
+/**
+ * Checks if a date string is in YYYY-MM-DD format
+ * 
+ * @param dateString - The date string to validate
+ * @returns True if the string is in valid YYYY-MM-DD format
+ */
+export function isValidYYYYMMDD(dateString: string): boolean {
+  const regex = /^\d{4}-\d{2}-\d{2}$/;
+  if (!regex.test(dateString)) return false;
+  
+  const date = createDateFromYYYYMMDD(dateString);
+  return !isNaN(date.getTime());
+}
+
+/**
+ * Gets the start of a day (00:00:00) for a given date
+ * 
+ * @param date - The date
+ * @returns A new Date object set to the start of the day
+ */
+export function getStartOfDay(date: Date): Date {
+  const newDate = new Date(date);
+  newDate.setHours(0, 0, 0, 0);
+  return newDate;
+}
+
+/**
+ * Gets the end of a day (23:59:59) for a given date
+ * 
+ * @param date - The date
+ * @returns A new Date object set to the end of the day
+ */
+export function getEndOfDay(date: Date): Date {
+  const newDate = new Date(date);
+  newDate.setHours(23, 59, 59, 999);
+  return newDate;
+}
+
+/**
+ * Creates a Date object from a YYYY-MM-DD string at midnight UTC (ignores time component)
+ * This is useful for storing dates in databases without timezone issues
+ * 
+ * @param dateString - The date string in YYYY-MM-DD format
+ * @returns A Date object set to midnight UTC
+ */
+export function createDateAtMidnightUTC(dateString: string): Date {
+  const [year, month, day] = dateString.split('-').map(Number);
+  return new Date(Date.UTC(year, month - 1, day));
+}
+
+/**
+ * Creates a Date object at midnight UTC from any Date object (ignores time component)
+ * This is useful for normalizing dates to ignore time components
+ * 
+ * @param date - The date object
+ * @returns A Date object set to midnight UTC
+ */
+export function createDateAtMidnightUTCFromDate(date: Date): Date {
+  return new Date(Date.UTC(
+    date.getUTCFullYear(), 
+    date.getUTCMonth(), 
+    date.getUTCDate()
+  ));
+}
+
+/**
+ * Formats a UTC date string to readable format without timezone conversion
+ * This should be used for displaying dates stored at midnight UTC
+ * 
+ * @param dateString - The date string (from database)
+ * @returns The formatted date string in readable format
+ */
+export function formatUTCDateToReadable(dateString: string): string {
+  const date = new Date(dateString);
+  return date.toLocaleDateString('en-US', { 
+    month: 'short', 
+    day: 'numeric', 
+    year: 'numeric',
+    timeZone: 'UTC' // Important: use UTC to avoid timezone conversion
+  });
+}
+
+/**
+ * Formats a UTC date string to YYYY-MM-DD format without timezone conversion
+ * 
+ * @param dateString - The date string (from database)
+ * @returns The formatted date string in YYYY-MM-DD format
+ */
+export function formatUTCDateToYYYYMMDD(dateString: string): string {
+  const date = new Date(dateString);
+  return date.toISOString().split('T')[0]; // This works correctly for UTC dates
+}
+
+/**
+ * Count weekdays in a date range (excluding weekends)
+ */
+export function countWeekdaysInPeriod(startDate: Date, endDate: Date): number {
+  let count = 0;
+  const current = new Date(startDate);
+  
+  while (current <= endDate) {
+    const dayOfWeek = current.getDay();
+    if (dayOfWeek !== 0 && dayOfWeek !== 6) { count++; }
+    current.setDate(current.getDate() + 1);
+  }
+  
+  return count;
+}
+
+/**
+ * Get all weekdays in a date range (excluding weekends)
+ * Returns an array of Date objects representing each weekday
+ */
+export function getWeekdaysInPeriod(startDate: Date, endDate: Date): Date[] {
+  const weekdays: Date[] = [];
+  const current = new Date(startDate);
+  
+  while (current <= endDate) {
+    const dayOfWeek = current.getDay();
+    if (dayOfWeek !== 0 && dayOfWeek !== 6) { // 0 = Sunday, 6 = Saturday
+      weekdays.push(new Date(current));
+    }
+    current.setDate(current.getDate() + 1);
+  }
+  
+  return weekdays;
+}
+
+/**
+ * Check if a date is a weekday (Monday-Friday)
+ */
+export function isWeekday(date: Date): boolean {
+  const dayOfWeek = date.getDay();
+  return dayOfWeek !== 0 && dayOfWeek !== 6; // 0 = Sunday, 6 = Saturday
+}
+
+/**
+ * Check if a date is a weekend (Saturday-Sunday)
+ */
+export function isWeekend(date: Date): boolean {
+  const dayOfWeek = date.getDay();
+  return dayOfWeek === 0 || dayOfWeek === 6; // 0 = Sunday, 6 = Saturday
+}
+
+/**
+ * Check if a date falls within a date range (inclusive)
+ */
+export function isDateInRange(date: Date, startDate: Date, endDate: Date): boolean {
+  return date >= startDate && date <= endDate;
+}

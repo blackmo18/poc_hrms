@@ -17,13 +17,13 @@ interface Permission {
   id: string;
   name: string;
   description: string;
-  organization_id: string | null;
+  organizationId: string | null;
 }
 
 interface PermissionFormData {
   name: string;
   description: string;
-  organization_id?: string;
+  organizationId?: string;
 }
 
 export default function EditPermissionPage() {
@@ -35,7 +35,7 @@ export default function EditPermissionPage() {
   const [formData, setFormData] = useState<PermissionFormData>({
     name: "",
     description: "",
-    organization_id: "",
+    organizationId: "",
   });
 
   const [organizations, setOrganizations] = useState<Organization[]>([]);
@@ -62,7 +62,7 @@ export default function EditPermissionPage() {
           setFormData({
             name: permissionData.name,
             description: permissionData.description || "",
-            organization_id: permissionData.organization_id || "",
+            organizationId: permissionData.organizationId || "",
           });
         }
 
@@ -127,13 +127,13 @@ export default function EditPermissionPage() {
     try {
       const submitData = {
         ...formData,
-        // Only include organization_id if it's not empty (for global permissions)
-        ...(formData.organization_id && { organization_id: formData.organization_id }),
+        // Only include organizationId if it's not empty (for global permissions)
+        ...(formData.organizationId && { organizationId: formData.organizationId }),
       };
 
-      // Remove organization_id if it's empty to make it global
-      if (!submitData.organization_id) {
-        delete submitData.organization_id;
+      // Remove organizationId if it's empty to make it global
+      if (!submitData.organizationId) {
+        delete submitData.organizationId;
       }
 
       const response = await fetch(`/api/permissions/${permissionId}`, {
@@ -208,8 +208,8 @@ export default function EditPermissionPage() {
                 Organization (Optional)
               </label>
               <Select
-                value={formData.organization_id || ""}
-                onChange={(value) => handleInputChange('organization_id', value)}
+                value={formData.organizationId || ""}
+                onChange={(value) => handleInputChange('organizationId', value)}
                 options={[
                   { value: "", label: "Global (All Organizations)" },
                   ...organizations.map(org => ({

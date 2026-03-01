@@ -44,10 +44,10 @@ export type TimeBreakWithRelations = {
   id: string;
   timeEntryId: string;
   breakStartAt: Date;
-  breakEndAt: Date | null;
+  breakEndAt: Date;
   breakType: BreakTypeEnum;
   isPaid: boolean;
-  createdAt: Date;
+  durationMinutes: number | null;
   employeeId: string;
   organizationId: string;
   timeEntry: {

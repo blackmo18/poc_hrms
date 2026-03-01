@@ -38,7 +38,7 @@ interface Employee {
 interface UserFormData {
   employee_id: string;
   email: string;
-  organization_id: string;
+  organizationId: string;
   role_ids: string[];
   generated_password?: string;
 }
@@ -152,7 +152,7 @@ const initialCreateUserState: CreateUserState = {
   formData: {
     employee_id: '',
     email: '',
-    organization_id: '',
+    organizationId: '',
     role_ids: [],
     generated_password: '',
   },
@@ -278,8 +278,8 @@ export default function CreateUserPage() {
       newErrors.email = "Email is invalid";
     }
 
-    if (!state.formData.organization_id) {
-      newErrors.organization_id = "Organization is required";
+    if (!state.formData.organizationId) {
+      newErrors.organizationId = "Organization is required";
     }
 
     if (state.formData.role_ids.length === 0) {
@@ -317,7 +317,7 @@ export default function CreateUserPage() {
         body: JSON.stringify({
           employee_id: state.formData.employee_id,
           email: state.formData.email,
-          organization_id: state.formData.organization_id,
+          organizationId: state.formData.organizationId,
           role_ids: state.formData.role_ids,
           generated_password: state.formData.generated_password,
         }),
@@ -400,7 +400,7 @@ export default function CreateUserPage() {
     {
       name: 'User Details',
       fields: [
-        { label: 'Organization', value: Array.isArray(state.organizations) ? state.organizations.find(org => org.id === state.formData.organization_id)?.name || 'Unknown' : 'Unknown' },
+        { label: 'Organization', value: Array.isArray(state.organizations) ? state.organizations.find(org => org.id === state.formData.organizationId)?.name || 'Unknown' : 'Unknown' },
         { label: 'Employee', value: state.selectedEmployeeName || 'Unknown' },
         { label: 'Login Email', value: state.formData.email },
       ]
@@ -492,7 +492,7 @@ export default function CreateUserPage() {
         isOpen={state.showEmployeeModal}
         onClose={() => dispatch({ type: 'SET_SHOW_EMPLOYEE_MODAL', payload: false })}
         onSelectEmployee={handleSelectEmployee}
-        organizationId={state.formData.organization_id}
+        organizationId={state.formData.organizationId}
       />
 
       {/* Confirmation Modal */}

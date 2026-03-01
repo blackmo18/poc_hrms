@@ -154,8 +154,8 @@ export default function EmployeeAttendancePage() {
         const result = await response.json();
         const timeEntries = result.data || [];
         
-        // Map time entries to attendance record format
-        const attendanceRecords = timeEntries.map((entry: any) => ({
+        // Map the response to attendance record format (backend now handles absent/weekend logic)
+        const attendanceRecords: AttendanceRecord[] = timeEntries.map((entry: any) => ({
           id: entry.id,
           date: entry.date,
           clockInAt: entry.startTime,
@@ -163,7 +163,10 @@ export default function EmployeeAttendancePage() {
           totalWorkMinutes: entry.duration ? Math.round(entry.duration * 60) : 0, // Convert hours to minutes
           status: entry.status,
           type: entry.status,
-          isAbsent: false,
+          otHours: entry.otHours || 0,
+          nightDifferential: entry.nightDifferential || 0,
+          lateHours: entry.lateHours || 0,
+          isAbsent: entry.status === 'absent',
         }));
         
         setAttendanceRecords(attendanceRecords);
@@ -293,11 +296,14 @@ export default function EmployeeAttendancePage() {
   const getStatusColor = (status: string): BadgeColor => {
     switch (status.toLowerCase()) {
       case 'present':
+      case 'closed':
         return 'success';
       case 'absent':
         return 'error';
       case 'late':
         return 'warning';
+      case 'weekend':
+        return 'light';
       default:
         return 'info';
     }

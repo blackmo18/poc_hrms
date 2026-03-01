@@ -222,7 +222,7 @@ export default function JobTitlesPage() {
       params.set('limit', '10');
 
       if (orgId) {
-        params.set('organization_id', orgId.toString());
+        params.set('organizationId', orgId.toString());
       }
 
       const url = `/api/job-titles?${params.toString()}`;

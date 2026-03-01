@@ -1,0 +1,17 @@
+-- Rename organization_id to organizationId in all tables
+ALTER TABLE roles RENAME COLUMN organization_id TO organizationId;
+ALTER TABLE users RENAME COLUMN organization_id TO organizationId;
+ALTER TABLE departments RENAME COLUMN organization_id TO organizationId;
+ALTER TABLE job_titles RENAME COLUMN organization_id TO organizationId;
+ALTER TABLE employees RENAME COLUMN organization_id TO organizationId;
+ALTER TABLE permissions RENAME COLUMN organization_id TO organizationId;
+ALTER TABLE holiday_templates RENAME COLUMN organization_id TO organizationId;
+ALTER TABLE holidays RENAME COLUMN organization_id TO organizationId;
+ALTER TABLE late_deduction_policies RENAME COLUMN organization_id TO organizationId;
+ALTER TABLE payroll_periods RENAME COLUMN organization_id TO organizationId;
+ALTER TABLE work_schedules RENAME COLUMN organization_id TO organizationId;
+ALTER TABLE overtime_requests RENAME COLUMN organization_id TO organizationId;
+ALTER TABLE timesheets RENAME COLUMN organization_id TO organizationId;
+ALTER TABLE attendances RENAME COLUMN organization_id TO organizationId;
+ALTER TABLE leaves RENAME COLUMN organization_id TO organizationId;
+ALTER TABLE payroll_runs RENAME COLUMN organization_id TO organizationId;

@@ -39,7 +39,7 @@ interface Employee {
   email: string;
   employment_status: string;
   hire_date: string;
-  organization_id: number;
+  organizationId: number;
   department_id: number;
   job_title_id: number;
   manager_id?: number;
@@ -85,7 +85,7 @@ export default function EditEmployeePage({ params }: { params: Promise<{ id: str
 
   // Form state
   const [formData, setFormData] = useState({
-    organization_id: '',
+    organizationId: '',
     department_id: '',
     job_title_id: '',
     manager_id: '',
@@ -146,14 +146,14 @@ export default function EditEmployeePage({ params }: { params: Promise<{ id: str
           const isSuperAdmin = roles.includes('SUPER_ADMIN');
           if (isSuperAdmin) {
             setAvailableOrganizations(allOrgs);
-          } else if (user?.organization_id) {
-            const userOrg = allOrgs.filter((org: Organization) => org.id === Number(user.organization_id));
+          } else if (user?.organizationId) {
+            const userOrg = allOrgs.filter((org: Organization) => org.id === Number(user.organizationId));
             setAvailableOrganizations(userOrg);
           }
         }
 
         // Fetch departments for the employee's organization
-        const deptResponse = await fetch(`/api/departments?organization_id=${employeeData.organization_id}`, {
+        const deptResponse = await fetch(`/api/departments?organizationId=${employeeData.organizationId}`, {
           credentials: 'include',
         });
         if (deptResponse.ok) {
@@ -162,7 +162,7 @@ export default function EditEmployeePage({ params }: { params: Promise<{ id: str
         }
 
         // Fetch job titles for the employee's organization
-        const jobResponse = await fetch(`/api/job-titles?organization_id=${employeeData.organization_id}`, {
+        const jobResponse = await fetch(`/api/job-titles?organizationId=${employeeData.organizationId}`, {
           credentials: 'include',
         });
         if (jobResponse.ok) {
@@ -171,7 +171,7 @@ export default function EditEmployeePage({ params }: { params: Promise<{ id: str
         }
 
         // Fetch managers for the employee's organization
-        const managerResponse = await fetch(`/api/employees?organizationId=${employeeData.organization_id}`, {
+        const managerResponse = await fetch(`/api/employees?organizationId=${employeeData.organizationId}`, {
           credentials: 'include',
         });
         if (managerResponse.ok) {
@@ -181,7 +181,7 @@ export default function EditEmployeePage({ params }: { params: Promise<{ id: str
 
         // Pre-populate form
         setFormData({
-          organization_id: employeeData.organization_id?.toString() || '',
+          organizationId: employeeData.organizationId?.toString() || '',
           department_id: employeeData.department_id?.toString() || '',
           job_title_id: employeeData.job_title_id?.toString() || '',
           manager_id: employeeData.manager_id?.toString() || '',
@@ -212,11 +212,11 @@ export default function EditEmployeePage({ params }: { params: Promise<{ id: str
 
   // Update departments, job titles, and managers when organization changes
   useEffect(() => {
-    if (formData.organization_id && formData.organization_id !== employee?.organization_id?.toString()) {
+    if (formData.organizationId && formData.organizationId !== employee?.organizationId?.toString()) {
       const updateRelatedData = async () => {
         try {
           // Fetch departments
-          const deptResponse = await fetch(`/api/departments?organization_id=${formData.organization_id}`, {
+          const deptResponse = await fetch(`/api/departments?organizationId=${formData.organizationId}`, {
             credentials: 'include',
           });
           if (deptResponse.ok) {
@@ -225,7 +225,7 @@ export default function EditEmployeePage({ params }: { params: Promise<{ id: str
           }
 
           // Fetch job titles
-          const jobResponse = await fetch(`/api/job-titles?organization_id=${formData.organization_id}`, {
+          const jobResponse = await fetch(`/api/job-titles?organizationId=${formData.organizationId}`, {
             credentials: 'include',
           });
           if (jobResponse.ok) {
@@ -234,7 +234,7 @@ export default function EditEmployeePage({ params }: { params: Promise<{ id: str
           }
 
           // Fetch managers
-          const managerResponse = await fetch(`/api/employees?organizationId=${formData.organization_id}`, {
+          const managerResponse = await fetch(`/api/employees?organizationId=${formData.organizationId}`, {
             credentials: 'include',
           });
           if (managerResponse.ok) {
@@ -248,7 +248,7 @@ export default function EditEmployeePage({ params }: { params: Promise<{ id: str
 
       updateRelatedData();
     }
-  }, [formData.organization_id, employee?.id, employee?.organization_id]);
+  }, [formData.organizationId, employee?.id, employee?.organizationId]);
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({
@@ -282,7 +282,7 @@ export default function EditEmployeePage({ params }: { params: Promise<{ id: str
 
       const payload = {
         ...formData,
-        organization_id: formData.organization_id,
+        organizationId: formData.organizationId,
         department_id: formData.department_id,
         job_title_id: formData.job_title_id,
         manager_id: formData.manager_id ? Number(formData.manager_id) : undefined,

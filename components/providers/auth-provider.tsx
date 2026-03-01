@@ -12,7 +12,7 @@ interface User {
   email: string;
   username: string;
   role?: string;
-  organization_id?: string;
+  organizationId?: string;
   firstName?: string;
   lastName?: string;
 }
@@ -34,7 +34,7 @@ const sanitizeUser = (user: any): User => ({
   id: user.id,
   email: user.email,
   username: user.username,
-  organization_id: user.organization_id,
+  organizationId: user.organizationId || user.organizationId, // Handle both camelCase and snake_case
   firstName: user.first_name,
   lastName: user.last_name
 });
@@ -75,10 +75,6 @@ export function AuthProvider({
     sessionManager.clearSession();
     router.push('/login');
   };
-
-  const { checkAuth } = useUserCache(setUser, setIsLoading, setHasCheckedAuth, {
-    onUserNull: handleUserNull
-  });
 
   // Cross-tab session synchronization
   useEffect(() => {
@@ -167,7 +163,7 @@ export function AuthProvider({
           id: data.user.id,
           email: data.user.email,
           username: data.user.email,
-          organization_id: data.user.organizationId
+          organizationId: data.user.organizationId
         };
         setUser(userData);
         
@@ -223,6 +219,21 @@ export function AuthProvider({
       sessionManager.clearSession();
     }
   };
+
+  const { getIdleStatus } = useIdleTimeout(logout, user, {
+    timeout: 30 * 60 * 1000, // 30 minutes
+    promptBefore: 5 * 60 * 1000, // 5 minutes
+    enabled: !!user
+  });
+
+  // Update checkAuth with proper isUserIdle function
+  const { checkAuth } = useUserCache(setUser, setIsLoading, setHasCheckedAuth, {
+    onUserNull: handleUserNull,
+    isUserIdle: () => {
+      const status = getIdleStatus();
+      return status ? status.idleTime > 5 * 60 * 1000 : false; // Consider idle after 5 minutes
+    }
+  });
 
   // Get access token - Better-Auth manages tokens via cookies
   const getAccessToken = async (): Promise<string | null> => {

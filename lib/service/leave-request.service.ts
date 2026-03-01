@@ -18,20 +18,38 @@ export class LeaveRequestService {
   }
 
   async getAll(options?: PaginationOptions): Promise<PaginatedResponse<LeaveRequest>> {
-    const result = await leaveRequestController.getAll();
-    const page = options?.page || 1;
-    const limit = options?.limit || 10;
-    const start = (page - 1) * limit;
-    const paginated = result.slice(start, start + limit);
-    const total = result.length;
-    const totalPages = Math.ceil(total / limit);
+    const result = await leaveRequestController.getAll(undefined, undefined);
+    
+    // Always wrap the array in paginated format since controller returns raw array
+    const data = result as LeaveRequest[];
+    
+    if (options) {
+      // Apply pagination if options provided
+      const startIndex = (options.page - 1) * options.limit;
+      const endIndex = startIndex + options.limit;
+      const paginatedData = data.slice(startIndex, endIndex);
+      
+      return {
+        data: paginatedData,
+        total: data.length,
+        page: options.page,
+        limit: options.limit,
+        totalPages: Math.ceil(data.length / options.limit)
+      };
+    }
+    
+    // Return all data as single page
     return {
-      data: paginated,
-      total,
-      page,
-      limit,
-      totalPages
+      data: data,
+      total: data.length,
+      page: 1,
+      limit: data.length,
+      totalPages: 1
     };
+  }
+
+  async getApprovedLeaveByEmployeeAndDateRange(employeeId: string, startDate: Date, endDate: Date): Promise<LeaveRequest[]> {
+    return await leaveRequestController.getApprovedByEmployeeAndDateRange(employeeId, startDate, endDate);
   }
 
   async create(data: CreateLeaveRequest): Promise<LeaveRequest> {

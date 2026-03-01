@@ -1,5 +1,6 @@
 export { getOrganizationService } from './organization.service';
 import { generateULID } from '@/lib/utils/ulid.service';
+import { getLeaveRequestService } from './leave-request.service';
 export { getUserService } from './user.service';
 export { getEmployeeService } from './employee.service';
 export { getRoleService } from './role.service';
@@ -18,10 +19,30 @@ export { overtimeRequestService } from './overtime-request.service';
 export { timeBreakService } from './time-break.service';
 export { holidayManagementService } from './holiday-management.service';
 export { calendarService } from './calendar.service';
-export { payrollCalculationService } from './payroll-calculation.service';
+export { PayrollCalculationService } from './payroll-calculation.service';
+export { PHDeductionsService } from './ph-deductions.service';
+export { RateManagementService } from './rate-management.service';
+export { getLateDeductionPolicyService } from './late-deduction-policy.service';
+export { getWorkScheduleService } from './work-schedule.service';
+export { getPayrollPeriodService } from './payroll-period.service';
+export { getDeductionService } from './deduction.service';
+export { getPayrollEarningService } from './payroll-earning.service';
+export { getEmployeeGovernmentInfoService } from './employee-government-info.service';
 export type { ITimeEntryService } from '@/lib/interfaces/time-entry.interface';
 export type { IOvertimeRequestService } from '@/lib/interfaces/overtime-request.interface';
 export type { ITimesheetCalculationService } from '@/lib/interfaces/timesheet-calculation.interface';
 export type { ITimeBreakService } from '@/lib/interfaces/time-break.interface';
 export type { IHolidayService } from '@/lib/interfaces/holiday.interface';
 export type { ICalendarService } from '@/lib/interfaces/calendar.interface';
+export type { PHDeductionResult, ContributionRates } from './ph-deductions.service';
+export type { RateTransition } from './rate-management.service';
+export type { TaxCalculationDetails, TaxExemption } from './tax-computation.service';
+export type { CreateLateDeductionPolicy, UpdateLateDeductionPolicy } from './late-deduction-policy.service';
+export type { CreateWorkSchedule, UpdateWorkSchedule } from './work-schedule.service';
+export type { CreatePayrollPeriod, UpdatePayrollPeriod } from './payroll-period.service';
+export type { CreateDeduction, UpdateDeduction, DeductionSummary } from './deduction.service';
+export type { CreatePayrollEarning, UpdatePayrollEarning, EarningSummary } from './payroll-earning.service';
+export type { CreateEmployeeGovernmentInfo, UpdateEmployeeGovernmentInfo, BulkUpdateData } from './employee-government-info.service';
+
+// UI-specific services (browser-based, DOM manipulation)
+export * from './ui';

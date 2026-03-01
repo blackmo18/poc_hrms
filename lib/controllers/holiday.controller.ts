@@ -1,6 +1,8 @@
 import { prisma } from '../db';
+import { PrismaClient } from '@prisma/client';
+import { generateULID } from '@/lib/utils/ulid.service';
 import { HolidayType } from '@prisma/client';
-import { generateULID } from '../utils/ulid.service';
+import { createDateAtMidnightUTC, createDateAtMidnightUTCFromDate } from '@/lib/utils/date-utils';
 
 export class HolidayController {
   /**
@@ -32,16 +34,77 @@ export class HolidayController {
   }
 
   /**
+   * Get holiday templates by organization (including system templates)
+   */
+  async getHolidayTemplatesByOrganizationWithSystem(organizationId: string): Promise<any[]> {
+    return await prisma.holidayTemplate.findMany({
+      where: {
+        OR: [
+          { organizationId }, // Organization-specific templates
+          { isDefault: true }, // System templates available to all
+        ],
+      },
+      include: {
+        holidays: {
+          orderBy: {
+            date: 'asc',
+          },
+        },
+        organization: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
+  }
+
+  /**
    * Create a holiday template
    */
-  async createHolidayTemplate(organizationID: string, name: string, description?: string, createdBy?: string): Promise<any> {
+  async createHolidayTemplate(organizationID: string, name: string, description?: string, createdBy?: string, holidays?: any[]): Promise<any> {
     return await prisma.holidayTemplate.create({
       data: {
         id: generateULID(),
         organizationId: organizationID,
         name: name,
         description: description,
+        ...(holidays && holidays.length > 0 && {
+          holidays: {
+            create: holidays.map(holiday => {
+              // Handle date properly - ignore time component, only store date at midnight UTC
+              let holidayDate: Date;
+              if (typeof holiday.date === 'string') {
+                // Extract YYYY-MM-DD part if it's an ISO string
+                const dateStr = holiday.date.includes('T') ? holiday.date.split('T')[0] : holiday.date;
+                holidayDate = createDateAtMidnightUTC(dateStr);
+              } else {
+                // If it's already a Date object, convert to UTC midnight
+                holidayDate = createDateAtMidnightUTCFromDate(holiday.date);
+              }
+
+              return {
+                id: generateULID(),
+                organizationId: organizationID,
+                date: holidayDate,
+                name: holiday.name,
+                type: holiday.type,
+                isPaidIfNotWorked: holiday.isPaidIfNotWorked,
+                countsTowardOt: holiday.countsTowardOt,
+                rateMultiplier: holiday.rateMultiplier,
+                isRecurring: false,
+              };
+            })
+          }
+        })
       } as any,
+      include: {
+        holidays: true
+      }
     });
   }
 
@@ -101,7 +164,7 @@ export class HolidayController {
    */
   async createHoliday(data: {
     template_id: string;
-    organization_id: string;
+    organizationId: string;
     date: Date;
     type: HolidayType;
     is_recurring?: boolean;
@@ -113,7 +176,7 @@ export class HolidayController {
       data: {
         id,
         holidayTemplateId: data.template_id,
-        organizationId: data.organization_id,
+        organizationId: data.organizationId,
         date: data.date,
         type: data.type,
         isRecurring: data.is_recurring || false,
@@ -298,58 +361,6 @@ export class HolidayController {
   }
 
   /**
-   * Assign holiday to employee
-   */
-  async assignHolidayToEmployee(data: {
-    employeeId: string;
-    holidayId: string;
-    organizationId: string;
-    createdBy?: string;
-  }): Promise<any> {
-    const id = generateULID();
-
-    // Check if association already exists
-    const existing = await prisma.employeeHolidayAssignment.findUnique({
-      where: {
-        employeeId_holidayId: {
-          employeeId: data.employeeId,
-          holidayId: data.holidayId,
-        },
-      },
-    });
-
-    if (existing) {
-      throw new Error('Holiday already assigned to this employee');
-    }
-
-    return await prisma.employeeHolidayAssignment.create({
-      data: {
-        id,
-        employeeId: data.employeeId,
-        holidayId: data.holidayId,
-        organizationId: data.organizationId,
-      } as any,
-      include: {
-        employee: {
-          select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-          },
-        },
-        holiday: {
-          select: {
-            id: true,
-            date: true,
-            type: true,
-            isRecurring: true,
-          },
-        },
-      },
-    });
-  }
-
-  /**
    * Find holiday by organization, date, and types
    */
   async findHolidayByDateAndType(organizationId: string, date: Date, types: HolidayType[]): Promise<any> {
@@ -386,7 +397,7 @@ export class HolidayController {
   /**
    * Get all holidays for an organization within a date range
    */
-  async getHolidaysInRange(organizationId: string, startDate: Date, endDate: Date): Promise<any[]> {
+  async getHolidaysInRange(organizationId: string, startDate: Date, endDate: Date, includeTemplate: boolean = false): Promise<any[]> {
     return await prisma.holiday.findMany({
       where: {
         organizationId: organizationId,
@@ -406,12 +417,309 @@ export class HolidayController {
           },
         ],
       },
-      include: {
+      include: includeTemplate ? {
+        holidayTemplate: {
+          include: {
+            organization: {
+              select: {
+                name: true
+              }
+            }
+          }
+        },
+      } : {
         holidayTemplate: true,
       },
       orderBy: {
         date: 'asc',
       },
+    });
+  }
+
+  /**
+   * Find holiday template by ID with all its holidays
+   */
+  async findTemplateWithHolidays(templateId: string): Promise<any> {
+    return await prisma.holidayTemplate.findUnique({
+      where: { id: templateId },
+      include: {
+        holidays: {
+          orderBy: { date: 'asc' }
+        }
+      }
+    });
+  }
+
+  /**
+   * Check if a template name already exists for an organization
+   */
+  async checkTemplateNameExists(organizationId: string, templateName: string): Promise<boolean> {
+    const existing = await prisma.holidayTemplate.findFirst({
+      where: {
+        organizationId: organizationId,
+        name: templateName
+      }
+    });
+    return !!existing;
+  }
+
+  /**
+   * Create a holiday template with all required fields
+   */
+  async createFullHolidayTemplate(data: {
+    organizationId: string;
+    name: string;
+    description?: string;
+    isDefault?: boolean;
+  }): Promise<any> {
+    return await prisma.holidayTemplate.create({
+      data: {
+        id: generateULID(),
+        organizationId: data.organizationId,
+        name: data.name,
+        description: data.description,
+        isDefault: data.isDefault || false
+      }
+    });
+  }
+
+  /**
+   * Create a holiday with all required fields
+   */
+  async createFullHoliday(data: {
+    organizationId: string;
+    holidayTemplateId: string;
+    name: string;
+    date: Date;
+    type: HolidayType;
+    rateMultiplier: number;
+    isPaidIfNotWorked: boolean;
+    countsTowardOt: boolean;
+    isRecurring?: boolean;
+  }): Promise<any> {
+    return await prisma.holiday.create({
+      data: {
+        id: generateULID(),
+        organizationId: data.organizationId,
+        holidayTemplateId: data.holidayTemplateId,
+        name: data.name,
+        date: data.date,
+        type: data.type,
+        rateMultiplier: data.rateMultiplier,
+        isPaidIfNotWorked: data.isPaidIfNotWorked,
+        countsTowardOt: data.countsTowardOt,
+        isRecurring: data.isRecurring || false
+      }
+    });
+  }
+
+  /**
+   * Copy holidays from a template to create a new template for an organization
+   */
+  async copyHolidaysFromTemplate(data: {
+    organizationId: string;
+    sourceTemplateId: string;
+    newTemplateName: string;
+    targetYear?: number;
+  }): Promise<{
+    template: any;
+    holidays: any[];
+    totalCopied: number;
+  }> {
+    // Get the source template with its holidays
+    const sourceTemplate = await prisma.holidayTemplate.findUnique({
+      where: { id: data.sourceTemplateId },
+      include: { holidays: true }
+    });
+
+    if (!sourceTemplate) {
+      throw new Error('Source template not found');
+    }
+
+    // Create new template
+    const newTemplate = await prisma.holidayTemplate.create({
+      data: {
+        id: generateULID(),
+        organizationId: data.organizationId,
+        name: data.newTemplateName,
+        description: `Copied from "${sourceTemplate.name}"${data.targetYear ? ` for ${data.targetYear}` : ''}`
+      }
+    });
+
+    // Copy holidays with optional year adjustment
+    const copiedHolidays = await Promise.all(
+      sourceTemplate.holidays.map(async (holiday) => {
+        let adjustedDate = new Date(holiday.date);
+        
+        // Adjust year if specified
+        if (data.targetYear) {
+          adjustedDate.setFullYear(data.targetYear);
+        }
+
+        return await prisma.holiday.create({
+          data: {
+            id: generateULID(),
+            organizationId: data.organizationId,
+            holidayTemplateId: newTemplate.id,
+            name: holiday.name,
+            date: adjustedDate,
+            type: holiday.type,
+            rateMultiplier: holiday.rateMultiplier,
+            isPaidIfNotWorked: holiday.isPaidIfNotWorked,
+            countsTowardOt: holiday.countsTowardOt,
+            isRecurring: holiday.isRecurring
+          }
+        });
+      })
+    );
+
+    return {
+      template: newTemplate,
+      holidays: copiedHolidays,
+      totalCopied: copiedHolidays.length
+    };
+  }
+
+  /**
+   * Delete a holiday template and all its holidays
+   */
+  async deleteHolidayTemplate(templateId: string): Promise<void> {
+    // Check if template exists
+    const template = await prisma.holidayTemplate.findUnique({
+      where: { id: templateId }
+    });
+
+    if (!template) {
+      throw new Error('Holiday template not found');
+    }
+
+    // Prevent deletion of system default templates
+    if (template.isDefault) {
+      throw new Error('Cannot delete system default templates');
+    }
+
+    // Delete the template (holidays will be deleted via cascade)
+    await prisma.holidayTemplate.delete({
+      where: { id: templateId }
+    });
+  }
+
+  /**
+   * Update a holiday template and its holidays
+   */
+  async updateHolidayTemplate(templateId: string, data: {
+    name?: string;
+    description?: string;
+    holidays?: any[];
+  }) {
+    // Check if template exists
+    const template = await prisma.holidayTemplate.findUnique({
+      where: { id: templateId }
+    });
+
+    if (!template) {
+      throw new Error('Holiday template not found');
+    }
+
+    // Prevent editing of system default templates
+    if (template.isDefault) {
+      throw new Error('Cannot edit system default templates');
+    }
+
+    // Update template basic info
+    const updatedTemplate = await prisma.holidayTemplate.update({
+      where: { id: templateId },
+      data: {
+        ...(data.name && { name: data.name }),
+        ...(data.description !== undefined && { description: data.description }),
+      }
+    });
+
+    // If holidays are provided, update them
+    if (data.holidays) {
+      // Get existing holidays for this template
+      const existingHolidays = await prisma.holiday.findMany({
+        where: { holidayTemplateId: templateId }
+      });
+
+      // Separate holidays into updates and new creations
+      const holidaysToUpdate = data.holidays.filter(holiday => holiday.id);
+      const holidaysToCreate = data.holidays.filter(holiday => !holiday.id);
+
+      // Update existing holidays
+      for (const holiday of holidaysToUpdate) {
+        // Handle date properly - ignore time component, only store date at midnight UTC
+        let holidayDate: Date;
+        if (typeof holiday.date === 'string') {
+          // Extract YYYY-MM-DD part if it's an ISO string
+          const dateStr = holiday.date.includes('T') ? holiday.date.split('T')[0] : holiday.date;
+          holidayDate = createDateAtMidnightUTC(dateStr);
+        } else {
+          // If it's already a Date object, convert to UTC midnight
+          holidayDate = createDateAtMidnightUTCFromDate(holiday.date);
+        }
+
+        await prisma.holiday.update({
+          where: { id: holiday.id },
+          data: {
+            name: holiday.name,
+            date: holidayDate,
+            type: holiday.type,
+            rateMultiplier: holiday.rateMultiplier,
+            isPaidIfNotWorked: holiday.isPaidIfNotWorked,
+            countsTowardOt: holiday.countsTowardOt,
+          }
+        });
+      }
+
+      // Delete holidays that are no longer in the update list
+      const updatedHolidayIds = holidaysToUpdate.map(h => h.id);
+      const holidaysToDelete = existingHolidays.filter(h => !updatedHolidayIds.includes(h.id));
+      
+      if (holidaysToDelete.length > 0) {
+        await prisma.holiday.deleteMany({
+          where: {
+            id: { in: holidaysToDelete.map(h => h.id) }
+          }
+        });
+      }
+
+      // Create new holidays
+      if (holidaysToCreate.length > 0) {
+        await prisma.holiday.createMany({
+          data: holidaysToCreate.map(holiday => {
+            // Handle date properly - ignore time component, only store date at midnight UTC
+            let holidayDate: Date;
+            if (typeof holiday.date === 'string') {
+              // Extract YYYY-MM-DD part if it's an ISO string
+              const dateStr = holiday.date.includes('T') ? holiday.date.split('T')[0] : holiday.date;
+              holidayDate = createDateAtMidnightUTC(dateStr);
+            } else {
+              // If it's already a Date object, convert to UTC midnight
+              holidayDate = createDateAtMidnightUTCFromDate(holiday.date);
+            }
+
+            return {
+              id: generateULID(),
+              organizationId: template.organizationId,
+              holidayTemplateId: templateId,
+              name: holiday.name,
+              date: holidayDate,
+              type: holiday.type,
+              rateMultiplier: holiday.rateMultiplier,
+              isPaidIfNotWorked: holiday.isPaidIfNotWorked,
+              countsTowardOt: holiday.countsTowardOt,
+              isRecurring: false
+            };
+          })
+        });
+      }
+    }
+
+    // Return updated template with holidays
+    return await prisma.holidayTemplate.findUnique({
+      where: { id: templateId },
+      include: { holidays: true }
     });
   }
 }

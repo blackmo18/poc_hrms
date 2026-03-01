@@ -9,7 +9,7 @@ import MultiSelect from "@/components/form/MultiSelect";
 interface UserFormData {
   employee_id: string;
   email: string;
-  organization_id: string;
+  organizationId: string;
   role_ids: string[];
 }
 
@@ -53,13 +53,13 @@ export default function EditUserForm({
         <div>
           <Label>Organization *</Label>
           <Input
-            value={Array.isArray(organizations) ? organizations.find(org => org.id === formData.organization_id)?.name || 'Unknown' : 'Unknown'}
+            value={Array.isArray(organizations) ? organizations.find(org => org.id === formData.organizationId)?.name || 'Unknown' : 'Unknown'}
             readOnly
             className="text-gray-900 dark:text-white bg-gray-50 dark:bg-gray-800"
           />
-          {errors.organization_id && (
+          {errors.organizationId && (
             <p className="mt-1 text-sm text-red-600 dark:text-red-400">
-              {errors.organization_id}
+              {errors.organizationId}
             </p>
           )}
         </div>

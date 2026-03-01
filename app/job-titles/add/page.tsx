@@ -33,7 +33,7 @@ export default function AddJobTitlePage() {
   const [showErrorModal, setShowErrorModal] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [formData, setFormData] = useState({
-    organization_id: '',
+    organizationId: '',
     name: '',
     description: '',
   });
@@ -72,11 +72,11 @@ export default function AddJobTitlePage() {
         setAvailableOrganizations(organizations);
       } else {
         // Non-super admin users only see their organization
-        const userOrg = organizations.filter(org => org.id === Number(user.organization_id));
+        const userOrg = organizations.filter(org => org.id === Number(user.organizationId));
         setAvailableOrganizations(userOrg);
-        // Pre-populate the organization_id for non-super admin users
-        if (user.organization_id) {
-          setFormData(prev => ({ ...prev, organization_id: user.organization_id!.toString() }));
+        // Pre-populate the organizationId for non-super admin users
+        if (user.organizationId) {
+          setFormData(prev => ({ ...prev, organizationId: user.organizationId!.toString() }));
         }
       }
     }
@@ -84,7 +84,7 @@ export default function AddJobTitlePage() {
 
   const handleCreateClick = () => {
     // Basic validation
-    if (!formData.organization_id || !formData.name.trim()) {
+    if (!formData.organizationId || !formData.name.trim()) {
       setErrorMessage('Please fill in all required fields');
       setShowErrorModal(true);
       return;
@@ -109,7 +109,7 @@ export default function AddJobTitlePage() {
         credentials: 'include',
         body: JSON.stringify({
           ...formData,
-          organization_id: Number(formData.organization_id),
+          organizationId: Number(formData.organizationId),
         }),
       });
 
@@ -199,7 +199,7 @@ export default function AddJobTitlePage() {
         title="Confirm Job Title Creation"
         description="Please review the job title details before creating."
         details={[
-          { label: 'Organization', value: availableOrganizations.find(org => org.id.toString() === formData.organization_id)?.name || 'Unknown' },
+          { label: 'Organization', value: availableOrganizations.find(org => org.id.toString() === formData.organizationId)?.name || 'Unknown' },
           { label: 'Job Title Name', value: formData.name },
           { label: 'Description', value: formData.description || 'No description' },
         ]}

@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
       const timeEntryService = getTimeEntryService();
       const user = authRequest.user!;
 
-      // Get employee to get organization_id
+      // Get employee to get organizationId
       const employeeService = getEmployeeService();
       const employee = await employeeService.getByUserId(user.id);
       if (!employee) {
@@ -107,7 +107,7 @@ export async function GET(request: NextRequest) {
       const timeEntryService = getTimeEntryService();
       const user = authRequest.user!;
 
-      // Get employee to get organization_id
+      // Get employee to get organizationId
       const employeeService = getEmployeeService();
       const employee = await employeeService.getByUserId(user.id);
       if (!employee) {

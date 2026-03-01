@@ -93,19 +93,21 @@ export default function DetailsConfirmationModal({
           )}
         </div>
 
-        <div className="px-2 mb-6 max-h-[400px] overflow-y-auto custom-scrollbar">
+        <div className="px-2 mb-6 max-h-[60vh] overflow-y-auto custom-scrollbar pr-2">
           {renderDetails()}
         </div>
 
         <div className="flex items-center justify-end gap-3 px-2 pt-4 border-t border-gray-200 dark:border-gray-700">
-          <Button
-            variant="outline"
-            size="md"
-            onClick={onClose}
-            disabled={isLoading}
-          >
-            {cancelText}
-          </Button>
+          {cancelText && (
+            <Button
+              variant="outline"
+              size="md"
+              onClick={onClose}
+              disabled={isLoading}
+            >
+              {cancelText}
+            </Button>
+          )}
           <Button
             variant="primary"
             size="md"

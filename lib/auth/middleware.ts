@@ -69,7 +69,7 @@ export async function authMiddleware(request: NextRequest): Promise<any | NextRe
 export async function organizationMiddleware(request: NextRequest): Promise<NextResponse | null> {
   const authRequest = request as AuthenticatedRequest;
   const userOrganization = authRequest.user?.organizationId;
-  const requestedOrganization = request.nextUrl.searchParams.get('organization_id') || 
+  const requestedOrganization = request.nextUrl.searchParams.get('organizationId') || 
                                request.headers.get('x-organization-id');
 
   if (requestedOrganization && userOrganization !== requestedOrganization) {

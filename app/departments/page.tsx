@@ -260,8 +260,8 @@ export default function DepartmentsPage() {
           dispatch({ type: 'SET_DEPARTMENT_TO_DELETE', payload: null });
           dispatch({ type: 'SET_DELETE_SUCCESS', payload: false });
           // Refresh with current organization filter
-          if (!isSuperAdminMemo && user?.organization_id) {
-            fetchDepartments(user.organization_id.toString(), orgFilterCurrentPage);
+          if (!isSuperAdminMemo && user?.organizationId) {
+            fetchDepartments(user.organizationId.toString(), orgFilterCurrentPage);
           } else {
             fetchDepartments(selectedOrganization || undefined, orgFilterCurrentPage);
           }

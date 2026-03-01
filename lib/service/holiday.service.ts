@@ -88,9 +88,9 @@ export class HolidayService {
   /**
    * Get all holidays for an organization within a date range
    */
-  async getHolidays(organizationId: string, startDate: Date, endDate: Date) {
+  async getHolidays(organizationId: string, startDate: Date, endDate: Date, includeTemplate: boolean = false) {
     try {
-      const holidays = await holidayController.getHolidaysInRange(organizationId, startDate, endDate);
+      const holidays = await holidayController.getHolidaysInRange(organizationId, startDate, endDate, includeTemplate);
 
       // Filter recurring holidays to only include those that fall within the date range
       return holidays.filter(holiday => {
@@ -111,6 +111,90 @@ export class HolidayService {
       console.error('Error fetching holidays:', error);
       return [];
     }
+  }
+
+  /**
+   * Copy holidays from a system template to create a new template for an organization
+   */
+  async copyHolidaysFromTemplate(data: {
+    organizationId: string;
+    sourceTemplateId: string;
+    newTemplateName: string;
+    targetYear?: number;
+  }): Promise<{
+    template: any;
+    holidays: any[];
+    totalCopied: number;
+  }> {
+    const { organizationId, sourceTemplateId, newTemplateName, targetYear } = data;
+
+    // Find the source template with its holidays using controller
+    const sourceTemplate = await holidayController.findTemplateWithHolidays(sourceTemplateId);
+
+    if (!sourceTemplate) {
+      throw new Error('Source template not found');
+    }
+
+    // Check if the organization already has a template with this name using controller
+    const nameExists = await holidayController.checkTemplateNameExists(organizationId, newTemplateName);
+
+    if (nameExists) {
+      throw new Error('A template with this name already exists for your organization');
+    }
+
+    // Create new template for the organization using controller
+    const newTemplate = await holidayController.createFullHolidayTemplate({
+      organizationId: organizationId,
+      name: newTemplateName,
+      description: `Copied from ${sourceTemplate.name}`,
+      isDefault: false
+    });
+
+    // Copy holidays with date adjustments using controller
+    const copiedHolidays = [];
+    for (const sourceHoliday of sourceTemplate.holidays) {
+      let holidayDate = sourceHoliday.date;
+
+      // Adjust year if specified
+      if (targetYear) {
+        holidayDate = new Date(targetYear,
+                             sourceHoliday.date.getMonth(),
+                             sourceHoliday.date.getDate());
+      }
+
+      const newHoliday = await holidayController.createFullHoliday({
+        organizationId: organizationId,
+        holidayTemplateId: newTemplate.id,
+        name: sourceHoliday.name,
+        date: holidayDate,
+        type: sourceHoliday.type,
+        rateMultiplier: sourceHoliday.rateMultiplier,
+        isPaidIfNotWorked: sourceHoliday.isPaidIfNotWorked,
+        countsTowardOt: sourceHoliday.countsTowardOt,
+        isRecurring: sourceHoliday.isRecurring
+      });
+
+      copiedHolidays.push(newHoliday);
+    }
+
+    return {
+      template: {
+        id: newTemplate.id,
+        name: newTemplate.name,
+        description: newTemplate.description,
+        isDefault: newTemplate.isDefault
+      },
+      holidays: copiedHolidays.map(holiday => ({
+        id: holiday.id,
+        name: holiday.name,
+        date: holiday.date.toISOString().split('T')[0],
+        type: holiday.type,
+        rateMultiplier: holiday.rateMultiplier,
+        isPaidIfNotWorked: holiday.isPaidIfNotWorked,
+        countsTowardOt: holiday.countsTowardOt
+      })),
+      totalCopied: copiedHolidays.length
+    };
   }
 }
 

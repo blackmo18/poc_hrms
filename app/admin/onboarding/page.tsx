@@ -20,7 +20,7 @@ const AdminOnboardingPage = () => {
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
-    organization_id: '',
+    organizationId: '',
     first_name: '',
     last_name: '',
     work_email: '',
@@ -84,7 +84,7 @@ const AdminOnboardingPage = () => {
       if (response.ok) {
         alert('Admin onboarded successfully!');
         setFormData({
-          organization_id: '',
+          organizationId: '',
           first_name: '',
           last_name: '',
           work_email: '',
@@ -123,8 +123,8 @@ const AdminOnboardingPage = () => {
                 <Select
                   options={organizations.map(org => ({ value: org.id.toString(), label: org.name }))}
                   placeholder="Select organization"
-                  onChange={(value) => handleInputChange('organization_id', value)}
-                  value={formData.organization_id}
+                  onChange={(value) => handleInputChange('organizationId', value)}
+                  value={formData.organizationId}
                   required
                 />
               </div>

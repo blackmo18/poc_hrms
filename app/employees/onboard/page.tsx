@@ -22,20 +22,20 @@ interface Organization {
 interface Department {
   id: number;
   name: string;
-  organization_id: number;
+  organizationId: number;
 }
 
 interface JobTitle {
   id: number;
   name: string;
-  organization_id: number;
+  organizationId: number;
 }
 
 interface Employee {
   id: number;
   first_name: string;
   last_name: string;
-  organization_id: number;
+  organizationId: number;
 }
 
 export default function EmployeeOnboardingPage() {
@@ -49,7 +49,7 @@ export default function EmployeeOnboardingPage() {
 
   // Form state
   const initialFormData = {
-    organization_id: '',
+    organizationId: '',
     department_id: '',
     job_title_id: '',
     manager_id: '',
@@ -92,12 +92,12 @@ export default function EmployeeOnboardingPage() {
   }, [isLoading, user, router]);
 
   useEffect(() => {
-    if (formData.organization_id) {
-      fetchDepartments(formData.organization_id);
-      fetchJobTitles(formData.organization_id);
-      fetchManagers(formData.organization_id);
+    if (formData.organizationId) {
+      fetchDepartments(formData.organizationId);
+      fetchJobTitles(formData.organizationId);
+      fetchManagers(formData.organizationId);
     }
-  }, [formData.organization_id]);
+  }, [formData.organizationId]);
 
   const fetchOrganizations = async () => {
     try {
@@ -113,14 +113,14 @@ export default function EmployeeOnboardingPage() {
         const isSuperAdmin = roles.includes('SUPER_ADMIN');
         if (isSuperAdmin) {
           setAvailableOrganizations(allOrgs);
-        } else if (user?.organization_id) {
-          const userOrg = allOrgs.filter((org: Organization) => org.id === Number(user.organization_id));
+        } else if (user?.organizationId) {
+          const userOrg = allOrgs.filter((org: Organization) => org.id === Number(user.organizationId));
           setAvailableOrganizations(userOrg);
           // Pre-populate organization for non-super admin
           if (userOrg.length > 0) {
             setFormData(prev => ({
               ...prev,
-              organization_id: userOrg[0].id.toString(),
+              organizationId: userOrg[0].id.toString(),
             }));
           }
         }
@@ -132,7 +132,7 @@ export default function EmployeeOnboardingPage() {
 
   const fetchDepartments = async (organizationId: string) => {
     try {
-      const response = await fetch(`/api/departments?organization_id=${organizationId}`, {
+      const response = await fetch(`/api/departments?organizationId=${organizationId}`, {
         credentials: 'include',
       });
       if (response.ok) {
@@ -146,7 +146,7 @@ export default function EmployeeOnboardingPage() {
 
   const fetchJobTitles = async (organizationId: string) => {
     try {
-      const response = await fetch(`/api/job-titles?organization_id=${organizationId}`, {
+      const response = await fetch(`/api/job-titles?organizationId=${organizationId}`, {
         credentials: 'include',
       });
       if (response.ok) {
@@ -202,7 +202,7 @@ export default function EmployeeOnboardingPage() {
 
       const payload = {
         ...formData,
-        organization_id: formData.organization_id,
+        organizationId: formData.organizationId,
         department_id: formData.department_id,
         job_title_id: formData.job_title_id,
         manager_id: formData.manager_id || undefined,

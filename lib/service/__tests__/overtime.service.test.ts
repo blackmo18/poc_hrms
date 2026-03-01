@@ -183,9 +183,15 @@ describe('OvertimeService', () => {
       expect(mockPrisma.overtime.findMany).toHaveBeenCalledWith({
         where: { employeeId: 'emp-123' },
         include: {
-          approvedByUser: {
+          employee: {
             select: {
-              email: true,
+              firstName: true,
+              lastName: true,
+              department: {
+                select: {
+                  name: true,
+                },
+              },
             },
           },
         },
@@ -211,6 +217,11 @@ describe('OvertimeService', () => {
             select: {
               firstName: true,
               lastName: true,
+              department: {
+                select: {
+                  name: true,
+                },
+              },
             },
           },
         },
