@@ -297,7 +297,6 @@ function HolidaysContent() {
           </div>
         )}
 
-        {/* Copy Template Modal */}
         {selectedOrganization && (
           <CopyTemplateModal
             isOpen={isCopyModalOpen}

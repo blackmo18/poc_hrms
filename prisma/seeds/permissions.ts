@@ -19,9 +19,12 @@ export async function seedPermissions(prisma: PrismaClient, generateULID: () => 
     { name: 'payroll.update', description: 'Update payroll', organizationId: organization.id },
     { name: 'payroll.delete', description: 'Delete payroll', organizationId: organization.id },
     { name: 'payroll.process', description: 'Process payroll', organizationId: organization.id },
+<<<<<<< HEAD
     { name: 'payroll.approve', description: 'Approve payroll', organizationId: organization.id },
     { name: 'payroll.release', description: 'Release payroll', organizationId: organization.id },
     { name: 'payroll.void', description: 'Void payroll', organizationId: organization.id },
+=======
+>>>>>>> 4c1841320143168863835f19581a3d3293583ec8
     { name: 'leave.approve', description: 'Approve leave requests', organizationId: organization.id },
     { name: 'timesheet.own', description: 'Manage own timesheet', organizationId: organization.id },
     { name: 'timesheet.own.read', description: 'Read own timesheet', organizationId: organization.id },
