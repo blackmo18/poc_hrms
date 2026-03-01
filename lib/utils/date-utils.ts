@@ -147,3 +147,61 @@ export function formatUTCDateToYYYYMMDD(dateString: string): string {
   const date = new Date(dateString);
   return date.toISOString().split('T')[0]; // This works correctly for UTC dates
 }
+
+/**
+ * Count weekdays in a date range (excluding weekends)
+ */
+export function countWeekdaysInPeriod(startDate: Date, endDate: Date): number {
+  let count = 0;
+  const current = new Date(startDate);
+  
+  while (current <= endDate) {
+    const dayOfWeek = current.getDay();
+    if (dayOfWeek !== 0 && dayOfWeek !== 6) { count++; }
+    current.setDate(current.getDate() + 1);
+  }
+  
+  return count;
+}
+
+/**
+ * Get all weekdays in a date range (excluding weekends)
+ * Returns an array of Date objects representing each weekday
+ */
+export function getWeekdaysInPeriod(startDate: Date, endDate: Date): Date[] {
+  const weekdays: Date[] = [];
+  const current = new Date(startDate);
+  
+  while (current <= endDate) {
+    const dayOfWeek = current.getDay();
+    if (dayOfWeek !== 0 && dayOfWeek !== 6) { // 0 = Sunday, 6 = Saturday
+      weekdays.push(new Date(current));
+    }
+    current.setDate(current.getDate() + 1);
+  }
+  
+  return weekdays;
+}
+
+/**
+ * Check if a date is a weekday (Monday-Friday)
+ */
+export function isWeekday(date: Date): boolean {
+  const dayOfWeek = date.getDay();
+  return dayOfWeek !== 0 && dayOfWeek !== 6; // 0 = Sunday, 6 = Saturday
+}
+
+/**
+ * Check if a date is a weekend (Saturday-Sunday)
+ */
+export function isWeekend(date: Date): boolean {
+  const dayOfWeek = date.getDay();
+  return dayOfWeek === 0 || dayOfWeek === 6; // 0 = Sunday, 6 = Saturday
+}
+
+/**
+ * Check if a date falls within a date range (inclusive)
+ */
+export function isDateInRange(date: Date, startDate: Date, endDate: Date): boolean {
+  return date >= startDate && date <= endDate;
+}

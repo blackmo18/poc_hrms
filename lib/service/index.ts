@@ -1,5 +1,6 @@
 export { getOrganizationService } from './organization.service';
 import { generateULID } from '@/lib/utils/ulid.service';
+import { getLeaveRequestService } from './leave-request.service';
 export { getUserService } from './user.service';
 export { getEmployeeService } from './employee.service';
 export { getRoleService } from './role.service';

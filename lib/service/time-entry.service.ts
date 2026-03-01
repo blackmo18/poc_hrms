@@ -3,6 +3,7 @@ import { CreateTimeEntry, TimeEntryStatus } from '@/lib/models/time-entry';
 import { TimeEntry } from '@prisma/client';
 import { holidayService } from './holiday.service';
 import { ITimeEntryService } from '@/lib/interfaces/time-entry.interface';
+import { logInfo } from '../utils/logger';
 
 export class TimeEntryService implements ITimeEntryService {
   /**
@@ -97,6 +98,18 @@ export class TimeEntryService implements ITimeEntryService {
       dateFrom: startDate,
       dateTo: endDate,
     });
+
+    // const data = result.data.map(entry => {
+    //   return ({
+    //     entry.
+    //   })
+    // })
+    logInfo('TIME_ENTRY', {
+      employeeId,
+      startDate,
+      endDate,
+      result
+    })
     return result.data;
   }
 }

@@ -4,18 +4,19 @@ import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
 import { Calendar, CheckCircle, XCircle, Clock, AlertCircle } from 'lucide-react';
+import { formatUTCDateToReadable } from '../../lib/utils/date-utils';
 
 interface LeaveRequest {
   id: string;
-  leave_type: string;
-  start_date: string;
-  end_date: string;
+  leaveType: string;
+  startDate: string;
+  endDate: string;
   status: string;
   remarks?: string;
   employee: {
     id: string;
-    first_name: string;
-    last_name: string;
+    firstName: string;
+    lastName: string;
     department: {
       name: string;
     };
@@ -123,7 +124,7 @@ export default function LeaveRequestsPage() {
                     </div>
                     <div>
                       <CardTitle className="text-lg">
-                        {request.employee.first_name} {request.employee.last_name}
+                        {request.employee.firstName} {request.employee.lastName}
                       </CardTitle>
                       <p className="text-sm text-gray-600">
                         {request.employee.jobTitle.name} • {request.employee.department.name}
@@ -141,15 +142,15 @@ export default function LeaveRequestsPage() {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                   <div>
                     <p className="text-sm text-gray-600">Leave Type</p>
-                    <p className="font-medium">{request.leave_type}</p>
+                    <p className="font-medium">{request.leaveType}</p>
                   </div>
                   <div>
                     <p className="text-sm text-gray-600">Start Date</p>
-                    <p className="font-medium">{new Date(request.start_date).toLocaleDateString()}</p>
+                    <p className="font-medium">{formatUTCDateToReadable(request.startDate)}</p>
                   </div>
                   <div>
                     <p className="text-sm text-gray-600">End Date</p>
-                    <p className="font-medium">{new Date(request.end_date).toLocaleDateString()}</p>
+                    <p className="font-medium">{formatUTCDateToReadable(request.endDate)}</p>
                   </div>
                 </div>
                 

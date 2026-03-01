@@ -2,9 +2,10 @@ import { DayType, HolidayType, PayComponent, LatePolicyType } from '@prisma/clie
 import { PHDeductionsService, PHDeductionResult } from './ph-deductions.service';
 import { getLateDeductionPolicyService } from './late-deduction-policy.service';
 import { getWorkScheduleService } from './work-schedule.service';
+import { getLeaveRequestService } from './leave-request.service';
 import { timeEntryService } from './time-entry.service';
+import { countWeekdaysInPeriod, getWeekdaysInPeriod } from '../utils/date-utils';
 import { 
-  countWeekdaysInPeriod, 
   calculateActualAbsentDays as sharedCalculateActualAbsentDays,
   calculateCompletePayroll as externalCalculateCompletePayroll
 } from '../utils/payroll-calculations';
@@ -204,50 +205,77 @@ export class PayrollCalculationService {
         periodEnd
       );
       
-      // Get weekdays only (same as calculateActualAbsentDays)
-      const expectedWeekdays = countWeekdaysInPeriod(periodStart, periodEnd);
-      const datesWithEntries = new Set(
-        timeEntries.map(entry => entry.workDate.toISOString().split('T')[0])
+      // Get approved leave requests for the period
+      const leaveRequestService = getLeaveRequestService();
+      const approvedLeaveRequests = await leaveRequestService.getApprovedLeaveByEmployeeAndDateRange(
+        employeeId,
+        periodStart,
+        periodEnd
       );
       
-      // Check each weekday for absence
-      let currentDate = new Date(periodStart);
-      while (currentDate <= periodEnd) {
-        // Only check weekdays (Mon-Fri)
-        const dayOfWeek = currentDate.getDay();
-        if (dayOfWeek !== 0 && dayOfWeek !== 6) { // 0 = Sunday, 6 = Saturday
-          const dateStr = currentDate.toISOString().split('T')[0];
-          
-          if (!datesWithEntries.has(dateStr)) {
-            // Check for absence policy (optional)
-            // Note: There's no ABSENCE policy type, so we'll use LATE as fallback
-            const lateDeductionPolicyService = getLateDeductionPolicyService();
-            const absencePolicy = await lateDeductionPolicyService.getPolicyByType(
-              organizationId,
-              'LATE' // Using LATE as absence policies aren't supported yet
-            );
-            
-            let deductionAmount = dailyRate; // Default to daily rate
-            
-            if (absencePolicy && absencePolicy.deductionMethod === 'FIXED_AMOUNT') {
-              deductionAmount = absencePolicy.fixedAmount || dailyRate;
-            }
-            
-            totalDeduction += deductionAmount;
-            breakdown.push({
-              date: new Date(currentDate),
-              deduction: deductionAmount
-            });
-          }
-        }
+      // Get expected weekdays for validation
+      const expectedWeekdays = countWeekdaysInPeriod(periodStart, periodEnd);
+      
+      // Count only weekday entries as present days
+      const weekdayEntries = timeEntries.filter(entry => {
+        if (entry.clockOutAt === null) return false;
         
-        currentDate.setDate(currentDate.getDate() + 1);
+        // Check if the work date is a weekday
+        const workDay = new Date(entry.workDate);
+        const dayOfWeek = workDay.getDay();
+        return dayOfWeek !== 0 && dayOfWeek !== 6; // 0 = Sunday, 6 = Saturday
+      });
+      
+      // Get dates with time entries for quick lookup
+      const datesWithEntries = new Set(
+        weekdayEntries.map(entry => entry.workDate.toISOString().split('T')[0])
+      );
+      
+      // Get all weekdays in the period
+      const allWeekdays = getWeekdaysInPeriod(periodStart, periodEnd);
+      
+      // Identify absent days (weekdays without time entries)
+      const absentDaysList = allWeekdays.filter(weekday => {
+        const dateStr = weekday.toISOString().split('T')[0];
+        return !datesWithEntries.has(dateStr);
+      });
+      
+      // Check each absent day and exclude those covered by approved leave
+      for (const absentDate of absentDaysList) {
+        const isCoveredByLeave = approvedLeaveRequests.some(leave => {
+          const leaveStart = new Date(leave.startDate);
+          const leaveEnd = new Date(leave.endDate);
+          return absentDate >= leaveStart && absentDate <= leaveEnd;
+        });
+        
+        // Only deduct if not covered by approved leave
+        if (!isCoveredByLeave) {
+          // Check for absence policy (optional)
+          // Note: There's no ABSENCE policy type, so we'll use LATE as fallback
+          const lateDeductionPolicyService = getLateDeductionPolicyService();
+          const absencePolicy = await lateDeductionPolicyService.getPolicyByType(
+            organizationId,
+            'LATE' // Using LATE as absence policies aren't supported yet
+          );
+          
+          let deductionAmount = dailyRate; // Default to daily rate
+          
+          if (absencePolicy && absencePolicy.deductionMethod === 'FIXED_AMOUNT') {
+            deductionAmount = absencePolicy.fixedAmount || dailyRate;
+          }
+          
+          totalDeduction += deductionAmount;
+          breakdown.push({
+            date: absentDate,
+            deduction: deductionAmount
+          });
+        }
       }
     } catch (error) {
       console.error('Error calculating absence deductions:', error);
       return { totalDeduction: 0, breakdown: [] };
     }
-
+    logInfo('CALCULCATE_ABSENCE_DEDUCTIONS', { totalDeduction, breakdown });
     return { totalDeduction, breakdown };
   }
 

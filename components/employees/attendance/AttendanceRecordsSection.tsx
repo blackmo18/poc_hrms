@@ -94,13 +94,25 @@ export default function AttendanceRecordsSection({
                     })}
                   </TableCell>
                   <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
-                    {record.clockInAt}
+                    {record.clockInAt === '-' ? (
+                      <span className="text-gray-400">-</span>
+                    ) : (
+                      record.clockInAt
+                    )}
                   </TableCell>
                   <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
-                    {record.clockOutAt}
+                    {record.clockOutAt === '-' ? (
+                      <span className="text-gray-400">-</span>
+                    ) : (
+                      record.clockOutAt
+                    )}
                   </TableCell>
                   <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
-                    {record.totalWorkMinutes} min ({formatDuration(record.totalWorkMinutes)})
+                    {record.totalWorkMinutes === 0 ? (
+                      <span className="text-gray-400">0 min</span>
+                    ) : (
+                      `${record.totalWorkMinutes} min (${formatDuration(record.totalWorkMinutes)})`
+                    )}
                   </TableCell>
                   <TableCell className="px-4 py-3 text-center">
                     {record.status === '-' ? (
@@ -110,7 +122,7 @@ export default function AttendanceRecordsSection({
                         size="sm"
                         color={getStatusColor(record.status)}
                       >
-                        {record.status}
+                        {record.status === 'weekend' ? 'Weekend' : record.status}
                       </Badge>
                     )}
                   </TableCell>

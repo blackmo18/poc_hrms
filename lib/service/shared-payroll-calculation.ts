@@ -18,6 +18,8 @@ import {
 } from '../types/payroll.types';
 
 import { DIContainer } from '../di/container';
+import { logInfo } from '../utils/logger';
+import { formatDateToYYYYMMDD } from '../utils/date-utils';
 
 function getDIContainer() {
   return DIContainer.getInstance();
@@ -255,7 +257,7 @@ export class SharedPayrollCalculation {
     // The calculation result already has the correct absent days
     const consistentAbsentDays = actualAbsentDays;
 
-    return {
+    const data =  {
       id: payrollRecord?.id || null,
       employeeId: employeeData.employeeId || employeeData.id,
       firstName: employeeData.firstName,
@@ -303,8 +305,8 @@ export class SharedPayrollCalculation {
       },
       netPay: calculationResult.total_net_pay,
       cutoffPeriod: {
-        start: periodStart.toISOString().split('T')[0],
-        end: periodEnd.toISOString().split('T')[0],
+        start: formatDateToYYYYMMDD(periodStart),
+        end: formatDateToYYYYMMDD(periodEnd)
       },
       organization: {
         id: organization?.id || employeeData.organizationId,
@@ -314,6 +316,8 @@ export class SharedPayrollCalculation {
       processedAt: payrollRecord?.processedAt?.toISOString(),
       processedBy: payrollRecord?.processedBy,
     };
+    logInfo('PAYROLL_CALCULATION_TRANSFORMED_DATA', data)
+    return data
   }
 }
 

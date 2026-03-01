@@ -123,6 +123,15 @@ export class PayrollController {
         grossPay: true,
         netPay: true,
         taxableIncome: true,
+        approvedAt: true,
+        approvedBy: true,
+        releasedAt: true,
+        releasedBy: true,
+        voidedAt: true,
+        voidedBy: true,
+        voidReason: true,
+        createdAt: true,
+        updatedAt: true,
         employee: {
           select: {
             id: true,

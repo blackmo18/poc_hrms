@@ -1,11 +1,14 @@
 'use client';
 
+import { useRouter } from 'next/navigation';
 import PageBreadcrumb from '@/components/common/PageBreadCrumb';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { FilterIcon, DownloadIcon } from 'lucide-react';
 
 export default function TimesheetsPage() {
+  const router = useRouter();
+  
   const employeeTimesheets = [
     {
       id: 1,
@@ -156,7 +159,13 @@ export default function TimesheetsPage() {
                       </span>
                     </td>
                     <td className="py-3 px-4 text-center">
-                      <Button variant="outline" size="sm">Review</Button>
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => router.push(`/employees/${timesheet.id}/attendance`)}
+                      >
+                        Review
+                      </Button>
                     </td>
                   </tr>
                 ))}

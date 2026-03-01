@@ -6,6 +6,11 @@ import {
   formatUTCDateToYYYYMMDD,
   formatDateToYYYYMMDD,
   createDateFromYYYYMMDD,
+  countWeekdaysInPeriod,
+  getWeekdaysInPeriod,
+  isWeekday,
+  isWeekend,
+  isDateInRange,
 } from '../date-utils';
 
 describe('Date Utils - UTC Midnight Functions', () => {
@@ -270,5 +275,176 @@ describe('Date Utils - Integration Tests', () => {
     expect(localDate.getFullYear()).toBe(utcDate.getUTCFullYear());
     expect(localDate.getMonth()).toBe(utcDate.getUTCMonth());
     expect(localDate.getDate()).toBe(utcDate.getUTCDate());
+  });
+});
+
+describe('Date Utils - Weekday Functions', () => {
+  describe('countWeekdaysInPeriod', () => {
+    it('should count weekdays correctly for a standard week', () => {
+      // Arrange - Monday to Friday (5 weekdays)
+      const startDate = new Date('2026-02-23'); // Monday
+      const endDate = new Date('2026-02-27'); // Friday
+
+      // Act
+      const result = countWeekdaysInPeriod(startDate, endDate);
+
+      // Assert
+      expect(result).toBe(5);
+    });
+
+    it('should exclude weekends', () => {
+      // Arrange - Full week including weekend
+      const startDate = new Date('2026-02-23'); // Monday
+      const endDate = new Date('2026-03-01'); // Sunday
+
+      // Act
+      const result = countWeekdaysInPeriod(startDate, endDate);
+
+      // Assert - Should only count Mon-Fri (5 days)
+      expect(result).toBe(5);
+    });
+
+    it('should handle single day periods', () => {
+      // Arrange
+      const weekdayDate = new Date('2026-02-25'); // Wednesday
+      const weekendDate = new Date('2026-02-28'); // Saturday
+
+      // Act & Assert
+      expect(countWeekdaysInPeriod(weekdayDate, weekdayDate)).toBe(1);
+      expect(countWeekdaysInPeriod(weekendDate, weekendDate)).toBe(0);
+    });
+
+    it('should handle multi-month periods', () => {
+      // Arrange - Feb 23 to Mar 6 (10 weekdays)
+      const startDate = new Date('2026-02-23'); // Monday
+      const endDate = new Date('2026-03-06'); // Friday
+
+      // Act
+      const result = countWeekdaysInPeriod(startDate, endDate);
+
+      // Assert
+      expect(result).toBe(10);
+    });
+  });
+
+  describe('getWeekdaysInPeriod', () => {
+    it('should return array of weekday dates', () => {
+      // Arrange - Monday to Wednesday
+      const startDate = new Date('2026-02-23'); // Monday
+      const endDate = new Date('2026-02-25'); // Wednesday
+
+      // Act
+      const result = getWeekdaysInPeriod(startDate, endDate);
+
+      // Assert
+      expect(result).toHaveLength(3);
+      expect(result[0]).toBeInstanceOf(Date);
+      expect(result[0].getDay()).toBe(1); // Monday
+      expect(result[1].getDay()).toBe(2); // Tuesday
+      expect(result[2].getDay()).toBe(3); // Wednesday
+    });
+
+    it('should exclude weekends from returned array', () => {
+      // Arrange - Full week
+      const startDate = new Date('2026-02-23'); // Monday
+      const endDate = new Date('2026-03-01'); // Sunday
+
+      // Act
+      const result = getWeekdaysInPeriod(startDate, endDate);
+
+      // Assert - Should only have 5 dates (Mon-Fri)
+      expect(result).toHaveLength(5);
+      result.forEach(date => {
+        const dayOfWeek = date.getDay();
+        expect(dayOfWeek).not.toBe(0); // Not Sunday
+        expect(dayOfWeek).not.toBe(6); // Not Saturday
+      });
+    });
+
+    it('should return empty array for weekend-only period', () => {
+      // Arrange - Saturday to Sunday
+      const startDate = new Date('2026-02-28'); // Saturday
+      const endDate = new Date('2026-03-01'); // Sunday
+
+      // Act
+      const result = getWeekdaysInPeriod(startDate, endDate);
+
+      // Assert
+      expect(result).toHaveLength(0);
+    });
+  });
+
+  describe('isWeekday', () => {
+    it('should return true for weekdays', () => {
+      const monday = new Date('2026-02-23'); // Monday
+      const wednesday = new Date('2026-02-25'); // Wednesday
+      const friday = new Date('2026-02-27'); // Friday
+
+      expect(isWeekday(monday)).toBe(true);
+      expect(isWeekday(wednesday)).toBe(true);
+      expect(isWeekday(friday)).toBe(true);
+    });
+
+    it('should return false for weekends', () => {
+      const saturday = new Date('2026-02-28'); // Saturday
+      const sunday = new Date('2026-03-01'); // Sunday
+
+      expect(isWeekday(saturday)).toBe(false);
+      expect(isWeekday(sunday)).toBe(false);
+    });
+  });
+
+  describe('isWeekend', () => {
+    it('should return false for weekdays', () => {
+      const monday = new Date('2026-02-23'); // Monday
+      const wednesday = new Date('2026-02-25'); // Wednesday
+      const friday = new Date('2026-02-27'); // Friday
+
+      expect(isWeekend(monday)).toBe(false);
+      expect(isWeekend(wednesday)).toBe(false);
+      expect(isWeekend(friday)).toBe(false);
+    });
+
+    it('should return true for weekends', () => {
+      const saturday = new Date('2026-02-28'); // Saturday
+      const sunday = new Date('2026-03-01'); // Sunday
+
+      expect(isWeekend(saturday)).toBe(true);
+      expect(isWeekend(sunday)).toBe(true);
+    });
+  });
+
+  describe('isDateInRange', () => {
+    it('should return true for dates within range', () => {
+      // Arrange
+      const startDate = new Date('2026-02-23');
+      const endDate = new Date('2026-02-27');
+      const dateInRange = new Date('2026-02-25');
+
+      // Act & Assert
+      expect(isDateInRange(dateInRange, startDate, endDate)).toBe(true);
+    });
+
+    it('should return true for boundary dates', () => {
+      // Arrange
+      const startDate = new Date('2026-02-23');
+      const endDate = new Date('2026-02-27');
+
+      // Act & Assert
+      expect(isDateInRange(startDate, startDate, endDate)).toBe(true);
+      expect(isDateInRange(endDate, startDate, endDate)).toBe(true);
+    });
+
+    it('should return false for dates outside range', () => {
+      // Arrange
+      const startDate = new Date('2026-02-23');
+      const endDate = new Date('2026-02-27');
+      const beforeRange = new Date('2026-02-22');
+      const afterRange = new Date('2026-02-28');
+
+      // Act & Assert
+      expect(isDateInRange(beforeRange, startDate, endDate)).toBe(false);
+      expect(isDateInRange(afterRange, startDate, endDate)).toBe(false);
+    });
   });
 });

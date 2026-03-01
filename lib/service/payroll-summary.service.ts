@@ -729,12 +729,49 @@ export class PayrollSummaryService {
     const employeesWithRecords = new Set(timeEntries.map(te => te.employeeId)).size;
     const missingEmployeesCount = Math.max(0, expectedEmployees - employeesWithRecords);
 
+    // Calculate employees who hit the absence threshold
+    const absenceThreshold = parseInt(process.env.ABSENCE_WARNING_THRESHOLD || '2');
+    let employeesHitAbsenceThreshold = 0;
+
+    // Get all employees in the organization/department
+    const result = await employeeController.getAll(organizationId, departmentId, { page: 1, limit: 1000 });
+    const employees = result.data;
+
+    for (const employee of employees) {
+      try {
+        // Get payroll data for this employee
+        const payrollData = await sharedPayrollCalculation.calculatePayroll({
+          employeeId: employee.id,
+          organizationId: organizationId,
+          departmentId: departmentId,
+          periodStart: periodStart,
+          periodEnd: periodEnd,
+          options: {
+            persistData: false // Preview mode
+          }
+        });
+        
+        const transformedData = await sharedPayrollCalculation.transformToEmployeePayrollData(
+          payrollData,
+          periodStart,
+          periodEnd
+        );
+
+        // Check if employee hit the absence threshold
+        if (transformedData.attendance.absentDays >= absenceThreshold) {
+          employeesHitAbsenceThreshold++;
+        }
+      } catch (error) {
+        console.error(`Error checking attendance for employee ${employee.id}:`, error);
+      }
+    }
+
     return {
       totalRecords: timeEntries.length,
       expectedEmployees,
       employeesWithRecords,
-      missingEmployeesCount,
-      complete: missingEmployeesCount === 0,
+      missingEmployeesCount: employeesHitAbsenceThreshold, // number of employees who hit the threshold
+      complete: employeesHitAbsenceThreshold === 0, // complete if and only if no employee with absences hit absences threshold
     };
   }
 
