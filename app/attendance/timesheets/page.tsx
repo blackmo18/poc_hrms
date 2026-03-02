@@ -5,6 +5,8 @@ import PageBreadcrumb from '@/components/common/PageBreadCrumb';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { FilterIcon, DownloadIcon } from 'lucide-react';
+import { ProtectedRoute } from '@/components/protected-route';
+import { ADMINSTRATIVE_ROLES } from '@/lib/constants/roles';
 
 export default function TimesheetsPage() {
   const router = useRouter();
@@ -43,6 +45,7 @@ export default function TimesheetsPage() {
   ];
 
   return (
+    <ProtectedRoute requiredRoles={ADMINSTRATIVE_ROLES}>
     <div className="max-w-7xl mx-auto px-4 py-8">
       {/* Header */}
       <div className="flex justify-between items-center mb-8">
@@ -175,5 +178,6 @@ export default function TimesheetsPage() {
         </CardContent>
       </Card>
     </div>
+    </ProtectedRoute>
   );
 }

@@ -14,12 +14,15 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export const ThemeProvider: React.FC<{ 
   children: React.ReactNode;
-  initialTheme?: Theme;
-}> = ({
-  children,
-  initialTheme = "light",
-}) => {
-  const [theme, setTheme] = useState<Theme>(initialTheme);
+}> = ({ children }) => {
+  const [theme, setTheme] = useState<Theme>(() => {
+    // Check localStorage on client, default to light on server
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('theme');
+      return stored === 'dark' ? 'dark' : 'light';
+    }
+    return 'light';
+  });
 
   useEffect(() => {
     // Sync class with state (handles client-side toggles)
@@ -33,8 +36,8 @@ export const ThemeProvider: React.FC<{
   const toggleTheme = () => {
     const newTheme = theme === "light" ? "dark" : "light";
     setTheme(newTheme);
-    // Set cookie for server-side persistence
-    document.cookie = `theme=${newTheme}; path=/; max-age=31536000`;
+    // Store in localStorage for client-side persistence
+    localStorage.setItem('theme', newTheme);
   };
 
   return (

@@ -1,11 +1,6 @@
 import './globals.css';
 import type { Metadata } from 'next';
-import { cookies } from 'next/headers';
-import { AuthProvider } from '../components/providers/auth-provider';
-import { RoleAccessProvider } from '../components/providers/role-access-provider';
-import { ThemeProvider } from '../context/ThemeContext';
-import PWAInstallPrompt from '../components/PWAInstallPrompt';
-import IdleStatus from '../components/common/IdleStatus';
+import { ClientProviders } from '../components/providers/client-providers';
 
 export const metadata: Metadata = {
   title: 'HR Management System',
@@ -53,17 +48,13 @@ export const metadata: Metadata = {
   },
 };
 
-export default async function RootLayout({
+export default function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const cookieStore = await cookies();
-  const themeCookie = cookieStore.get('theme')?.value;
-  const initialTheme = (themeCookie === 'dark' ? 'dark' : 'light') as 'light' | 'dark';
-
   return (
-    <html lang="en" suppressHydrationWarning className={initialTheme === 'dark' ? 'dark' : ''}>
+    <html lang="en" suppressHydrationWarning>
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <meta name="mobile-web-app-capable" content="yes" />
@@ -78,15 +69,9 @@ export default async function RootLayout({
         <link rel="apple-touch-icon" sizes="512x512" href="/icons/icon-512x512.png" />
       </head>
       <body>
-        <ThemeProvider initialTheme={initialTheme}>
-            <AuthProvider>
-              <RoleAccessProvider>
-                {children}
-                <PWAInstallPrompt />
-                <IdleStatus />
-              </RoleAccessProvider>
-            </AuthProvider>
-        </ThemeProvider>
+        <ClientProviders>
+          {children}
+        </ClientProviders>
       </body>
     </html>
   );

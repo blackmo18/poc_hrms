@@ -107,8 +107,8 @@ const navItems: NavItem[] = [
     name: 'Holidays & Calendar',
     icon: <CalendarInDaysIcon />,
     subItems: [
-      { name: 'Holidays', path: '/holidays', pro: false },
-      { name: 'Holiday Templates', path: '/holidays/templates', pro: false },
+      { name: 'Holidays', path: '/holidays', pro: false, roles: ADMINSTRATIVE_ROLES },
+      { name: 'Holiday Templates', path: '/holidays/templates', roles: ADMINSTRATIVE_ROLES },
       { name: 'Calendars', path: '/calendars', pro: false },
     ]
   },
@@ -122,10 +122,10 @@ const othersItems: NavItem[] = [
       {name: 'Clock In/Out', path: '/attendance/clock-in-out'},
       {name: 'Timesheet View', path: '/attendance/timesheet-view'},
       {name: 'Cutoff Overview', path: '/attendance/cutoff-overview'},
-      {name: 'Employee Timesheets', path: '/attendance/timesheets'},
-      {name: 'Time Corrections', path: '/attendance/corrections'},
-      {name: 'Break Validation', path: '/attendance/breaks'},
-      {name: 'Night Shift Monitor', path: '/attendance/night-shift'},
+      {name: 'Employee Timesheets', path: '/attendance/timesheets', roles: ADMINSTRATIVE_ROLES},
+      {name: 'Time Corrections', path: '/attendance/corrections', roles: ADMINSTRATIVE_ROLES},
+      {name: 'Break Validation', path: '/attendance/breaks', roles: ADMINSTRATIVE_ROLES},
+      {name: 'Night Shift Monitor', path: '/attendance/night-shift', roles: ADMINSTRATIVE_ROLES},
     ]
   },
   {
@@ -144,6 +144,7 @@ const othersItems: NavItem[] = [
     subItems: [
       { name: 'Department List', path: '/departments', pro: false },
     ],
+    roles: ADMINSTRATIVE_ROLES
   },
   {
     icon: <PieChartIcon />,
