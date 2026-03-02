@@ -3,7 +3,7 @@ import { getTimeEntryService } from '@/lib/service/time-entry.service';
 import { getEmployeeService } from '@/lib/service/employee.service';
 import { requiresPermissions } from '@/lib/auth/middleware';
 import { getUserPermissionsForUser } from '@/lib/auth/middleware';
-import { formatDateToYYYYMMDD } from '@/lib/utils/date-utils';
+import { formatDateToYYYYMMDD, formatUTCDateToYYYYMMDD } from '@/lib/utils/date-utils';
 
 export async function GET(request: NextRequest) {
   return requiresPermissions(request, ['timesheet.own.read', 'timesheet.admin.read'], async (authRequest) => {
@@ -68,13 +68,46 @@ export async function GET(request: NextRequest) {
       startDate,
       adjustedEndDate
     );
+    
+    // Debug: Log the raw entries
+    console.log('Raw entries from service:', JSON.stringify(entries, null, 2));
 
     // Create a map of existing time entries by date
     const entriesByDate = new Map();
     (entries || []).forEach((entry: any) => {
-      // Use utility function to avoid UTC timezone issues
-      if (entry.workDate) {
-        const dateStr = formatDateToYYYYMMDD(new Date(entry.workDate));
+      // Debug: Log the actual workDate value
+      console.log('Entry workDate:', entry.workDate, 'type:', typeof entry.workDate);
+      
+      // Use clockInAt date for accurate date mapping (since workDate might be incorrect)
+      if (entry.clockInAt) {
+        // Extract date from clockInAt (this is when the employee actually worked)
+        const clockInDate = new Date(entry.clockInAt);
+        const utcYear = clockInDate.getUTCFullYear();
+        const utcMonth = clockInDate.getUTCMonth() + 1; // getUTCMonth() returns 0-11
+        const utcDay = clockInDate.getUTCDate();
+        const dateStr = `${utcYear}-${String(utcMonth).padStart(2, '0')}-${String(utcDay).padStart(2, '0')}`;
+        
+        console.log('Using clockInAt date:', dateStr);
+        console.log('Original workDate:', entry.workDate);
+        
+        if (dateStr) {
+          entriesByDate.set(dateStr, entry);
+        }
+      } else if (entry.workDate) {
+        // Fallback to workDate if no clockInAt
+        let dateStr;
+        if (typeof entry.workDate === 'string') {
+          dateStr = formatUTCDateToYYYYMMDD(entry.workDate);
+        } else if (entry.workDate instanceof Date) {
+          const utcYear = entry.workDate.getUTCFullYear();
+          const utcMonth = entry.workDate.getUTCMonth() + 1;
+          const utcDay = entry.workDate.getUTCDate();
+          dateStr = `${utcYear}-${String(utcMonth).padStart(2, '0')}-${String(utcDay).padStart(2, '0')}`;
+        } else {
+          dateStr = formatUTCDateToYYYYMMDD(new Date(entry.workDate).toISOString());
+        }
+        
+        console.log('Using workDate fallback:', dateStr);
         if (dateStr) {
           entriesByDate.set(dateStr, entry);
         }

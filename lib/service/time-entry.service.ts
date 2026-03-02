@@ -4,6 +4,7 @@ import { TimeEntry } from '@prisma/client';
 import { holidayService } from './holiday.service';
 import { ITimeEntryService } from '@/lib/interfaces/time-entry.interface';
 import { logInfo } from '../utils/logger';
+import { createDateAtMidnightUTCFromDate } from '../utils/date-utils';
 
 export class TimeEntryService implements ITimeEntryService {
   /**
@@ -23,8 +24,9 @@ export class TimeEntryService implements ITimeEntryService {
     // Use provided workDate (from client, which knows local timezone) or calculate from server time
     let workDate = data.workDate;
     if (!workDate) {
-      // Fallback: Create work date in local timezone to avoid timezone issues
-      workDate = new Date(clockInAt.getFullYear(), clockInAt.getMonth(), clockInAt.getDate());
+      // Fallback: Create work date at midnight UTC from clockIn time
+      // This ensures workDate matches the actual work day regardless of server timezone
+      workDate = createDateAtMidnightUTCFromDate(clockInAt);
     }
 
     const createData: CreateTimeEntry = {

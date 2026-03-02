@@ -5,6 +5,13 @@ import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui
 import MetricCard from '../../../components/common/MetricCard';
 import { ProtectedRoute } from '../../../components/protected-route';
 import { DashboardRouter } from '../../../components/dashboard/DashboardRouter';
+import { employeeDashboardAPI } from '../../../lib/api/employee-dashboard';
+import { 
+  EmployeeTimeStats, 
+  RecentActivity, 
+  LeaveRequest, 
+  OvertimeRequest 
+} from '../../../types/employee-dashboard';
 import { 
   Clock, 
   Calendar,
@@ -18,44 +25,6 @@ import {
   FileText,
   Users
 } from 'lucide-react';
-
-interface EmployeeTimeStats {
-  todayHours: number;
-  weekHours: number;
-  monthHours: number;
-  overtimeHours: number;
-  remainingLeave: number;
-  pendingRequests: number;
-  todayStatus: 'not_clocked_in' | 'clocked_in' | 'on_break' | 'clocked_out';
-  clockInTime?: string;
-  breakTime?: string;
-  lastClockOut?: string;
-}
-
-interface RecentActivity {
-  id: string;
-  type: 'clock_in' | 'clock_out' | 'break_start' | 'break_end';
-  date: string;
-  time: string;
-  description: string;
-}
-
-interface LeaveRequest {
-  id: string;
-  type: 'annual' | 'sick' | 'personal';
-  startDate: string;
-  endDate: string;
-  status: 'pending' | 'approved' | 'rejected';
-  days: number;
-}
-
-interface OvertimeRequest {
-  id: string;
-  date: string;
-  hours: number;
-  reason: string;
-  status: 'pending' | 'approved' | 'rejected';
-}
 
 function EmployeeDashboardContent() {
   const [stats, setStats] = useState<EmployeeTimeStats>({
@@ -78,115 +47,15 @@ function EmployeeDashboardContent() {
   useEffect(() => {
     const fetchEmployeeData = async () => {
       try {
-        // Mock employee data for demonstration
-        const mockStats: EmployeeTimeStats = {
-          todayHours: 4.5,
-          weekHours: 32.5,
-          monthHours: 145.2,
-          overtimeHours: 8.5,
-          remainingLeave: 12,
-          pendingRequests: 2,
-          todayStatus: 'clocked_in',
-          clockInTime: '08:00 AM',
-          breakTime: '12:30 PM',
-          lastClockOut: ''
-        };
-
-        const mockActivities: RecentActivity[] = [
-          {
-            id: '1',
-            type: 'clock_in',
-            date: 'Today',
-            time: '08:00 AM',
-            description: 'Clocked in for regular shift'
-          },
-          {
-            id: '2',
-            type: 'break_start',
-            date: 'Today',
-            time: '12:30 PM',
-            description: 'Started lunch break'
-          },
-          {
-            id: '3',
-            type: 'break_end',
-            date: 'Today',
-            time: '01:30 PM',
-            description: 'Ended lunch break'
-          },
-          {
-            id: '4',
-            type: 'clock_out',
-            date: 'Yesterday',
-            time: '06:15 PM',
-            description: 'Clocked out with 15 min overtime'
-          },
-          {
-            id: '5',
-            type: 'clock_in',
-            date: 'Yesterday',
-            time: '08:00 AM',
-            description: 'Clocked in on time'
-          }
-        ];
-
-        const mockLeaveRequests: LeaveRequest[] = [
-          {
-            id: '1',
-            type: 'annual',
-            startDate: '2024-02-15',
-            endDate: '2024-02-16',
-            status: 'approved',
-            days: 2
-          },
-          {
-            id: '2',
-            type: 'sick',
-            startDate: '2024-02-20',
-            endDate: '2024-02-21',
-            status: 'pending',
-            days: 2
-          }
-        ];
-
-        const mockOvertimeRequests: OvertimeRequest[] = [
-          {
-            id: '1',
-            date: '2024-02-10',
-            hours: 2.5,
-            reason: 'Project deadline completion',
-            status: 'approved'
-          },
-          {
-            id: '2',
-            date: '2024-02-08',
-            hours: 1.5,
-            reason: 'Client meeting preparation',
-            status: 'pending'
-          }
-        ];
-
-        setStats(mockStats);
-        setRecentActivities(mockActivities);
-        setLeaveRequests(mockLeaveRequests);
-        setOvertimeRequests(mockOvertimeRequests);
-
-        // Try to fetch real data if API is available
-        const token = localStorage.getItem('access_token');
-        const response = await fetch('/api/dashboard/employee-stats', {
-          headers: {
-            'Authorization': token ? `Bearer ${token}` : '',
-            'Content-Type': 'application/json'
-          }
-        });
+        // Use the centralized API service
+        const dashboardData = await employeeDashboardAPI.getAllDashboardData();
+        console.log('dashboardData', dashboardData);
         
-        if (response.ok) {
-          const data = await response.json();
-          setStats(data.stats || mockStats);
-          setRecentActivities(data.activities || mockActivities);
-          setLeaveRequests(data.leaveRequests || mockLeaveRequests);
-          setOvertimeRequests(data.overtimeRequests || mockOvertimeRequests);
-        }
+        setStats(dashboardData.stats);
+        setRecentActivities(dashboardData.activities);
+        setLeaveRequests(dashboardData.leaveRequests);
+        setOvertimeRequests(dashboardData.overtimeRequests);
+
       } catch (error) {
         console.error('Failed to fetch employee data:', error);
       } finally {
@@ -295,13 +164,50 @@ function EmployeeDashboardContent() {
                 </h3>
                 <p className="text-gray-600 dark:text-gray-400 text-xs sm:text-sm mt-1">
                   {stats.clockInTime && `Clocked in at ${stats.clockInTime}`}
-                  {stats.breakTime && <span className="block sm:inline sm:ml-2">• Break at {stats.breakTime}</span>}
+                  {stats.breakTime && <span className="block sm:inline sm:ml-2">• Break at ${stats.breakTime}</span>}
                 </p>
               </div>
             </div>
             <div className="text-right sm:text-left">
               <p className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">{stats.todayHours.toFixed(1)}h</p>
               <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Today's hours</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Weekly Summary Card - Mobile Optimized */}
+      <Card className="mb-6">
+        <CardHeader className="pb-3 sm:pb-4">
+          <CardTitle className="text-lg font-semibold text-gray-900 dark:text-white">Weekly Summary</CardTitle>
+        </CardHeader>
+        <CardContent className="pt-0">
+          <div className="grid grid-cols-2 gap-4 sm:gap-6">
+            <div className="text-center sm:text-left">
+              <p className="text-2xl sm:text-3xl font-bold text-blue-600 dark:text-blue-400">
+                {stats.weekHours.toFixed(2)}
+              </p>
+              <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mt-1">Total Hours This Week</p>
+            </div>
+            <div className="text-center sm:text-left">
+              <p className="text-2xl sm:text-3xl font-bold text-orange-600 dark:text-orange-400">
+                {stats.overtimeHours.toFixed(2)}
+              </p>
+              <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mt-1">Overtime Hours</p>
+            </div>
+            <div className="text-center sm:text-left">
+              <p className="text-2xl sm:text-3xl font-bold text-green-600 dark:text-green-400">
+                {/* Calculate on-time entries (mock data for now) */}
+                {Math.floor(stats.weekHours / 8)} of 5
+              </p>
+              <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mt-1">On Time Entries</p>
+            </div>
+            <div className="text-center sm:text-left">
+              <p className="text-2xl sm:text-3xl font-bold text-red-600 dark:text-red-400">
+                {/* Calculate late arrivals (mock data for now) */}
+                {stats.weekHours > 40 ? 1 : 0}
+              </p>
+              <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mt-1">Late Arrivals</p>
             </div>
           </div>
         </CardContent>

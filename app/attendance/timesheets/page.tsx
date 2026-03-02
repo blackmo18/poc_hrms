@@ -95,33 +95,40 @@ export default function TimesheetsPage() {
         </CardContent>
       </Card>
 
-      {/* Summary */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-        <Card>
-          <CardContent className="pt-6">
-            <p className="text-sm text-gray-600 dark:text-gray-400">Total Employees</p>
-            <p className="text-2xl font-bold mt-2">{employeeTimesheets.length}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <p className="text-sm text-gray-600 dark:text-gray-400">Pending Review</p>
-            <p className="text-2xl font-bold mt-2">{employeeTimesheets.filter(t => t.status === 'pending').length}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <p className="text-sm text-gray-600 dark:text-gray-400">Total OT Hours</p>
-            <p className="text-2xl font-bold mt-2">{employeeTimesheets.reduce((sum, t) => sum + t.overtimeHours, 0).toFixed(2)} hrs</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <p className="text-sm text-gray-600 dark:text-gray-400">Avg Hours/Week</p>
-            <p className="text-2xl font-bold mt-2">40.2 hrs</p>
-          </CardContent>
-        </Card>
-      </div>
+      {/* Weekly Summary - Mobile Optimized */}
+      <Card className="mb-8">
+        <CardHeader className="pb-3 sm:pb-4">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Weekly Summary</h2>
+        </CardHeader>
+        <CardContent className="pt-0">
+          <div className="grid grid-cols-2 gap-4 sm:gap-6">
+            <div className="text-center sm:text-left">
+              <p className="text-2xl sm:text-3xl font-bold text-blue-600 dark:text-blue-400">
+                {employeeTimesheets.reduce((sum, t) => sum + t.totalHours, 0).toFixed(2)}
+              </p>
+              <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mt-1">Total Hours This Week</p>
+            </div>
+            <div className="text-center sm:text-left">
+              <p className="text-2xl sm:text-3xl font-bold text-orange-600 dark:text-orange-400">
+                {employeeTimesheets.reduce((sum, t) => sum + t.overtimeHours, 0).toFixed(2)}
+              </p>
+              <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mt-1">Overtime Hours</p>
+            </div>
+            <div className="text-center sm:text-left">
+              <p className="text-2xl sm:text-3xl font-bold text-green-600 dark:text-green-400">
+                {employeeTimesheets.filter(t => t.status === 'submitted').length} of {employeeTimesheets.length}
+              </p>
+              <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mt-1">Submitted Timesheets</p>
+            </div>
+            <div className="text-center sm:text-left">
+              <p className="text-2xl sm:text-3xl font-bold text-red-600 dark:text-red-400">
+                {employeeTimesheets.filter(t => t.status === 'pending').length}
+              </p>
+              <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mt-1">Pending Review</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Timesheets Table */}
       <Card>
