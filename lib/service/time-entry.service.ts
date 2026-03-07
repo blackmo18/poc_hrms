@@ -82,28 +82,22 @@ export class TimeEntryService implements ITimeEntryService {
    * Get current open time entry for employee
    */
   async getCurrentOpenEntry(employeeId: string) {
-    // Get current Manila date for filtering
-    const manilaTime = convertUTCToManila(getCurrentUTC());
-    const manilaStart = new Date(manilaTime.getFullYear(), manilaTime.getMonth(), manilaTime.getDate());
-    const manilaEnd = new Date(manilaTime.getFullYear(), manilaTime.getMonth(), manilaTime.getDate() + 1);
-    
-    // Convert Manila date range to UTC for database query
-    const utcStart = createManilaMidnightUTC(
-      `${manilaStart.getFullYear()}-${String(manilaStart.getMonth() + 1).padStart(2, '0')}-${String(manilaStart.getDate()).padStart(2, '0')}`
-    );
-    const utcEnd = createManilaMidnightUTC(
-      `${manilaEnd.getFullYear()}-${String(manilaEnd.getMonth() + 1).padStart(2, '0')}-${String(manilaEnd.getDate()).padStart(2, '0')}`
-    );
-
+    // Look for any OPEN entry for this employee, regardless of work date
+    // This handles cases where someone clocked in late for a previous day
     const result = await timeEntryController.getAll({
       employeeId: employeeId,
       status: TimeEntryStatus.OPEN,
-      dateFrom: utcStart,
-      dateTo: utcEnd,
     });
 
     // Return the most recent open entry (should only be one, but just in case)
-    return result.data.length > 0 ? result.data[0] : null;
+    // Sort by clockInAt descending to get the most recent one
+    if (result.data.length > 0) {
+      return result.data.sort((a, b) => 
+        new Date(b.clockInAt).getTime() - new Date(a.clockInAt).getTime()
+      )[0];
+    }
+    
+    return null;
   }
 
   async isClockedIn(employeeId: string): Promise<boolean> {

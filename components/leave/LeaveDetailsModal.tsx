@@ -121,8 +121,7 @@ export default function LeaveDetailsModal({ request, isOpen, onClose, getStatusC
             )}
           </div>
         </div>
-
-        <div className="flex items-center gap-3 px-2 mt-6 lg:justify-end">
+        <div className="flex items-center gap-3 px-2 mt-6 justify-end md:hidden">
           <Button
             variant="primary"
             size="md"
