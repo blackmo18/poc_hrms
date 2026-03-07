@@ -175,11 +175,10 @@ const othersItems: NavItem[] = [
 ];
 
 const AppSidebar: React.FC = () => {
-  const { isExpanded, isMobileOpen, isHovered, setIsHovered } = useSidebar();
+  const { isExpanded, isHovered, isMobileOpen, toggleMobileSidebar, setIsHovered } = useSidebar();
+  const pathname = usePathname();
   const { user } = useAuth();
   const { roles, isLoading } = useRoleAccess();
-  const pathname = usePathname();
-
   const [openSubmenu, setOpenSubmenu] = useState<{
     type: 'main' | 'others';
     index: number;
@@ -191,6 +190,13 @@ const AppSidebar: React.FC = () => {
   
   // Track manual submenu opens to prevent auto-close from overriding
   const [manualOverride, setManualOverride] = useState<string | null>(null);
+
+  // Close mobile sidebar when navigation item is clicked
+  const handleNavigationClick = () => {
+    if (isMobileOpen) {
+      toggleMobileSidebar();
+    }
+  };
 
   const hasAccessToItem = useCallback((itemRoles?: string[]) => {
     if (!itemRoles || itemRoles.length === 0) return true;
@@ -321,6 +327,7 @@ const AppSidebar: React.FC = () => {
                 className={`menu-item group ${
                   isActive(nav.path) ? 'menu-item-active' : 'menu-item-inactive'
                 }`}
+                onClick={handleNavigationClick}
               >
                 <span
                   className={`menu-item-icon-size ${
@@ -360,6 +367,7 @@ const AppSidebar: React.FC = () => {
                           ? 'menu-dropdown-item-active'
                           : 'menu-dropdown-item-inactive'
                       }`}
+                      onClick={handleNavigationClick}
                     >
                       {subItem.name}
                       <span className='flex items-center gap-1 ml-auto'>
@@ -418,7 +426,7 @@ const AppSidebar: React.FC = () => {
           !isExpanded && !isHovered ? 'lg:justify-center' : 'justify-start'
         }`}
       >
-        <Link href='/'>
+        <Link href='/' onClick={handleNavigationClick}>
           {isExpanded || isHovered || isMobileOpen ? (
             <>
               <img
