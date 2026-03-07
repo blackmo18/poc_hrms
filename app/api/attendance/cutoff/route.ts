@@ -3,6 +3,7 @@ import { getTimeEntryService } from '@/lib/service/time-entry.service';
 import { getEmployeeService } from '@/lib/service/employee.service';
 import { requiresPermissions } from '@/lib/auth/middleware';
 import { getUserPermissionsForUser } from '@/lib/auth/middleware';
+import { ensureUTCForStorage } from '@/lib/utils/timezone-utils';
 
 const WORK_HOURS_PER_DAY = 8;
 const NIGHT_SHIFT_START = 22; // 10 PM
@@ -90,8 +91,19 @@ export async function GET(request: NextRequest) {
       let start: Date, end: Date;
 
       if (startDate && endDate) {
-        start = new Date(startDate);
-        end = new Date(endDate);
+        console.log('Attendance Cutoff API - Received dates:', {
+          startDate,
+          endDate
+        });
+        
+        // Convert ISO dates with timezone to UTC
+        start = ensureUTCForStorage(startDate);
+        end = ensureUTCForStorage(endDate);
+        
+        console.log('Attendance Cutoff API - Converted to UTC:', {
+          start: start.toISOString(),
+          end: end.toISOString()
+        });
       } else {
         // Default to current cutoff period
         const today = new Date();

@@ -96,8 +96,16 @@ export default function CutoffOverviewPage() {
   const fetchEntriesForCutoff = async (cutoff: CutoffPeriod) => {
     setLoading(true);
     try {
-      const startDate = cutoff.startDate.toISOString().split('T')[0];
-      const endDate = cutoff.endDate.toISOString().split('T')[0];
+      // Create dates as ISO strings with Manila timezone
+      const startDate = `${cutoff.startDate.getFullYear()}-${String(cutoff.startDate.getMonth() + 1).padStart(2, '0')}-${String(cutoff.startDate.getDate()).padStart(2, '0')}T00:00:00+08:00`;
+      const endDate = `${cutoff.endDate.getFullYear()}-${String(cutoff.endDate.getMonth() + 1).padStart(2, '0')}-${String(cutoff.endDate.getDate()).padStart(2, '0')}T23:59:59+08:00`;
+
+      console.log('Attendance Cutoff - Sending dates:', {
+        startDate,
+        endDate,
+        originalStart: cutoff.startDate.toISOString(),
+        originalEnd: cutoff.endDate.toISOString()
+      });
 
       const response = await fetch(
         `/api/attendance/cutoff?startDate=${startDate}&endDate=${endDate}`,

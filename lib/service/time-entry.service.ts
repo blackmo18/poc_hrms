@@ -5,6 +5,13 @@ import { holidayService } from './holiday.service';
 import { ITimeEntryService } from '@/lib/interfaces/time-entry.interface';
 import { logInfo } from '../utils/logger';
 import { createDateAtMidnightUTCFromDate } from '../utils/date-utils';
+import { 
+  convertManilaToUTC, 
+  convertUTCToManila, 
+  ensureUTCForStorage,
+  createManilaMidnightUTC,
+  getCurrentUTC
+} from '../utils/timezone-utils';
 
 export class TimeEntryService implements ITimeEntryService {
   /**
@@ -17,16 +24,23 @@ export class TimeEntryService implements ITimeEntryService {
     workDate?: Date;
     createdBy?: string;
   }): Promise<TimeEntry> {
-    // IMPORTANT: Always use server time for clockInAt to prevent client manipulation of work hours
-    // Client cannot trick the system into recording more hours than actually worked
-    const clockInAt = new Date();
+    // IMPORTANT: Always use current UTC time for clockInAt to prevent client manipulation
+    // The time is stored in UTC but represents the moment the employee clocked in
+    const clockInAt = getCurrentUTC();
 
     // Use provided workDate (from client, which knows local timezone) or calculate from server time
+    // workDate should be stored as midnight UTC representing Manila midnight
     let workDate = data.workDate;
     if (!workDate) {
-      // Fallback: Create work date at midnight UTC from clockIn time
-      // This ensures workDate matches the actual work day regardless of server timezone
-      workDate = createDateAtMidnightUTCFromDate(clockInAt);
+      // Create work date at midnight UTC from current Manila time
+      const manilaTime = convertUTCToManila(clockInAt);
+      workDate = createManilaMidnightUTC(
+        `${manilaTime.getFullYear()}-${String(manilaTime.getMonth() + 1).padStart(2, '0')}-${String(manilaTime.getDate()).padStart(2, '0')}`
+      );
+    } else {
+      // Convert the provided workDate to proper UTC format
+      const workDateStr = workDate.toISOString().split('T')[0];
+      workDate = createManilaMidnightUTC(workDateStr);
     }
 
     const createData: CreateTimeEntry = {
@@ -41,9 +55,10 @@ export class TimeEntryService implements ITimeEntryService {
   }
 
   async clockOut(timeEntryId: string, clockOutAt?: Date, updatedBy?: string) {
-    const clockOutTime = clockOutAt || new Date();
+    // Use provided time or current UTC time
+    const clockOutTime = clockOutAt ? ensureUTCForStorage(clockOutAt) : getCurrentUTC();
 
-    return await timeEntryController.clockOut(timeEntryId, clockOutTime);
+    return await timeEntryController.clockOut(timeEntryId, clockOutTime!);
   }
 
   /**
@@ -67,16 +82,24 @@ export class TimeEntryService implements ITimeEntryService {
    * Get current open time entry for employee
    */
   async getCurrentOpenEntry(employeeId: string) {
-    // Get today's date at start of day in local timezone
-    const today = new Date();
-    const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-    const todayEnd = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
+    // Get current Manila date for filtering
+    const manilaTime = convertUTCToManila(getCurrentUTC());
+    const manilaStart = new Date(manilaTime.getFullYear(), manilaTime.getMonth(), manilaTime.getDate());
+    const manilaEnd = new Date(manilaTime.getFullYear(), manilaTime.getMonth(), manilaTime.getDate() + 1);
+    
+    // Convert Manila date range to UTC for database query
+    const utcStart = createManilaMidnightUTC(
+      `${manilaStart.getFullYear()}-${String(manilaStart.getMonth() + 1).padStart(2, '0')}-${String(manilaStart.getDate()).padStart(2, '0')}`
+    );
+    const utcEnd = createManilaMidnightUTC(
+      `${manilaEnd.getFullYear()}-${String(manilaEnd.getMonth() + 1).padStart(2, '0')}-${String(manilaEnd.getDate()).padStart(2, '0')}`
+    );
 
     const result = await timeEntryController.getAll({
       employeeId: employeeId,
       status: TimeEntryStatus.OPEN,
-      dateFrom: todayStart,
-      dateTo: todayEnd,
+      dateFrom: utcStart,
+      dateTo: utcEnd,
     });
 
     // Return the most recent open entry (should only be one, but just in case)

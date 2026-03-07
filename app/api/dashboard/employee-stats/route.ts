@@ -115,34 +115,12 @@ export async function GET(request: NextRequest) {
           .sort((a: any, b: any) => new Date(b.breakStartAt).getTime() - new Date(a.breakStartAt).getTime())[0];
         
         if (latestBreak) {
-          // Helper function to format time safely
-          const formatTime = (date: Date) => {
-            const hours = date.getHours();
-            const minutes = date.getMinutes();
-            const ampm = hours >= 12 ? 'PM' : 'AM';
-            const displayHours = hours % 12 || 12;
-            const displayMinutes = minutes < 10 ? `0${minutes}` : minutes;
-            
-            return `${displayHours}:${displayMinutes} ${ampm}`;
-          };
-
-          breakTime = formatTime(new Date(latestBreak.breakStartAt));
+          breakTime = latestBreak.breakStartAt.toISOString();
         }
       } catch (error) {
         console.log('No break data found for current entry:', error);
       }
     }
-
-    // Helper function to format time safely
-    const formatTime = (date: Date) => {
-      const hours = date.getHours();
-      const minutes = date.getMinutes();
-      const ampm = hours >= 12 ? 'PM' : 'AM';
-      const displayHours = hours % 12 || 12;
-      const displayMinutes = minutes < 10 ? `0${minutes}` : minutes;
-      
-      return `${displayHours}:${displayMinutes} ${ampm}`;
-    };
 
     const stats = {
       todayHours: calculateHours(todayTimeEntries),
@@ -152,9 +130,9 @@ export async function GET(request: NextRequest) {
       remainingLeave: totalLeaveDays - usedLeaveDays,
       pendingRequests: pendingLeaveRequests + pendingOvertimeRequests,
       todayStatus: currentStatus,
-      clockInTime: latestEntry?.clockInAt ? formatTime(new Date(latestEntry.clockInAt)) : undefined,
+      clockInTime: latestEntry?.clockInAt ? latestEntry.clockInAt.toISOString() : undefined,
       breakTime: breakTime,
-      lastClockOut: latestEntry?.clockOutAt ? formatTime(new Date(latestEntry.clockOutAt)) : undefined
+      lastClockOut: latestEntry?.clockOutAt ? latestEntry.clockOutAt.toISOString() : undefined
     };
 
     return NextResponse.json(stats);

@@ -40,38 +40,12 @@ export async function GET(request: NextRequest) {
             console.log('No breaks found for entry:', entry.id);
           }
           
-          // Helper function to format date safely
-          const formatDate = (date: Date) => {
-            const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-            const day = date.getDate();
-            const month = months[date.getMonth()];
-            const year = date.getFullYear();
-            const currentYear = new Date().getFullYear();
-            
-            if (year === currentYear) {
-              return `${month} ${day}`;
-            } else {
-              return `${month} ${day}, ${year}`;
-            }
-          };
-
-          // Helper function to format time safely
-          const formatTime = (date: Date) => {
-            const hours = date.getHours();
-            const minutes = date.getMinutes();
-            const ampm = hours >= 12 ? 'PM' : 'AM';
-            const displayHours = hours % 12 || 12;
-            const displayMinutes = minutes < 10 ? `0${minutes}` : minutes;
-            
-            return `${displayHours}:${displayMinutes} ${ampm}`;
-          };
-
           // Create activities for clock in
           const activities: any[] = [{
             id: `${entry.id}-clock-in`,
             type: 'clock_in' as const,
-            date: formatDate(clockInTime),
-            time: formatTime(clockInTime),
+            date: clockInTime.toISOString(),
+            time: clockInTime.toISOString(),
             description: 'Clocked in for regular shift'
           }];
 
@@ -81,8 +55,8 @@ export async function GET(request: NextRequest) {
             activities.push({
               id: `${breakItem.id}-break-start`,
               type: 'break_start' as const,
-              date: formatDate(breakStartTime),
-              time: formatTime(breakStartTime),
+              date: breakStartTime.toISOString(),
+              time: breakStartTime.toISOString(),
               description: `Started ${breakItem.breakType?.toLowerCase() || 'lunch'} break`
             });
 
@@ -92,8 +66,8 @@ export async function GET(request: NextRequest) {
               activities.push({
                 id: `${breakItem.id}-break-end`,
                 type: 'break_end' as const,
-                date: formatDate(breakEndTime),
-                time: formatTime(breakEndTime),
+                date: breakEndTime.toISOString(),
+                time: breakEndTime.toISOString(),
                 description: `Ended ${breakItem.breakType?.toLowerCase() || 'lunch'} break`
               });
             }
@@ -107,8 +81,8 @@ export async function GET(request: NextRequest) {
             activities.push({
               id: `${entry.id}-clock-out`,
               type: 'clock_out' as const,
-              date: formatDate(clockOutTime),
-              time: formatTime(clockOutTime),
+              date: clockOutTime.toISOString(),
+              time: clockOutTime.toISOString(),
               description: overtimeHours > 0 
                 ? `Clocked out with ${overtimeHours.toFixed(1)}h overtime` 
                 : 'Clocked out'
@@ -123,10 +97,8 @@ export async function GET(request: NextRequest) {
     const activities = activitiesWithBreaks
       .flat()
       .sort((a, b) => {
-        // Sort by date first, then by time
-        const dateA = new Date(a.date + ' ' + a.time);
-        const dateB = new Date(b.date + ' ' + b.time);
-        return dateB.getTime() - dateA.getTime();
+        // Sort by ISO date string
+        return new Date(b.time).getTime() - new Date(a.time).getTime();
       })
       .slice(0, 10); // Limit to 10 most recent activities
 

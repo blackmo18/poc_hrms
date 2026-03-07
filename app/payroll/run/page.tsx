@@ -236,17 +236,18 @@ function PayrollRunContent() {
       const startDay = parseInt(cutoffParts[2]);
       const endDay = parseInt(cutoffParts[3]);
 
-      // Create dates in local timezone to avoid UTC conversion issues
-      const periodStart = new Date(year, month, startDay, 0, 0, 0, 0);
-      const periodEnd = new Date(year, month, endDay, 23, 59, 59, 999); // End of day
+      // Create dates as ISO strings with Manila timezone
+      // This ensures backend knows the exact timezone
+      const periodStartISO = `${year}-${String(month + 1).padStart(2, '0')}-${String(startDay).padStart(2, '0')}T00:00:00+08:00`;
+      const periodEndISO = `${year}-${String(month + 1).padStart(2, '0')}-${String(endDay).padStart(2, '0')}T23:59:59+08:00`;
 
-      // Format dates using local date components to avoid timezone conversion
-      const formatLocalDate = (date: Date) => {
-        const y = date.getFullYear();
-        const m = String(date.getMonth() + 1).padStart(2, '0');
-        const d = String(date.getDate()).padStart(2, '0');
-        return `${y}-${m}-${d}`;
-      };
+      console.log('Payroll Summary Debug:', {
+        selectedCutoff,
+        selectedOrganization,
+        userOrganizationId: user?.organizationId,
+        periodStartISO,
+        periodEndISO
+      });
 
       const response = await fetch('/api/payroll/summary', {
         method: 'POST',
@@ -258,8 +259,8 @@ function PayrollRunContent() {
           organizationId: orgId,
           departmentId: selectedDepartment || undefined,
           cutoffPeriod: {
-            start: formatLocalDate(periodStart),
-            end: formatLocalDate(periodEnd),
+            start: periodStartISO,
+            end: periodEndISO,
           },
         }),
       });
@@ -316,8 +317,10 @@ function PayrollRunContent() {
 
       // Parse cutoff period
       const [year, month, startDay, endDay] = selectedCutoff.split('-').map(Number);
-      const periodStart = new Date(year, month - 1, startDay);
-      const periodEnd = new Date(year, month - 1, endDay);
+      
+      // Create dates as ISO strings with Manila timezone
+      const periodStartISO = `${year}-${String(month).padStart(2, '0')}-${String(startDay).padStart(2, '0')}T00:00:00+08:00`;
+      const periodEndISO = `${year}-${String(month).padStart(2, '0')}-${String(endDay).padStart(2, '0')}T23:59:59+08:00`;
 
       // Generate payroll for each eligible employee using the new API
       const payrollPromises = eligibleEmployees.map(async (employee) => {
@@ -332,8 +335,8 @@ function PayrollRunContent() {
             employeeId: employee.id,
             organizationId: orgId,
             departmentId: selectedDepartment,
-            periodStart: periodStart.toISOString(),
-            periodEnd: periodEnd.toISOString(),
+            periodStart: periodStartISO,
+            periodEnd: periodEndISO,
           }),
         });
 
@@ -396,8 +399,10 @@ function PayrollRunContent() {
 
       // Parse cutoff period
       const [year, month, startDay, endDay] = selectedCutoff.split('-').map(Number);
-      const periodStart = new Date(year, month - 1, startDay);
-      const periodEnd = new Date(year, month - 1, endDay);
+      
+      // Create dates as ISO strings with Manila timezone
+      const periodStartISO = `${year}-${String(month).padStart(2, '0')}-${String(startDay).padStart(2, '0')}T00:00:00+08:00`;
+      const periodEndISO = `${year}-${String(month).padStart(2, '0')}-${String(endDay).padStart(2, '0')}T23:59:59+08:00`;
 
       // Approve payroll for each eligible employee with COMPUTED status
       const approvalPromises = eligibleEmployees.map(async (employee) => {
@@ -412,8 +417,8 @@ function PayrollRunContent() {
             employeeId: employee.id,
             organizationId: orgId,
             departmentId: selectedDepartment,
-            periodStart: periodStart.toISOString(),
-            periodEnd: periodEnd.toISOString(),
+            periodStart: periodStartISO,
+            periodEnd: periodEndISO,
           }),
         });
 
@@ -457,8 +462,10 @@ function PayrollRunContent() {
 
       // Parse cutoff period
       const [year, month, startDay, endDay] = selectedCutoff.split('-').map(Number);
-      const periodStart = new Date(year, month - 1, startDay);
-      const periodEnd = new Date(year, month - 1, endDay);
+      
+      // Create dates as ISO strings with Manila timezone
+      const periodStartISO = `${year}-${String(month).padStart(2, '0')}-${String(startDay).padStart(2, '0')}T00:00:00+08:00`;
+      const periodEndISO = `${year}-${String(month).padStart(2, '0')}-${String(endDay).padStart(2, '0')}T23:59:59+08:00`;
 
       // Release payroll for each eligible employee with APPROVED status
       const releasePromises = eligibleEmployees.map(async (employee) => {
@@ -473,8 +480,8 @@ function PayrollRunContent() {
             employeeId: employee.id,
             organizationId: orgId,
             departmentId: selectedDepartment,
-            periodStart: periodStart.toISOString(),
-            periodEnd: periodEnd.toISOString(),
+            periodStart: periodStartISO,
+            periodEnd: periodEndISO,
           }),
         });
 
@@ -524,8 +531,10 @@ function PayrollRunContent() {
 
       // Parse cutoff period
       const [year, month, startDay, endDay] = selectedCutoff.split('-').map(Number);
-      const periodStart = new Date(year, month - 1, startDay);
-      const periodEnd = new Date(year, month - 1, endDay);
+      
+      // Create dates as ISO strings with Manila timezone
+      const periodStartISO = `${year}-${String(month).padStart(2, '0')}-${String(startDay).padStart(2, '0')}T00:00:00+08:00`;
+      const periodEndISO = `${year}-${String(month).padStart(2, '0')}-${String(endDay).padStart(2, '0')}T23:59:59+08:00`;
 
       // Void payroll for each eligible employee with APPROVED/RELEASED status
       const voidPromises = eligibleEmployees.map(async (employee) => {
@@ -540,8 +549,8 @@ function PayrollRunContent() {
             employeeId: employee.id,
             organizationId: orgId,
             departmentId: selectedDepartment,
-            periodStart: periodStart.toISOString(),
-            periodEnd: periodEnd.toISOString(),
+            periodStart: periodStartISO,
+            periodEnd: periodEndISO,
             reason: reason.trim(),
           }),
         });

@@ -1,7 +1,8 @@
 import { prisma } from '@/lib/db';
 import { generateULID } from '@/lib/utils/ulid.service';
+import { ensureUTCForStorage } from '@/lib/utils/timezone-utils';
 import bcrypt from 'bcryptjs';
-import { format, addDays, addMinutes, setHours, setMinutes, isWeekend, differenceInMinutes } from 'date-fns';
+import { format, addDays, isWeekend, differenceInMinutes } from 'date-fns';
 import { seedTaxBrackets } from '../prisma/seeds/taxBrackets';
 import { seedPhilhealthContributions } from '../prisma/seeds/philhealthContributions';
 import { seedSSSContributions } from '../prisma/seeds/sssContributions';
@@ -20,8 +21,8 @@ import { seedPagibigContributions } from '../prisma/seeds/pagibigContributions';
  */
 
 interface TimeEntryData {
-  clockIn: Date;
-  clockOut: Date;
+  clockIn: string; // Local ISO string
+  clockOut: string; // Local ISO string
   totalMinutes: number;
   isLate: boolean;
   hasOvertime: boolean;
@@ -444,29 +445,40 @@ function generateTimeEntryForDay(date: Date): TimeEntryData | null {
   const isLate = Math.random() < 0.3; // 30% chance of being late
   const hasOvertime = Math.random() < 0.25; // 25% chance of overtime
   
-  let clockIn = setHours(setMinutes(date, WORK_SCHEDULE.START_MINUTE), WORK_SCHEDULE.START_HOUR);
-  let clockOut = setHours(setMinutes(date, WORK_SCHEDULE.END_MINUTE), WORK_SCHEDULE.END_HOUR);
+  // Create local ISO strings (Manila timezone)
+  let clockInHour = WORK_SCHEDULE.START_HOUR;
+  let clockInMinute = WORK_SCHEDULE.START_MINUTE;
+  let clockOutHour = WORK_SCHEDULE.END_HOUR;
+  let clockOutMinute = WORK_SCHEDULE.END_MINUTE;
   
   // Add late arrival
   let lateMinutes = 0;
   if (isLate) {
     lateMinutes = Math.floor(Math.random() * 30) + 5; // 5-35 minutes late
-    clockIn = addMinutes(clockIn, lateMinutes);
+    clockInHour = Math.floor((clockInHour * 60 + clockInMinute + lateMinutes) / 60);
+    clockInMinute = (clockInHour * 60 + clockInMinute + lateMinutes) % 60;
   }
   
   // Add overtime
   let overtimeMinutes = 0;
   if (hasOvertime) {
     overtimeMinutes = Math.floor(Math.random() * 120) + 30; // 30-150 minutes overtime
-    clockOut = addMinutes(clockOut, overtimeMinutes);
+    clockOutHour = Math.floor((clockOutHour * 60 + clockOutMinute + overtimeMinutes) / 60);
+    clockOutMinute = (clockOutHour * 60 + clockOutMinute + overtimeMinutes) % 60;
   }
   
+  // Create local ISO strings with timezone
+  const clockInLocal = `${dateStr}T${String(clockInHour).padStart(2, '0')}:${String(clockInMinute).padStart(2, '0')}:00+08:00`;
+  const clockOutLocal = `${dateStr}T${String(clockOutHour).padStart(2, '0')}:${String(clockOutMinute).padStart(2, '0')}:00+08:00`;
+  
   // Calculate total work minutes (excluding lunch)
-  const totalMinutes = differenceInMinutes(clockOut, clockIn) - 60; // Subtract 1 hour lunch
+  const clockInDate = new Date(clockInLocal);
+  const clockOutDate = new Date(clockOutLocal);
+  const totalMinutes = differenceInMinutes(clockOutDate, clockInDate) - 60; // Subtract 1 hour lunch
   
   return {
-    clockIn,
-    clockOut,
+    clockIn: clockInLocal,
+    clockOut: clockOutLocal,
     totalMinutes,
     isLate,
     hasOvertime,
@@ -505,6 +517,7 @@ async function generateTimeEntries(employeeId: string, organizationId: string, d
 
   while (currentDate <= endDate) {
     const timeEntryData = generateTimeEntryForDay(currentDate);
+    const dateStr = format(currentDate, 'yyyy-MM-dd');
 
     
     if (timeEntryData) {
@@ -514,24 +527,27 @@ async function generateTimeEntries(employeeId: string, organizationId: string, d
           employeeId,
           organizationId,
           departmentId,
-          clockInAt: timeEntryData.clockIn,
-          clockOutAt: timeEntryData.clockOut,
-          workDate: currentDate,
+          clockInAt: ensureUTCForStorage(timeEntryData.clockIn),
+          clockOutAt: ensureUTCForStorage(timeEntryData.clockOut),
+          workDate: ensureUTCForStorage(dateStr), // Use date string for workDate
           totalWorkMinutes: timeEntryData.totalMinutes,
           status: 'CLOSED',
           updatedAt: new Date(),
         }
       });
       
-      // Create lunch break
+      // Create lunch break (local ISO strings converted to UTC)
+      const lunchStartLocal = `${dateStr}T${String(WORK_SCHEDULE.LUNCH_START_HOUR).padStart(2, '0')}:${String(WORK_SCHEDULE.LUNCH_START_MINUTE).padStart(2, '0')}:00+08:00`;
+      const lunchEndLocal = `${dateStr}T${String(WORK_SCHEDULE.LUNCH_END_HOUR).padStart(2, '0')}:${String(WORK_SCHEDULE.LUNCH_END_MINUTE).padStart(2, '0')}:00+08:00`;
+      
       await prisma.timeBreak.create({
         data: {
           id: generateULID(),
           timeEntryId: timeEntry.id,
           organizationId,
           employeeId,
-          breakStartAt: setHours(setMinutes(currentDate, WORK_SCHEDULE.LUNCH_START_MINUTE), WORK_SCHEDULE.LUNCH_START_HOUR),
-          breakEndAt: setHours(setMinutes(currentDate, WORK_SCHEDULE.LUNCH_END_MINUTE), WORK_SCHEDULE.LUNCH_END_HOUR),
+          breakStartAt: ensureUTCForStorage(lunchStartLocal),
+          breakEndAt: ensureUTCForStorage(lunchEndLocal),
           breakType: 'MEAL',
           isPaid: true,
         }
@@ -593,7 +609,7 @@ async function generateOvertimeRequests(employeeId: string, organizationId: stri
           workDate: entry.workDate,
           timeEntryId: entry.id,
           timeStart: format(entry.clockOutAt, 'HH:mm'),
-          timeEnd: format(addMinutes(entry.clockOutAt, entry.overtimeMinutes), 'HH:mm'),
+          timeEnd: format(new Date(entry.clockOutAt.getTime() + (entry.overtimeMinutes * 60 * 1000)), 'HH:mm'),
           otType,
           requestedMinutes: entry.overtimeMinutes,
           approvedMinutes: entry.overtimeMinutes,

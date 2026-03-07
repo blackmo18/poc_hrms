@@ -12,6 +12,7 @@ import {
 import { logInfo } from '@/lib/utils/logger';
 import { DIContainer } from '../di/container';
 import { prisma } from '../db';
+import { createManilaMidnightUTC } from '../utils/timezone-utils';
 
 export interface PayrollCalculationResult {
   employeeId: string;
@@ -99,11 +100,19 @@ export class PayrollCalculationService {
       return { totalDeduction: 0, breakdown: [] };
     }
 
+    // Adjust date range for workDate queries (same as calculateCompletePayroll)
+    const adjustedStart = createManilaMidnightUTC(
+      `${periodStart.getFullYear()}-${String(periodStart.getMonth() + 1).padStart(2, '0')}-${String(periodStart.getDate()).padStart(2, '0')}`
+    );
+    const adjustedEnd = createManilaMidnightUTC(
+      `${periodEnd.getFullYear()}-${String(periodEnd.getMonth() + 1).padStart(2, '0')}-${String(periodEnd.getDate()).padStart(2, '0')}`
+    );
+
     // Get time entries for the period
     const timeEntries = await timeEntryService.getByEmployeeAndDateRange(
       employeeId,
-      periodStart,
-      periodEnd
+      adjustedStart,
+      adjustedEnd
     );
 
     const breakdown: Array<{ date: Date; minutes: number; deduction: number }> = [];
@@ -326,11 +335,33 @@ export class PayrollCalculationService {
       ? await workScheduleService.calculateHourlyRate(workSchedule, monthlySalary)
       : dailyRate / 8; // Fallback: 8-hour workday
 
-    // Get time entries
+    // IMPORTANT: Adjust date range for workDate queries
+    // workDate is stored as UTC representing Manila midnight (4 PM previous day UTC)
+    // So we need to adjust the query range to match this format
+    const adjustedStart = createManilaMidnightUTC(
+      `${periodStart.getFullYear()}-${String(periodStart.getMonth() + 1).padStart(2, '0')}-${String(periodStart.getDate()).padStart(2, '0')}`
+    );
+    const adjustedEnd = createManilaMidnightUTC(
+      `${periodEnd.getFullYear()}-${String(periodEnd.getMonth() + 1).padStart(2, '0')}-${String(periodEnd.getDate()).padStart(2, '0')}`
+    );
+
+    logInfo('PAYROLL_CALCULATION', {
+      employeeId,
+      originalPeriod: {
+        start: periodStart.toISOString(),
+        end: periodEnd.toISOString()
+      },
+      adjustedPeriod: {
+        start: adjustedStart.toISOString(),
+        end: adjustedEnd.toISOString()
+      }
+    });
+
+    // Get time entries using adjusted dates
     const timeEntries = await timeEntryService.getByEmployeeAndDateRange(
       employeeId,
-      periodStart,
-      periodEnd
+      adjustedStart,
+      adjustedEnd
     );
     
     // If there are no time entries, return basic salary without deductions

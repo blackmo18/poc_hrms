@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { leaveRequestController } from '@/lib/controllers/leave-request.controller';
 import { CreateLeaveRequestSchema } from '@/lib/models/leave-request';
+import { ensureUTCForStorage } from '@/lib/utils/timezone-utils';
+import { z } from 'zod';
 
 export async function GET(request: NextRequest) {
   try {
@@ -26,9 +28,33 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const validatedData = CreateLeaveRequestSchema.parse(body);
     
-    const leaveRequest = await leaveRequestController.create(validatedData);
+    // Create a schema that accepts ISO strings and converts them to dates
+    const CreateLeaveRequestWithTimezoneSchema = CreateLeaveRequestSchema.extend({
+      startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\+\d{2}:\d{2}$/, 'Invalid start date format (use ISO format with timezone)'),
+      endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\+\d{2}:\d{2}$/, 'Invalid end date format (use ISO format with timezone)'),
+    });
+    
+    const validatedData = CreateLeaveRequestWithTimezoneSchema.parse(body);
+    
+    console.log('Leave Request API - Converting dates:', {
+      startDate: validatedData.startDate,
+      endDate: validatedData.endDate
+    });
+    
+    // Convert ISO strings to UTC dates
+    const leaveRequestData = {
+      ...validatedData,
+      startDate: ensureUTCForStorage(validatedData.startDate),
+      endDate: ensureUTCForStorage(validatedData.endDate),
+    };
+    
+    console.log('Leave Request API - Converted to UTC:', {
+      startDate: leaveRequestData.startDate.toISOString(),
+      endDate: leaveRequestData.endDate.toISOString()
+    });
+    
+    const leaveRequest = await leaveRequestController.create(leaveRequestData);
     return NextResponse.json(leaveRequest, { status: 201 });
   } catch (error) {
     console.error('Error creating leave request:', error);

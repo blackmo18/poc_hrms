@@ -285,7 +285,9 @@ export default function OTRequestPage() {
                       placeholder="Select work date"
                       onChange={(dates) => {
                         if (dates && dates.length > 0) {
-                          const dateStr = dates[0].toISOString().split('T')[0];
+                          const date = dates[0];
+                          // Create ISO string with Manila timezone
+                          const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}T00:00:00+08:00`;
                           handleInputChange('workDate', dateStr);
                         }
                       }}

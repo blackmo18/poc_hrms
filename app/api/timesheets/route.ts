@@ -4,6 +4,10 @@ import { getEmployeeService } from '@/lib/service/employee.service';
 import { requiresPermissions } from '@/lib/auth/middleware';
 import { getUserPermissionsForUser } from '@/lib/auth/middleware';
 import { formatDateToYYYYMMDD, formatUTCDateToYYYYMMDD } from '@/lib/utils/date-utils';
+import { 
+  ensureUTCForStorage,
+  isValidISODate
+} from '@/lib/utils/timezone-utils';
 
 export async function GET(request: NextRequest) {
   return requiresPermissions(request, ['timesheet.own.read', 'timesheet.admin.read'], async (authRequest) => {
@@ -20,19 +24,13 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const startDate = new Date(startDateStr);
-    const endDate = new Date(endDateStr);
-
-    if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+    // Validate ISO date format
+    if (!isValidISODate(startDateStr) || !isValidISODate(endDateStr)) {
       return NextResponse.json(
-        { error: 'Invalid date format. Use YYYY-MM-DD' },
+        { error: 'Invalid date format. Use ISO format (e.g., 2024-01-15T00:00:00.000Z)' },
         { status: 400 }
       );
     }
-
-    // Note: For date field filtering, we don't need to add 1 day since the comparison is inclusive
-    // The workDate field is filtered as workDate >= startDate AND workDate <= endDate
-    const adjustedEndDate = endDate;
 
     const timeEntryService = getTimeEntryService();
     const user = authRequest.user!;
@@ -62,11 +60,23 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    // Note: Convert date range to UTC for database query
+    // The input dates are ISO strings assumed to be in Manila timezone
+    const utcStartDate = ensureUTCForStorage(startDateStr);
+    const utcEndDate = ensureUTCForStorage(endDateStr);
+    
+    if (!utcStartDate || !utcEndDate) {
+      return NextResponse.json(
+        { error: 'Failed to parse dates. Use ISO format' },
+        { status: 400 }
+      );
+    }
+
     // Get time entries for the date range
     const entries = await timeEntryService.getByEmployeeAndDateRange(
       targetEmployee.id,
-      startDate,
-      adjustedEndDate
+      utcStartDate,
+      utcEndDate
     );
     
     // Debug: Log the raw entries
@@ -116,8 +126,10 @@ export async function GET(request: NextRequest) {
 
     // Generate all dates in the period
     const allDates: string[] = [];
-    const currentDate = new Date(startDate);
-    while (currentDate <= endDate) {
+    const currentDate = new Date(startDateStr);
+    const end = new Date(endDateStr);
+    
+    while (currentDate <= end) {
       // Use utility function to avoid UTC timezone issues
       const dateStr = formatDateToYYYYMMDD(currentDate);
       allDates.push(dateStr);
@@ -130,25 +142,17 @@ export async function GET(request: NextRequest) {
       
       if (entry) {
         // Has time entry
-        // Convert UTC times to local timezone based on workDate
-        const workDate = new Date(entry.workDate);
-        const clockInTime = entry.clockInAt ? new Date(entry.clockInAt) : null;
-        const clockOutTime = entry.clockOutAt ? new Date(entry.clockOutAt) : null;
-        
-        // Format times considering they might be on different days due to UTC
-        const formatTime = (date: Date) => {
-          // Use the workDate as the reference for timezone
-          const localDate = new Date(date.toLocaleString('en-US', { timeZone: 'Asia/Manila' }));
-          return localDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
-        };
+        // Return UTC times directly
+        const clockInTime = entry.clockInAt ? entry.clockInAt.toISOString() : null;
+        const clockOutTime = entry.clockOutAt ? entry.clockOutAt.toISOString() : null;
         
         return {
           id: entry.id,
           employeeId: targetEmployee.id,
           employeeName: targetEmployee ? `${targetEmployee.firstName} ${targetEmployee.lastName}` : 'Unknown',
           date: dateStr,
-          startTime: clockInTime ? formatTime(clockInTime) : '',
-          endTime: clockOutTime ? formatTime(clockOutTime) : '',
+          startTime: clockInTime,
+          endTime: clockOutTime,
           duration: entry.totalWorkMinutes ? Math.round(entry.totalWorkMinutes / 60 * 10) / 10 : 0,
           status: entry.status,
           otHours: entry.otHours || 0,
