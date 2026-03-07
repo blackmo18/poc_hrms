@@ -77,7 +77,7 @@ const navItems: NavItem[] = [
     subItems: [
       { name: 'Leave Requests', path: '/leave', pro: false },
       { name: 'Leave Calendar', path: '/leave/calendar', pro: false },
-      { name: 'Leave Approvals', path: '/leave/approvals', pro: false },
+      { name: 'Leave Approvals', path: '/leave/approvals', pro: false, roles:ADMINSTRATIVE_ROLES },
     ]
   },
   {
