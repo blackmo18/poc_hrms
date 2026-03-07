@@ -5,7 +5,7 @@ export const LeaveRequestSchema = z.object({
   employeeId: z.string().min(1, 'Employee ID is required'),
   organizationId: z.string().min(1, 'Organization ID is required'),
   departmentId: z.string().optional(),
-  leaveType: z.enum(['VACATION', 'SICK', 'EMERGENCY', 'BEREAVEMENT', 'UNPAID']),
+  leaveType: z.enum(['VACATION', 'SICK', 'EMERGENCY', 'MATERNITY', 'PATERNITY', 'BEREAVEMENT', 'UNPAID']),
   startDate: z.date(),
   endDate: z.date(),
   totalMinutes: z.number().int().optional(),

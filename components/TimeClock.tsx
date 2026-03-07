@@ -37,7 +37,7 @@ const TimeClock: React.FC<TimeClockProps> = ({
   }, []);
 
   return (
-    <div className={`w-full bg-gray-50 dark:bg-gray-900 min-h-[500px] rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden ${className}`}>
+    <div className={`w-full bg-gray-50 dark:bg-gray-900 min-h-[400px] sm:min-h-[500px] rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden ${className}`}>
       {showHeader && (
         <>
           {/* Header Section */}

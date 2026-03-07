@@ -22,7 +22,7 @@ export function RoleAccessProvider({ children }: { children: ReactNode }) {
   const [permissions, setPermissions] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Fetch roles and permissions from API when user is authenticated
+  // Use roles and permissions from session data instead of separate API call
   useEffect(() => {
     if (!user) {
       setRoles([]);
@@ -30,42 +30,20 @@ export function RoleAccessProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    const fetchRolesAndPermissions = async () => {
-      setIsLoading(true);
-      try {
-        const response = await fetch('/api/auth/roles-permissions', {
-          credentials: 'include'
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          setRoles(data.roles || []);
-          setPermissions(data.permissions || []);
-        } else {
-          setRoles([]);
-          setPermissions([]);
-        }
-      } catch (error) {
-        console.error('Failed to fetch roles and permissions:', error);
-        setRoles([]);
-        setPermissions([]);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchRolesAndPermissions();
+    // Extract roles and permissions from user object (from session)
+    // Note: This assumes the session endpoint includes roles and permissions
+    const userRoles = (user as any).roles || [];
+    const userPermissions = (user as any).permissions || [];
+    
+    setRoles(userRoles);
+    setPermissions(userPermissions);
   }, [user]);
 
   const hasRole = (role: string) => roles.includes(role);
-
-  const hasAnyRole = (requiredRoles: string[]) => requiredRoles.some(role => roles.includes(role));
-
-  const hasAllRoles = (requiredRoles: string[]) => requiredRoles.every(role => roles.includes(role));
-
+  const hasAnyRole = (checkRoles: string[]) => checkRoles.some(role => roles.includes(role));
+  const hasAllRoles = (checkRoles: string[]) => checkRoles.every(role => roles.includes(role));
   const hasPermission = (permission: string) => permissions.includes(permission);
-
-  const hasAnyPermission = (requiredPermissions: string[]) => requiredPermissions.some(perm => permissions.includes(perm));
+  const hasAnyPermission = (checkPermissions: string[]) => checkPermissions.some(permission => permissions.includes(permission));
 
   return (
     <RoleAccessContext.Provider value={{

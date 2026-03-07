@@ -43,6 +43,7 @@ export async function GET(request: Request) {
     // Get employee details if available
     let firstName = '';
     let lastName = '';
+    let employeeId = '';
     if (user?.employeeId) {
       const employee = await prisma.employee.findUnique({
         where: { id: user.employeeId },
@@ -51,6 +52,7 @@ export async function GET(request: Request) {
       if (employee) {
         firstName = employee.firstName;
         lastName = employee.lastName;
+        employeeId = user.employeeId; // Include employeeId in response
       }
     }
 
@@ -64,7 +66,8 @@ export async function GET(request: Request) {
         permissions,
         organizationId: user?.organizationId,
         firstName: firstName,
-        lastName: lastName
+        lastName: lastName,
+        employeeId: employeeId // Add employeeId to response
       }
     });
 
