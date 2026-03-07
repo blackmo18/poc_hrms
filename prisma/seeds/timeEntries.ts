@@ -186,8 +186,8 @@ export async function seedTimeEntries() {
       where: {
         employeeId: employee.id,
         workDate: {
-          gte: testPeriod.start,
-          lte: testPeriod.end,
+          gte: ensureUTCForStorage(testPeriod.start),
+          lte: ensureUTCForStorage(testPeriod.end),
         },
       },
     });

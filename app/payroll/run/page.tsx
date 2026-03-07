@@ -295,9 +295,24 @@ function PayrollRunContent() {
     setIsMissingAttendanceModalOpen(true);
   };
 
-  const handleViewEmployeeAttendance = (employeeId: string) => {
-    // Open employee attendance page in new tab
-    const attendanceUrl = `/employees/${employeeId}/attendance`;
+  const handleViewEmployeeAttendance = (employeeId: string, cutoffPeriod?: { start: string; end: string } | null) => {
+    // Build URL with period parameters as default filters
+    const params = new URLSearchParams();
+    
+    // Add cutoff period as date range filter
+    if (cutoffPeriod) {
+      params.set('startDate', cutoffPeriod.start);
+      params.set('endDate', cutoffPeriod.end);
+    }
+    
+    // Add department filter if selected
+    if (selectedDepartment) {
+      params.set('department', selectedDepartment);
+    }
+    
+    const queryString = params.toString();
+    const attendanceUrl = `/employees/${employeeId}/attendance${queryString ? `?${queryString}` : ''}`;
+    
     window.open(attendanceUrl, '_blank');
   };
 
@@ -676,10 +691,22 @@ function PayrollRunContent() {
         onClose={() => setIsMissingAttendanceModalOpen(false)}
         organizationId={isSuperAdmin ? selectedOrganization : (user?.organizationId || null)}
         departmentId={selectedDepartment || undefined}
-        cutoffPeriod={payrollSummary ? {
-          start: payrollSummary.cutoffPeriod.start,
-          end: payrollSummary.cutoffPeriod.end,
-        } : null}
+        cutoffPeriod={selectedCutoff ? (() => {
+          // Parse cutoff format "2026-2-16-28"
+          const cutoffParts = selectedCutoff.split('-');
+          if (cutoffParts.length === 4) {
+            const year = parseInt(cutoffParts[0]);
+            const month = parseInt(cutoffParts[1]);
+            const startDay = parseInt(cutoffParts[2]);
+            const endDay = parseInt(cutoffParts[3]);
+            
+            return {
+              start: `${year}-${String(month).padStart(2, '0')}-${String(startDay).padStart(2, '0')}`,
+              end: `${year}-${String(month).padStart(2, '0')}-${String(endDay).padStart(2, '0')}`,
+            };
+          }
+          return null;
+        })() : null}
         onViewAttendance={handleViewEmployeeAttendance}
       />
       </>

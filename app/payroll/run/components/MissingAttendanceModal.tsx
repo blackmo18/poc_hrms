@@ -27,7 +27,7 @@ interface MissingAttendanceModalProps {
     start: string;
     end: string;
   } | null;
-  onViewAttendance?: (employeeId: string) => void;
+  onViewAttendance?: (employeeId: string, cutoffPeriod?: { start: string; end: string } | null) => void;
 }
 
 export function MissingAttendanceModal({
@@ -85,7 +85,7 @@ export function MissingAttendanceModal({
 
   const handleViewAttendance = (employeeId: string) => {
     if (onViewAttendance) {
-      onViewAttendance(employeeId);
+      onViewAttendance(employeeId, cutoffPeriod);
     }
     onClose();
   };

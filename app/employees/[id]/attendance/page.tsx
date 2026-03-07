@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useSearchParams } from 'next/navigation';
 import EmployeeDetailsSection from '@/components/employees/attendance/EmployeeDetailsSection';
 import PeriodSelectionSection from '@/components/employees/attendance/PeriodSelectionSection';
 import AttendanceRecordsSection from '@/components/employees/attendance/AttendanceRecordsSection';
@@ -39,6 +39,7 @@ interface EmployeeInfo {
 
 export default function EmployeeAttendancePage() {
   const params = useParams();
+  const searchParams = useSearchParams();
   const employeeId = params.id as string;
 
   const [employee, setEmployee] = useState<EmployeeInfo | null>(null);
@@ -55,21 +56,72 @@ export default function EmployeeAttendancePage() {
 
   const [selectedCutoff, setSelectedCutoff] = useState(currentPeriod?.value || '');
 
-  const { user } = useAuth();
+  // Check for URL parameters and set default period if provided
+  useEffect(() => {
+    const startDate = searchParams.get('startDate');
+    const endDate = searchParams.get('endDate');
+    
+    if (startDate && endDate && payrollPeriods.length > 0) {
+      // First, try to find an exact match
+      let matchingPeriod = payrollPeriods.find(period => {
+        // Parse cutoff format "2026-2-1-15"
+        const cutoffParts = period.value.split('-');
+        if (cutoffParts.length === 4) {
+          const year = parseInt(cutoffParts[0]);
+          const month = parseInt(cutoffParts[1]);
+          const startDay = parseInt(cutoffParts[2]);
+          const endDay = parseInt(cutoffParts[3]);
+          
+          const periodStart = `${year}-${String(month).padStart(2, '0')}-${String(startDay).padStart(2, '0')}`;
+          const periodEnd = `${year}-${String(month).padStart(2, '0')}-${String(endDay).padStart(2, '0')}`;
+          
+          return startDate === periodStart && endDate === periodEnd;
+        }
+        return false;
+      });
+      
+      // If no exact match, find the period that best overlaps with the date range
+      if (!matchingPeriod) {
+        matchingPeriod = payrollPeriods.find(period => {
+          const cutoffParts = period.value.split('-');
+          if (cutoffParts.length === 4) {
+            const year = parseInt(cutoffParts[0]);
+            const month = parseInt(cutoffParts[1]);
+            const startDay = parseInt(cutoffParts[2]);
+            const endDay = parseInt(cutoffParts[3]);
+            
+            const periodStart = `${year}-${String(month).padStart(2, '0')}-${String(startDay).padStart(2, '0')}`;
+            const periodEnd = `${year}-${String(month).padStart(2, '0')}-${String(endDay).padStart(2, '0')}`;
+            
+            // Check if the period overlaps with the requested date range
+            return (periodStart >= startDate && periodStart <= endDate) || 
+                   (periodEnd >= startDate && periodEnd <= endDate) ||
+                   (periodStart <= startDate && periodEnd >= endDate);
+          }
+          return false;
+        });
+      }
+      
+      if (matchingPeriod) {
+        setSelectedCutoff(matchingPeriod.value);
+      } else {
+        setSelectedCutoff(currentPeriod?.value || '');
+      }
+    }
+  }, [searchParams, payrollPeriods, currentPeriod]);
 
   useEffect(() => {
     if (employeeId) {
       fetchEmployeeData();
-      fetchAttendanceData();
     }
   }, [employeeId]);
 
-  // Recalculate attendance data when period changes
+  // Fetch attendance data whenever selectedCutoff changes
   useEffect(() => {
-    if (selectedCutoff && employeeId) {
+    if (employeeId && selectedCutoff) {
       fetchAttendanceData();
     }
-  }, [selectedCutoff, employeeId]);
+  }, [employeeId, selectedCutoff]);
 
   const fetchEmployeeData = async () => {
     try {
@@ -138,14 +190,12 @@ export default function EmployeeAttendancePage() {
         const startDay = parseInt(cutoffParts[2]);
         const endDay = parseInt(cutoffParts[3]);
         
-        
         const startDateStr = createSimpleDate(year, month, startDay);
         const endDateStr = createSimpleDate(year, month, endDay);
         
         apiUrl += `&startDate=${startDateStr}&endDate=${endDateStr}`;
       }
 
-      console.log('api-url', apiUrl)
       const response = await fetch(apiUrl, {
         credentials: 'include',
       });
