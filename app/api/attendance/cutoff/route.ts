@@ -60,6 +60,14 @@ export async function GET(request: NextRequest) {
       const endDate = searchParams.get('endDate');
       const employeeIdParam = searchParams.get('employeeId');
 
+      console.log('Attendance Cutoff API - Request received:', {
+        userId: user.id,
+        startDate,
+        endDate,
+        employeeIdParam,
+        url: request.url
+      });
+
       // Get employee service
       const employeeService = getEmployeeService();
       let targetEmployee;

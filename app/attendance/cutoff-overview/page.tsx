@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { ProtectedRoute } from '@/components/protected-route';
+import { ADMINSTRATIVE_ROLES } from '@/lib/constants/roles';
 import PeriodSwitcher from './components/PeriodSwitcher';
 import HeroProgressCard from './components/HeroProgressCard';
 import SecondaryStats from './components/SecondaryStats';
@@ -107,21 +109,27 @@ export default function CutoffOverviewPage() {
         originalEnd: cutoff.endDate.toISOString()
       });
 
-      const response = await fetch(
-        `/api/attendance/cutoff?startDate=${startDate}&endDate=${endDate}`,
-        {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        }
-      );
+      const url = `/api/attendance/cutoff?startDate=${encodeURIComponent(startDate)}&endDate=${encodeURIComponent(endDate)}`;
+      console.log('Attendance Cutoff - Full URL:', url);
+
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      console.log('Attendance Cutoff - Response status:', response.status);
+      console.log('Attendance Cutoff - Response ok:', response.ok);
 
       if (!response.ok) {
-        throw new Error('Failed to fetch cutoff data');
+        const errorText = await response.text();
+        console.error('Attendance Cutoff - Error response:', errorText);
+        throw new Error(`Failed to fetch cutoff data (${response.status}): ${errorText}`);
       }
 
       const result = await response.json();
+      console.log('Attendance Cutoff - Response data:', result);
       if (result.success && result.data) {
         setEntries(result.data.entries || []);
         
@@ -156,9 +164,10 @@ export default function CutoffOverviewPage() {
   const percentage = selectedCutoff ? calculatePercentage(selectedCutoff.totalHours, selectedCutoff.targetHours) : 0;
 
   return (
-    <>
-      <PeriodSwitcher
-        cutoffs={cutoffs}
+    <ProtectedRoute requiredRoles={ADMINSTRATIVE_ROLES}>
+      <>
+        <PeriodSwitcher
+          cutoffs={cutoffs}
         selectedCutoff={selectedCutoff}
         onSelectCutoff={setSelectedCutoff}
       />
@@ -185,5 +194,6 @@ export default function CutoffOverviewPage() {
         </>
       )}
     </>
+    </ProtectedRoute>
   );
 }

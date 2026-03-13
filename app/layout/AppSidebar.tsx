@@ -121,7 +121,7 @@ const othersItems: NavItem[] = [
     subItems: [
       {name: 'Clock In/Out', path: '/attendance/clock-in-out'},
       {name: 'Timesheet View', path: '/attendance/timesheet-view'},
-      {name: 'Cutoff Overview', path: '/attendance/cutoff-overview'},
+      {name: 'Cutoff Overview', path: '/attendance/cutoff-overview', roles: ADMINSTRATIVE_ROLES},
       {name: 'Employee Timesheets', path: '/attendance/timesheets', roles: ADMINSTRATIVE_ROLES},
       {name: 'Time Corrections', path: '/attendance/corrections', roles: ADMINSTRATIVE_ROLES},
       {name: 'Break Validation', path: '/attendance/breaks', roles: ADMINSTRATIVE_ROLES},
