@@ -5,6 +5,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/ca
 import MetricCard from '../../components/common/MetricCard';
 import { ProtectedRoute } from '../../components/protected-route';
 import { DashboardRouter } from '../../components/dashboard/DashboardRouter';
+import { adminDashboardAPI } from '../../lib/api/admin-dashboard';
+import { 
+  TimeManagementStats, 
+  RecentActivity, 
+  AttendanceAlert 
+} from '../../types/admin-dashboard';
 import { 
   Users, 
   Clock, 
@@ -21,40 +27,6 @@ import {
   UserCheck,
   Moon
 } from 'lucide-react';
-
-interface TimeManagementStats {
-  totalEmployees: number;
-  activeToday: number;
-  onTimeToday: number;
-  lateToday: number;
-  totalHoursToday: number;
-  overtimeHoursToday: number;
-  pendingCorrections: number;
-  nightShiftActive: number;
-  weeklyAttendance: number;
-  monthlyOvertime: number;
-  breakCompliance: number;
-  timesheetSubmitted: number;
-  timesheetPending: number;
-}
-
-interface RecentActivity {
-  id: string;
-  type: 'clock_in' | 'clock_out' | 'break_start' | 'break_end' | 'correction' | 'overtime';
-  employee: string;
-  time: string;
-  status: 'normal' | 'late' | 'early' | 'overtime' | 'warning';
-  description: string;
-}
-
-interface AttendanceAlert {
-  id: string;
-  type: 'late_arrival' | 'early_departure' | 'missing_break' | 'excessive_overtime';
-  employee: string;
-  department: string;
-  time: string;
-  severity: 'low' | 'medium' | 'high';
-}
 
 function DashboardContent() {
   const [stats, setStats] = useState<TimeManagementStats>({
@@ -79,116 +51,36 @@ function DashboardContent() {
   useEffect(() => {
     const fetchTimeManagementData = async () => {
       try {
-        // Get token from localStorage
-        const token = localStorage.getItem('access_token');
+        setLoading(true);
         
-        // Mock time management data for demonstration
-        const mockStats: TimeManagementStats = {
-          totalEmployees: 156,
-          activeToday: 142,
-          onTimeToday: 128,
-          lateToday: 14,
-          totalHoursToday: 1124.5,
-          overtimeHoursToday: 23.5,
-          pendingCorrections: 8,
-          nightShiftActive: 12,
-          weeklyAttendance: 94.2,
-          monthlyOvertime: 87.3,
-          breakCompliance: 96.8,
-          timesheetSubmitted: 134,
-          timesheetPending: 22,
-        };
-
-        const mockActivities: RecentActivity[] = [
-          {
-            id: '1',
-            type: 'clock_in',
-            employee: 'John Doe',
-            time: '08:00 AM',
-            status: 'normal',
-            description: 'Clocked in on time'
-          },
-          {
-            id: '2',
-            type: 'clock_in',
-            employee: 'Jane Smith',
-            time: '08:15 AM',
-            status: 'late',
-            description: 'Clocked in 15 minutes late'
-          },
-          {
-            id: '3',
-            type: 'break_start',
-            employee: 'Mike Johnson',
-            time: '12:30 PM',
-            status: 'normal',
-            description: 'Started lunch break'
-          },
-          {
-            id: '4',
-            type: 'correction',
-            employee: 'Sarah Wilson',
-            time: '09:45 AM',
-            status: 'warning',
-            description: 'Submitted time correction request'
-          },
-          {
-            id: '5',
-            type: 'clock_out',
-            employee: 'Tom Brown',
-            time: '06:30 PM',
-            status: 'overtime',
-            description: 'Clocked out with 2.5 hours overtime'
-          }
-        ];
-
-        const mockAlerts: AttendanceAlert[] = [
-          {
-            id: '1',
-            type: 'late_arrival',
-            employee: 'Jane Smith',
-            department: 'Engineering',
-            time: '08:15 AM',
-            severity: 'medium'
-          },
-          {
-            id: '2',
-            type: 'excessive_overtime',
-            employee: 'Tom Brown',
-            department: 'Sales',
-            time: '06:30 PM',
-            severity: 'high'
-          },
-          {
-            id: '3',
-            type: 'missing_break',
-            employee: 'Alex Davis',
-            department: 'Marketing',
-            time: '02:30 PM',
-            severity: 'low'
-          }
-        ];
-
-        setStats(mockStats);
-        setRecentActivities(mockActivities);
-        setAttendanceAlerts(mockAlerts);
-
-        // Try to fetch real data if API is available
-        const response = await fetch('/api/dashboard/time-management-stats', {
-          headers: {
-            'Authorization': token ? `Bearer ${token}` : '',
-            'Content-Type': 'application/json'
-          }
-        });
+        // Use the centralized API service
+        const dashboardData = await adminDashboardAPI.getAllDashboardData();
+        console.log('Admin dashboard data:', dashboardData);
         
-        if (response.ok) {
-          const data = await response.json();
-          setStats(data.stats || mockStats);
-          setRecentActivities(data.activities || mockActivities);
-          setAttendanceAlerts(data.alerts || mockAlerts);
-        }
+        setStats(dashboardData.stats);
+        setRecentActivities(dashboardData.recentActivities);
+        setAttendanceAlerts(dashboardData.attendanceAlerts);
+
       } catch (error) {
-        console.error('Failed to fetch time management data:', error);
+        console.error('Failed to fetch admin dashboard data:', error);
+        // Set default values on error
+        setStats({
+          totalEmployees: 0,
+          activeToday: 0,
+          onTimeToday: 0,
+          lateToday: 0,
+          totalHoursToday: 0,
+          overtimeHoursToday: 0,
+          pendingCorrections: 0,
+          nightShiftActive: 0,
+          weeklyAttendance: 0,
+          monthlyOvertime: 0,
+          breakCompliance: 0,
+          timesheetSubmitted: 0,
+          timesheetPending: 0,
+        });
+        setRecentActivities([]);
+        setAttendanceAlerts([]);
       } finally {
         setLoading(false);
       }

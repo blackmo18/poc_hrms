@@ -33,6 +33,24 @@ interface AttendanceRecordsSectionProps {
   getStatusColor: (status: string) => BadgeColor;
 }
 
+// Helper function to format timestamps in user-friendly way
+const formatTime = (timeString: string) => {
+  if (!timeString || timeString === '-') return '-';
+  
+  try {
+    const date = new Date(timeString);
+    // Format as 12-hour time with AM/PM
+    return date.toLocaleTimeString('en-US', {
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+      timeZone: 'Asia/Manila' // Show in Manila time
+    });
+  } catch (error) {
+    return timeString; // Fallback to original string
+  }
+};
+
 export default function AttendanceRecordsSection({
   attendanceRecords,
   isLoading,
@@ -59,7 +77,7 @@ export default function AttendanceRecordsSection({
       ) : (
         <div>
           {/* Mobile: Card View */}
-          <div className="sm:hidden space-y-3">
+          <div className="sm:hidden space-y-2">
             {attendanceRecords.map((record) => (
               <AttendanceCard
                 key={record.id}
@@ -87,10 +105,10 @@ export default function AttendanceRecordsSection({
                   <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400 font-medium">
                     Total Work Minutes
                   </TableCell>
-                  <TableCell className="px-4 py-3 text-center font-medium">
+                  <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400 font-medium text-center">
                     Status
                   </TableCell>
-                  <TableCell className="px-4 py-3 text-center font-medium">
+                  <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400 font-medium text-center">
                     Actions
                   </TableCell>
                 </TableRow>
@@ -109,29 +127,21 @@ export default function AttendanceRecordsSection({
                       })}
                     </TableCell>
                     <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
-                      {record.clockInAt === '-' ? (
-                        <span className="text-gray-400">-</span>
-                      ) : (
-                        record.clockInAt
-                      )}
+                      {formatTime(record.clockInAt)}
                     </TableCell>
                     <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
-                      {record.clockOutAt === '-' ? (
-                        <span className="text-gray-400">-</span>
-                      ) : (
-                        record.clockOutAt
-                      )}
+                      {formatTime(record.clockOutAt)}
                     </TableCell>
                     <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
                       {record.totalWorkMinutes === 0 ? (
-                        <span className="text-gray-400">0 min</span>
+                        <span className="text-gray-400 dark:text-gray-500">0 min</span>
                       ) : (
                         `${record.totalWorkMinutes} min (${formatDuration(record.totalWorkMinutes)})`
                       )}
                     </TableCell>
                     <TableCell className="px-4 py-3 text-center">
                       {record.status === '-' ? (
-                        <span className="text-gray-500">-</span>
+                        <span className="text-gray-500 dark:text-gray-400">-</span>
                       ) : (
                         <Badge
                           size="sm"

@@ -178,7 +178,7 @@ export default function TimesheetViewPage() {
       {/* Header */}
       <div className="flex justify-between items-center mb-8">
         <div>
-          <h1 className="text-2xl font-bold">My Timesheet</h1>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">My Timesheet</h1>
           <p className="text-gray-600 dark:text-gray-400 mt-1">View your time entries and attendance</p>
         </div>
         <div className="flex gap-2">
@@ -200,25 +200,25 @@ export default function TimesheetViewPage() {
           <Card>
             <CardContent className="pt-6">
               <p className="text-sm text-gray-600 dark:text-gray-400">Total Hours This Week</p>
-              <p className="text-2xl font-bold mt-2">{totalHours.toFixed(2)} hrs</p>
+              <p className="text-2xl font-bold mt-2 text-gray-900 dark:text-white">{totalHours.toFixed(2)} hrs</p>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="pt-6">
               <p className="text-sm text-gray-600 dark:text-gray-400">Overtime Hours</p>
-              <p className="text-2xl font-bold mt-2">{roundedOvertimeHours.toFixed(2)} hrs</p>
+              <p className="text-2xl font-bold mt-2 text-gray-900 dark:text-white">{roundedOvertimeHours.toFixed(2)} hrs</p>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="pt-6">
               <p className="text-sm text-gray-600 dark:text-gray-400">On Time Entries</p>
-              <p className="text-2xl font-bold mt-2">{onTimeEntries} of {attendanceRecords.length}</p>
+              <p className="text-2xl font-bold mt-2 text-gray-900 dark:text-white">{onTimeEntries} of {attendanceRecords.length}</p>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="pt-6">
               <p className="text-sm text-gray-600 dark:text-gray-400">Late Arrivals</p>
-              <p className="text-2xl font-bold mt-2">{lateArrivals}</p>
+              <p className="text-2xl font-bold mt-2 text-gray-900 dark:text-white">{lateArrivals}</p>
             </CardContent>
           </Card>
         </div>
