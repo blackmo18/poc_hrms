@@ -342,7 +342,7 @@ export default function LeaveTable({
                 fallback || <LoadingSkeleton columns={8} hasActions={true} actionButtons={1} />
               ) : leaveRequests.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="px-4 py-8 text-center text-gray-500">
+                  <TableCell colSpan={8} className="px-4 py-8 text-center text-gray-500 dark:text-gray-400">
                     <div>No leave requests found</div>
                   </TableCell>
                 </TableRow>

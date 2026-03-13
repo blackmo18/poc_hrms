@@ -283,7 +283,7 @@ export default function LeaveRequestsPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-lg text-gray-600">Loading leave requests...</div>
+        <div className="text-lg text-gray-600 dark:text-gray-400">Loading leave requests...</div>
       </div>
     );
   }
@@ -294,8 +294,8 @@ export default function LeaveRequestsPage() {
     <div>
       <div className="flex justify-between items-center mb-8">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">My Leave Requests</h1>
-          <p className="text-gray-600 mt-2">File and track your leave requests</p>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">My Leave Requests</h1>
+          <p className="text-gray-600 dark:text-gray-400 mt-2">File and track your leave requests</p>
         </div>
         <Button onClick={handleNewRequest} className="flex items-center space-x-2">
           <Plus className="h-4 w-4" />
@@ -310,8 +310,8 @@ export default function LeaveRequestsPage() {
             <div className="flex items-center">
               <Calendar className="h-6 w-6 text-blue-600 mr-2 lg:h-8 lg:w-8 lg:mr-3" />
               <div>
-                <p className="text-xs text-gray-600 lg:text-sm">Total</p>
-                <p className="text-lg font-bold lg:text-2xl">{stats.totalRequests}</p>
+                <p className="text-xs text-gray-600 dark:text-gray-400 lg:text-sm">Total</p>
+                <p className="text-lg font-bold lg:text-2xl text-gray-900 dark:text-white">{stats.totalRequests}</p>
               </div>
             </div>
           </CardContent>
@@ -321,8 +321,8 @@ export default function LeaveRequestsPage() {
             <div className="flex items-center">
               <Clock className="h-6 w-6 text-yellow-600 mr-2 lg:h-8 lg:w-8 lg:mr-3" />
               <div>
-                <p className="text-xs text-gray-600 lg:text-sm">Pending</p>
-                <p className="text-lg font-bold lg:text-2xl">{stats.pendingRequests}</p>
+                <p className="text-xs text-gray-600 dark:text-gray-400 lg:text-sm">Pending</p>
+                <p className="text-lg font-bold lg:text-2xl text-gray-900 dark:text-white">{stats.pendingRequests}</p>
               </div>
             </div>
           </CardContent>
@@ -332,8 +332,8 @@ export default function LeaveRequestsPage() {
             <div className="flex items-center">
               <CheckCircle className="h-6 w-6 text-green-600 mr-2 lg:h-8 lg:w-8 lg:mr-3" />
               <div>
-                <p className="text-xs text-gray-600 lg:text-sm">Approved</p>
-                <p className="text-lg font-bold lg:text-2xl">{stats.approvedRequests}</p>
+                <p className="text-xs text-gray-600 dark:text-gray-400 lg:text-sm">Approved</p>
+                <p className="text-lg font-bold lg:text-2xl text-gray-900 dark:text-white">{stats.approvedRequests}</p>
               </div>
             </div>
           </CardContent>
@@ -343,8 +343,8 @@ export default function LeaveRequestsPage() {
             <div className="flex items-center">
               <AlertCircle className="h-6 w-6 text-red-600 mr-2 lg:h-8 lg:w-8 lg:mr-3" />
               <div>
-                <p className="text-xs text-gray-600 lg:text-sm">Rejected</p>
-                <p className="text-lg font-bold lg:text-2xl">{stats.rejectedRequests}</p>
+                <p className="text-xs text-gray-600 dark:text-gray-400 lg:text-sm">Rejected</p>
+                <p className="text-lg font-bold lg:text-2xl text-gray-900 dark:text-white">{stats.rejectedRequests}</p>
               </div>
             </div>
           </CardContent>
@@ -358,8 +358,8 @@ export default function LeaveRequestsPage() {
             <div className="flex items-center">
               <Calendar className="h-6 w-6 text-purple-600 mr-2 lg:h-8 lg:w-8 lg:mr-3" />
               <div>
-                <p className="text-xs text-gray-600 lg:text-sm">Days Used</p>
-                <p className="text-lg font-bold lg:text-2xl">{stats.totalDaysUsed}</p>
+                <p className="text-xs text-gray-600 dark:text-gray-400 lg:text-sm">Days Used</p>
+                <p className="text-lg font-bold lg:text-2xl text-gray-900 dark:text-white">{stats.totalDaysUsed}</p>
               </div>
             </div>
           </CardContent>
@@ -369,7 +369,7 @@ export default function LeaveRequestsPage() {
       {/* Leave Requests Table */}
       <Card>
         <CardHeader>
-          <CardTitle>Your Leave History</CardTitle>
+          <CardTitle className="text-gray-900 dark:text-white">Your Leave History</CardTitle>
         </CardHeader>
         <CardContent>
           <LeaveTable
