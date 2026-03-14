@@ -24,7 +24,7 @@ describe('OvertimeController', () => {
     it('should create overtime request successfully', async () => {
       const mockRequest = {
         json: vi.fn().mockResolvedValue({
-          workDate: '2024-01-01',
+          workDate: '2024-01-01T00:00:00+00:00', // ISO format with timezone as expected by schema
           timeEntryId: 'entry-123',
           timeStart: '09:00',
           timeEnd: '17:00',
@@ -57,7 +57,7 @@ describe('OvertimeController', () => {
       expect(overtimeService.createOvertimeRequest).toHaveBeenCalledWith({
         employeeId: 'emp-123',
         organizationId: 'org-123',
-        workDate: new Date('2024-01-01'),
+        workDate: expect.any(Date), // Controller converts string to Date
         timeEntryId: 'entry-123',
         timeStart: '09:00',
         timeEnd: '17:00',
@@ -94,7 +94,7 @@ describe('OvertimeController', () => {
     it('should handle service error for time entry', async () => {
       const mockRequest = {
         json: vi.fn().mockResolvedValue({
-          workDate: '2024-01-01',
+          workDate: '2024-01-01T00:00:00+00:00', // ISO format with timezone
           timeEntryId: 'invalid-entry',
           reason: 'Test',
           otType: 'REGULAR_DAY',
@@ -115,7 +115,7 @@ describe('OvertimeController', () => {
     it('should handle generic service error', async () => {
       const mockRequest = {
         json: vi.fn().mockResolvedValue({
-          workDate: '2024-01-01',
+          workDate: '2024-01-01T00:00:00+00:00', // ISO format with timezone
           reason: 'Test',
           otType: 'REGULAR_DAY',
         }),

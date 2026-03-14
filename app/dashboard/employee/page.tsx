@@ -29,15 +29,17 @@ import {
 function EmployeeDashboardContent() {
   const [stats, setStats] = useState<EmployeeTimeStats>({
     todayHours: 0,
-    weekHours: 32.5,
-    monthHours: 145.2,
-    overtimeHours: 8.5,
-    remainingLeave: 12,
-    pendingRequests: 2,
-    todayStatus: 'clocked_in',
-    clockInTime: '08:00 AM',
-    breakTime: '12:30 PM',
-    lastClockOut: ''
+    weekHours: 0,
+    monthHours: 0,
+    overtimeHours: 0,
+    remainingLeave: 0,
+    pendingRequests: 0,
+    todayStatus: 'not_clocked_in',
+    clockInTime: undefined,
+    breakTime: undefined,
+    lastClockOut: undefined,
+    onTimeEntries: 0,
+    lateArrivals: 0
   });
   const [loading, setLoading] = useState(true);
   const [recentActivities, setRecentActivities] = useState<RecentActivity[]>([]);
@@ -125,6 +127,16 @@ function EmployeeDashboardContent() {
     }
   };
 
+  const formatTime = (isoString?: string) => {
+    if (!isoString) return '';
+    const date = new Date(isoString);
+    return date.toLocaleTimeString('en-US', { 
+      hour: 'numeric', 
+      minute: '2-digit',
+      hour12: true 
+    });
+  };
+
   const getRequestStatusColor = (status: string) => {
     switch (status) {
       case 'approved': return 'text-green-600 dark:text-green-400 bg-green-100 dark:bg-green-900/20';
@@ -163,8 +175,8 @@ function EmployeeDashboardContent() {
                   <span className={`block sm:inline ml-0 sm:ml-2 ${getStatusColor(stats.todayStatus)}`}>{getStatusText(stats.todayStatus)}</span>
                 </h3>
                 <p className="text-gray-600 dark:text-gray-400 text-xs sm:text-sm mt-1">
-                  {stats.clockInTime && `Clocked in at ${stats.clockInTime}`}
-                  {stats.breakTime && <span className="block sm:inline sm:ml-2">• Break at ${stats.breakTime}</span>}
+                  {stats.clockInTime && `Clocked in at ${formatTime(stats.clockInTime)}`}
+                  {stats.breakTime && <span className="block sm:inline sm:ml-2">• Break at ${formatTime(stats.breakTime)}</span>}
                 </p>
               </div>
             </div>
@@ -197,15 +209,13 @@ function EmployeeDashboardContent() {
             </div>
             <div className="text-center sm:text-left">
               <p className="text-2xl sm:text-3xl font-bold text-green-600 dark:text-green-400">
-                {/* Calculate on-time entries (mock data for now) */}
-                {Math.floor(stats.weekHours / 8)} of 5
+                {stats.onTimeEntries} of 5
               </p>
               <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mt-1">On Time Entries</p>
             </div>
             <div className="text-center sm:text-left">
               <p className="text-2xl sm:text-3xl font-bold text-red-600 dark:text-red-400">
-                {/* Calculate late arrivals (mock data for now) */}
-                {stats.weekHours > 40 ? 1 : 0}
+                {stats.lateArrivals}
               </p>
               <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mt-1">Late Arrivals</p>
             </div>
@@ -232,8 +242,8 @@ function EmployeeDashboardContent() {
         {/* Recent Activities - Mobile Optimized */}
         <Card className="xl:col-span-2">
           <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <Clock className="w-5 h-5" />
+            <CardTitle className="flex items-center gap-2 text-lg text-gray-900 dark:text-white">
+              <Clock className="w-5 h-5 text-gray-600 dark:text-gray-400" />
               Recent Time Activities
             </CardTitle>
             <span className="text-sm text-gray-500 dark:text-gray-400">Last 7 days</span>
@@ -243,7 +253,7 @@ function EmployeeDashboardContent() {
               {recentActivities.map((activity) => (
                 <div key={activity.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors gap-3">
                   <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-full bg-gray-100 dark:bg-gray-800 flex-shrink-0">
+                    <div className="p-2 rounded-full bg-gray-100 dark:bg-gray-800 flex-shrink-0 text-gray-600 dark:text-gray-400">
                       {getActivityIcon(activity.type)}
                     </div>
                     <div className="min-w-0 flex-1">
@@ -265,8 +275,8 @@ function EmployeeDashboardContent() {
         <div className="space-y-4 sm:space-y-6">
           <Card>
             <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <Calendar className="w-5 h-5" />
+              <CardTitle className="flex items-center gap-2 text-lg text-gray-900 dark:text-white">
+                <Calendar className="w-5 h-5 text-gray-600 dark:text-gray-400" />
                 Leave Balance
               </CardTitle>
               <span className="bg-green-100 dark:bg-green-900/20 text-green-700 dark:text-green-400 text-xs px-2 py-1 rounded-full">
@@ -295,8 +305,8 @@ function EmployeeDashboardContent() {
 
           <Card>
             <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <Timer className="w-5 h-5" />
+              <CardTitle className="flex items-center gap-2 text-lg text-gray-900 dark:text-white">
+                <Timer className="w-5 h-5 text-gray-600 dark:text-gray-400" />
                 Overtime
               </CardTitle>
               <span className="bg-orange-100 dark:bg-orange-900/20 text-orange-700 dark:text-orange-400 text-xs px-2 py-1 rounded-full">
@@ -328,25 +338,25 @@ function EmployeeDashboardContent() {
       {/* Quick Actions - Mobile Optimized */}
       <Card className="mt-4 sm:mt-6">
         <CardHeader>
-          <CardTitle className="text-lg">Quick Actions</CardTitle>
+          <CardTitle className="text-lg text-gray-900 dark:text-white">Quick Actions</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
             <button className="p-3 sm:p-4 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-center active:scale-95">
               <Clock className="w-5 h-5 sm:w-6 sm:h-6 mx-auto mb-2 text-blue-600 dark:text-blue-400" />
-              <p className="text-xs sm:text-sm font-medium">Clock In/Out</p>
+              <p className="text-xs sm:text-sm font-medium text-gray-900 dark:text-white">Clock In/Out</p>
             </button>
             <button className="p-3 sm:p-4 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-center active:scale-95">
               <Calendar className="w-5 h-5 sm:w-6 sm:h-6 mx-auto mb-2 text-green-600 dark:text-green-400" />
-              <p className="text-xs sm:text-sm font-medium">Request Leave</p>
+              <p className="text-xs sm:text-sm font-medium text-gray-900 dark:text-white">Request Leave</p>
             </button>
             <button className="p-3 sm:p-4 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-center active:scale-95">
               <Timer className="w-5 h-5 sm:w-6 sm:h-6 mx-auto mb-2 text-orange-600 dark:text-orange-400" />
-              <p className="text-xs sm:text-sm font-medium">Request OT</p>
+              <p className="text-xs sm:text-sm font-medium text-gray-900 dark:text-white">Request OT</p>
             </button>
             <button className="p-3 sm:p-4 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-center active:scale-95">
               <FileText className="w-5 h-5 sm:w-6 sm:h-6 mx-auto mb-2 text-purple-600 dark:text-purple-400" />
-              <p className="text-xs sm:text-sm font-medium">Timesheet</p>
+              <p className="text-xs sm:text-sm font-medium text-gray-900 dark:text-white">Timesheet</p>
             </button>
           </div>
         </CardContent>

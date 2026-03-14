@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { validateSession } from '@/lib/auth/session-validator';
-import { overtimeRequestService } from '@/lib/service';
+import { overtimeRequestService, getEmployeeService } from '@/lib/service';
 
 export async function GET(request: NextRequest) {
   try {
@@ -16,8 +16,21 @@ export async function GET(request: NextRequest) {
 
     const userId = session.userId;
 
+    // Get employee to get employeeId
+    const employeeService = getEmployeeService();
+    const employee = await employeeService.getByUserId(userId);
+
+    if (!employee) {
+      return NextResponse.json(
+        { error: 'Employee not found' },
+        { status: 404 }
+      );
+    }
+
+    const employeeId = employee.id;
+
     // Get real overtime requests
-    const allOvertimeRequests = await overtimeRequestService.getAll({ employeeId: userId });
+    const allOvertimeRequests = await overtimeRequestService.getAll({ employeeId: employeeId });
     
     // Format overtime requests
     const employeeOvertimeRequests = (allOvertimeRequests.data || [])

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { validateSession } from '@/lib/auth/session-validator';
-import { getTimeEntryService, timeBreakService } from '@/lib/service';
+import { getTimeEntryService, timeBreakService, getEmployeeService } from '@/lib/service';
 
 export async function GET(request: NextRequest) {
   try {
@@ -16,12 +16,25 @@ export async function GET(request: NextRequest) {
 
     const userId = session.userId;
 
+    // Get employee to get employeeId
+    const employeeService = getEmployeeService();
+    const employee = await employeeService.getByUserId(userId);
+
+    if (!employee) {
+      return NextResponse.json(
+        { error: 'Employee not found' },
+        { status: 404 }
+      );
+    }
+
+    const employeeId = employee.id;
+
     // Get time entries for the last 7 days
     const timeEntryService = getTimeEntryService();
     const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
     const today = new Date();
     
-    const timeEntries = await timeEntryService.getByEmployeeAndDateRange(userId, sevenDaysAgo, today);
+    const timeEntries = await timeEntryService.getByEmployeeAndDateRange(employeeId, sevenDaysAgo, today);
 
     // Convert time entries to activities with breaks
     const activitiesWithBreaks = await Promise.all(

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { validateSession } from '@/lib/auth/session-validator';
-import { getLeaveRequestService } from '@/lib/service';
+import { getLeaveRequestService, getEmployeeService } from '@/lib/service';
 
 export async function GET(request: NextRequest) {
   try {
@@ -16,9 +16,22 @@ export async function GET(request: NextRequest) {
 
     const userId = session.userId;
 
+    // Get employee to get employeeId
+    const employeeService = getEmployeeService();
+    const employee = await employeeService.getByUserId(userId);
+
+    if (!employee) {
+      return NextResponse.json(
+        { error: 'Employee not found' },
+        { status: 404 }
+      );
+    }
+
+    const employeeId = employee.id;
+
     // Get real leave requests for current employee
     const leaveRequestService = getLeaveRequestService();
-    const employeeLeaveRequests = (await leaveRequestService.getByEmployeeId(userId))
+    const employeeLeaveRequests = (await leaveRequestService.getByEmployeeId(employeeId))
       .map((request: any) => ({
         id: request.id,
         type: request.leaveType?.toLowerCase() as 'annual' | 'sick' | 'personal',

@@ -9,6 +9,8 @@ export interface EmployeeTimeStats {
   clockInTime?: string;
   breakTime?: string;
   lastClockOut?: string;
+  onTimeEntries: number;
+  lateArrivals: number;
 }
 
 export interface RecentActivity {
