@@ -1,10 +1,12 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card';
 import MetricCard from '../../../components/common/MetricCard';
 import { ProtectedRoute } from '../../../components/protected-route';
 import { DashboardRouter } from '../../../components/dashboard/DashboardRouter';
+import FloatingClockButton from '../../../components/FloatingClockButton';
 import { employeeDashboardAPI } from '../../../lib/api/employee-dashboard';
 import { 
   EmployeeTimeStats, 
@@ -17,16 +19,13 @@ import {
   Calendar,
   Timer,
   TrendingUp,
-  AlertCircle,
-  CheckCircle,
-  XCircle,
   Coffee,
   Home,
-  FileText,
-  Users
+  FileText
 } from 'lucide-react';
 
 function EmployeeDashboardContent() {
+  const router = useRouter();
   const [stats, setStats] = useState<EmployeeTimeStats>({
     todayHours: 0,
     weekHours: 0,
@@ -119,11 +118,11 @@ function EmployeeDashboardContent() {
 
   const getActivityIcon = (type: RecentActivity['type']) => {
     switch (type) {
-      case 'clock_in': return <Clock className="w-4 h-4" />;
-      case 'clock_out': return <Home className="w-4 h-4" />;
-      case 'break_start': return <Coffee className="w-4 h-4" />;
-      case 'break_end': return <Coffee className="w-4 h-4" />;
-      default: return <Clock className="w-4 h-4" />;
+      case 'clock_in': return <Clock className="w-4 h-4 text-green-600 dark:text-green-400" />;
+      case 'clock_out': return <Home className="w-4 h-4 text-red-600 dark:text-red-400" />;
+      case 'break_start': return <Coffee className="w-4 h-4 text-orange-600 dark:text-orange-400" />;
+      case 'break_end': return <Coffee className="w-4 h-4 text-blue-600 dark:text-blue-400" />;
+      default: return <Clock className="w-4 h-4 text-gray-600 dark:text-gray-400" />;
     }
   };
 
@@ -137,6 +136,16 @@ function EmployeeDashboardContent() {
     });
   };
 
+  const formatDate = (isoString?: string) => {
+    if (!isoString) return '';
+    const date = new Date(isoString);
+    return date.toLocaleDateString('en-US', { 
+      weekday: 'short', 
+      month: 'short', 
+      day: 'numeric' 
+    });
+  };
+
   const getRequestStatusColor = (status: string) => {
     switch (status) {
       case 'approved': return 'text-green-600 dark:text-green-400 bg-green-100 dark:bg-green-900/20';
@@ -144,6 +153,10 @@ function EmployeeDashboardContent() {
       case 'rejected': return 'text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-900/20';
       default: return 'text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-900/20';
     }
+  };
+
+  const handleNavigation = (path: string) => {
+    router.push(path);
   };
 
   if (loading) {
@@ -165,7 +178,7 @@ function EmployeeDashboardContent() {
       <Card className="mb-6 border-l-4 border-l-blue-500">
         <CardContent className="pt-4 sm:pt-6">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div className="flex items-center gap-3 sm:gap-4">
+            <div className="flex flex-col sm:flex-row items-center gap-3 sm:gap-4 text-center sm:text-left">
               <div className={`p-2 sm:p-3 rounded-full ${getStatusColor(stats.todayStatus)} bg-opacity-10`}>
                 <Clock className="w-5 h-5 sm:w-6 sm:h-6" />
               </div>
@@ -180,7 +193,7 @@ function EmployeeDashboardContent() {
                 </p>
               </div>
             </div>
-            <div className="text-right sm:text-left">
+            <div className="text-center sm:text-right">
               <p className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">{stats.todayHours.toFixed(1)}h</p>
               <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Today's hours</p>
             </div>
@@ -251,19 +264,21 @@ function EmployeeDashboardContent() {
           <CardContent>
             <div className="space-y-3 sm:space-y-4">
               {recentActivities.map((activity) => (
-                <div key={activity.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors gap-3">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-full bg-gray-100 dark:bg-gray-800 flex-shrink-0 text-gray-600 dark:text-gray-400">
+                <div key={activity.id} className="p-3 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+                  <div className="flex items-start gap-3">
+                    <div className="p-2 rounded-full bg-gray-50 dark:bg-gray-900 flex-shrink-0">
                       {getActivityIcon(activity.type)}
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="font-medium text-gray-900 dark:text-white text-sm">{activity.date}</p>
-                      <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 truncate">{activity.description}</p>
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-2">
+                        <p className="font-medium text-gray-900 dark:text-white text-sm">{formatDate(activity.date)}</p>
+                        <div className="flex items-center gap-2 sm:gap-3 sm:text-left text-right">
+                          <p className="text-sm font-medium text-gray-900 dark:text-white">{formatTime(activity.time)}</p>
+                          <span className="text-xs text-gray-500 dark:text-gray-400 capitalize">{activity.type.replace('_', ' ')}</span>
+                        </div>
+                      </div>
+                      <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 truncate mt-1">{activity.description}</p>
                     </div>
-                  </div>
-                  <div className="text-right sm:text-left">
-                    <p className="text-sm font-medium text-gray-900 dark:text-white">{activity.time}</p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 capitalize">{activity.type.replace('_', ' ')}</p>
                   </div>
                 </div>
               ))}
@@ -342,25 +357,40 @@ function EmployeeDashboardContent() {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-            <button className="p-3 sm:p-4 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-center active:scale-95">
+            <button 
+              onClick={() => handleNavigation('/attendance/clock-in-out')}
+              className="p-3 sm:p-4 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-center active:scale-95"
+            >
               <Clock className="w-5 h-5 sm:w-6 sm:h-6 mx-auto mb-2 text-blue-600 dark:text-blue-400" />
               <p className="text-xs sm:text-sm font-medium text-gray-900 dark:text-white">Clock In/Out</p>
             </button>
-            <button className="p-3 sm:p-4 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-center active:scale-95">
+            <button 
+              onClick={() => handleNavigation('/attendance/requests')}
+              className="p-3 sm:p-4 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-center active:scale-95"
+            >
               <Calendar className="w-5 h-5 sm:w-6 sm:h-6 mx-auto mb-2 text-green-600 dark:text-green-400" />
-              <p className="text-xs sm:text-sm font-medium text-gray-900 dark:text-white">Request Leave</p>
+              <p className="text-xs sm:text-sm font-medium text-gray-900 dark:text-white">Requests</p>
             </button>
-            <button className="p-3 sm:p-4 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-center active:scale-95">
-              <Timer className="w-5 h-5 sm:w-6 sm:h-6 mx-auto mb-2 text-orange-600 dark:text-orange-400" />
-              <p className="text-xs sm:text-sm font-medium text-gray-900 dark:text-white">Request OT</p>
-            </button>
-            <button className="p-3 sm:p-4 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-center active:scale-95">
-              <FileText className="w-5 h-5 sm:w-6 sm:h-6 mx-auto mb-2 text-purple-600 dark:text-purple-400" />
+            <button 
+              onClick={() => handleNavigation('/attendance/timesheet')}
+              className="p-3 sm:p-4 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-center active:scale-95"
+            >
+              <FileText className="w-5 h-5 sm:w-6 sm:h-6 mx-auto mb-2 text-orange-600 dark:text-orange-400" />
               <p className="text-xs sm:text-sm font-medium text-gray-900 dark:text-white">Timesheet</p>
+            </button>
+            <button 
+              onClick={() => handleNavigation('/attendance/timesheets')}
+              className="p-3 sm:p-4 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-center active:scale-95"
+            >
+              <Timer className="w-5 h-5 sm:w-6 sm:h-6 mx-auto mb-2 text-purple-600 dark:text-purple-400" />
+              <p className="text-xs sm:text-sm font-medium text-gray-900 dark:text-white">Timesheets</p>
             </button>
           </div>
         </CardContent>
       </Card>
+      
+      {/* Floating Clock Button - Mobile Only */}
+      <FloatingClockButton status={stats.todayStatus} />
     </div>
   );
 }
