@@ -139,12 +139,22 @@ export default function TimeEntryCalendar({
     }
   };
 
+  // Helper function to format time for calendar display
+  const formatTimeForCalendar = (timeStr: string): string => {
+    try {
+      const date = new Date(timeStr);
+      return format(date, 'h:mm a');
+    } catch {
+      return timeStr;
+    }
+  };
+
   const convertToCalendarEvents = (): CalendarEvent[] => {
     return timeEntries.map((entry) => {
       const eventDate = new Date(entry.date);
       return {
         id: entry.id,
-        title: `${entry.startTime} - ${entry.endTime}`,
+        title: `${formatTimeForCalendar(entry.startTime)} - ${formatTimeForCalendar(entry.endTime)}`,
         startDate: eventDate,
         endDate: eventDate,
       };

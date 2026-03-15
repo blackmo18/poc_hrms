@@ -16,7 +16,8 @@ export type Compensation = z.infer<typeof CompensationSchema>;
 
 export const CreateCompensationSchema = CompensationSchema.omit({
   id: true,
-  created_at: true,
+  createdAt: true,
+  updatedAt: true,
 });
 
 export type CreateCompensation = z.infer<typeof CreateCompensationSchema>;

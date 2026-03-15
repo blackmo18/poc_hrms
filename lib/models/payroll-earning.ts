@@ -32,18 +32,57 @@ export const PayrollEarningSchema = z.object({
 
 export type PayrollEarning = z.infer<typeof PayrollEarningSchema>;
 
-export const CreatePayrollEarningSchema = PayrollEarningSchema.omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
+export const CreatePayrollEarningSchema = z.object({
+  payrollId: z.string().min(1, 'Payroll ID is required'),
+  organizationId: z.string().min(1, 'Organization ID is required'),
+  employeeId: z.string().min(1, 'Employee ID is required'),
+  type: z.nativeEnum(PayrollEarningType, {
+    message: 'Invalid earning type',
+  }),
+  hours: z.number().min(0, 'Hours cannot be negative'),
+  rate: z.number().min(0, 'Rate cannot be negative'),
+  amount: z.number().positive('Amount must be positive'),
+}).refine((data) => {
+  // For most types, amount should equal hours * rate
+  // But some types like base salary with 0 hours have custom amounts
+  if (data.hours === 0 && data.rate === 0) {
+    return true; // Skip validation for zero hours/rate (e.g., bonuses, allowances)
+  }
+  
+  // Allow small tolerance for floating point arithmetic
+  const calculatedAmount = data.hours * data.rate;
+  const tolerance = 0.01;
+  return Math.abs(data.amount - calculatedAmount) <= tolerance;
+}, {
+  message: 'Amount must equal hours multiplied by rate (except for zero hours/rate entries)',
+  path: ['amount'],
 });
 
 export type CreatePayrollEarning = z.infer<typeof CreatePayrollEarningSchema>;
 
-export const UpdatePayrollEarningSchema = CreatePayrollEarningSchema.partial().omit({
-  payrollId: true,
-  organizationId: true,
-  employeeId: true,
+export const UpdatePayrollEarningSchema = z.object({
+  type: z.nativeEnum(PayrollEarningType, {
+    message: 'Invalid earning type',
+  }).optional(),
+  hours: z.number().min(0, 'Hours cannot be negative').optional(),
+  rate: z.number().min(0, 'Rate cannot be negative').optional(),
+  amount: z.number().positive('Amount must be positive').optional(),
+}).refine((data) => {
+  // Only validate if amount, hours, and rate are provided
+  if (data.amount === undefined || data.hours === undefined || data.rate === undefined) {
+    return true;
+  }
+  
+  if (data.hours === 0 && data.rate === 0) {
+    return true;
+  }
+  
+  const calculatedAmount = data.hours * data.rate;
+  const tolerance = 0.01;
+  return Math.abs(data.amount - calculatedAmount) <= tolerance;
+}, {
+  message: 'Amount must equal hours multiplied by rate (except for zero hours/rate entries)',
+  path: ['amount'],
 });
 
 export type UpdatePayrollEarning = z.infer<typeof UpdatePayrollEarningSchema>;

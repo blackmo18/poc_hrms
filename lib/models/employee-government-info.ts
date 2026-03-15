@@ -24,17 +24,27 @@ export const EmployeeGovernmentInfoSchema = z.object({
 
 export type EmployeeGovernmentInfo = z.infer<typeof EmployeeGovernmentInfoSchema>;
 
-export const CreateEmployeeGovernmentInfoSchema = EmployeeGovernmentInfoSchema.omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
+export const CreateEmployeeGovernmentInfoSchema = z.object({
+  employeeId: z.string().min(1, 'Employee ID is required'),
+  organizationId: z.string().min(1, 'Organization ID is required'),
+  sssNumber: z.string().regex(sssPattern, 'SSS number must be in format: XX-XXXXXXXX-X').optional().or(z.literal('')),
+  philhealthNumber: z.string().regex(philhealthPattern, 'Philhealth number must be in format: XX-XXXXXXXXXX-X').optional().or(z.literal('')),
+  pagibigNumber: z.string().regex(pagibigPattern, 'Pagibig number must be in format: XXXX-XXXX-XXXX').optional().or(z.literal('')),
+  tinNumber: z.string().regex(tinPattern, 'TIN must be in format: XXX-XXX-XXX-XXX').optional().or(z.literal('')),
+}).refine((data) => {
+  // At least one government number should be provided
+  return !!(data.sssNumber || data.philhealthNumber || data.pagibigNumber || data.tinNumber);
+}, {
+  message: 'At least one government number must be provided',
 });
 
 export type CreateEmployeeGovernmentInfo = z.infer<typeof CreateEmployeeGovernmentInfoSchema>;
 
-export const UpdateEmployeeGovernmentInfoSchema = CreateEmployeeGovernmentInfoSchema.partial().omit({
-  employeeId: true,
-  organizationId: true,
+export const UpdateEmployeeGovernmentInfoSchema = z.object({
+  sssNumber: z.string().regex(sssPattern, 'SSS number must be in format: XX-XXXXXXXX-X').optional().or(z.literal('')),
+  philhealthNumber: z.string().regex(philhealthPattern, 'Philhealth number must be in format: XX-XXXXXXXXXX-X').optional().or(z.literal('')),
+  pagibigNumber: z.string().regex(pagibigPattern, 'Pagibig number must be in format: XXXX-XXXX-XXXX').optional().or(z.literal('')),
+  tinNumber: z.string().regex(tinPattern, 'TIN must be in format: XXX-XXX-XXX-XXX').optional().or(z.literal('')),
 });
 
 export type UpdateEmployeeGovernmentInfo = z.infer<typeof UpdateEmployeeGovernmentInfoSchema>;
