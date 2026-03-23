@@ -28,7 +28,14 @@ export async function GET(request: NextRequest) {
     const [todayTimeEntries, allEmployees, allDepartments] = await Promise.all([
       timeEntryService.getByEmployeeAndDateRange(userId, todayStart, todayEnd),
       employeeService.getAll(),
-      departmentService.getAll(session, {})
+      departmentService.getAll({ 
+        user: {
+          id: session.userId,
+          email: session.email,
+          username: session.username,
+          organizationId: session.organizationId
+        }
+      }, {})
     ]);
 
     // Create maps for lookups

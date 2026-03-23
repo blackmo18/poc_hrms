@@ -15,6 +15,9 @@ interface User {
   organizationId?: string;
   firstName?: string;
   lastName?: string;
+  roles?: string[];
+  permissions?: string[];
+  employeeId?: string;
 }
 
 interface AuthContextType {
@@ -35,8 +38,11 @@ const sanitizeUser = (user: any): User => ({
   email: user.email,
   username: user.username,
   organizationId: user.organizationId || user.organizationId, // Handle both camelCase and snake_case
-  firstName: user.first_name,
-  lastName: user.last_name
+  firstName: user.first_name || user.firstName,
+  lastName: user.last_name || user.lastName,
+  roles: user.roles || [],
+  permissions: user.permissions || [],
+  employeeId: user.employeeId
 });
 
 export function AuthProvider({

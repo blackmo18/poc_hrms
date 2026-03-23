@@ -7,6 +7,7 @@ import { payrollLogService } from '../service/payroll-log.service';
 import { PayrollStatus } from '@prisma/client';
 import { sharedPayrollCalculation } from '../service/shared-payroll-calculation';
 import { PayrollRecord } from '../types/payroll.types';
+import { convertUTCToLocalForDB } from '../utils/timezone-utils';
 
 function getDIContainer() {
   const { DIContainer } = require('../di/container');
@@ -86,9 +87,16 @@ export class PayrollController {
     page?: number,
     limit?: number
   ) {
+    // Dates are already converted to UTC by ensureUTCForStorage
+    // Use them directly for database queries
     const whereClause = {
       organizationId,
-      ...(departmentId && { departmentId }),
+      ...(departmentId ? {
+        OR: [
+          { departmentId: departmentId },
+          { departmentId: null }  // Include records with NULL departmentId
+        ]
+      } : {}),
       ...(status && { status }),
       ...(employeeId && { employeeId }),
       // Check if payroll period overlaps with the filter period
@@ -207,6 +215,9 @@ export class PayrollController {
     }));
 
     try {
+      // Ensure payroll period exists before creating payroll
+      await this.ensurePayrollPeriodExists(data.organizationId, data.periodStart, data.periodEnd);
+
       const payroll = await this.prisma.payroll.create({
         data: {
           id: generateULID(),
@@ -554,6 +565,44 @@ export class PayrollController {
       },
     });
     return payroll as PayrollRecord | null;
+  }
+
+  /**
+   * Ensure a payroll period exists for the given date range
+   * If it doesn't exist, create one
+   */
+  private async ensurePayrollPeriodExists(
+    organizationId: string,
+    periodStart: Date,
+    periodEnd: Date
+  ): Promise<void> {
+    // Dates are already converted to UTC by ensureUTCForStorage
+    // Use them directly for database queries and storage
+    const existingPeriod = await this.prisma.payrollPeriod.findUnique({
+      where: {
+        startDate_endDate: {
+          startDate: periodStart,
+          endDate: periodEnd
+        }
+      }
+    });
+
+    // If it doesn't exist, create it
+    if (!existingPeriod) {
+      await this.prisma.payrollPeriod.create({
+        data: {
+          startDate: periodStart,  // Store as UTC
+          endDate: periodEnd,      // Store as UTC
+          organizationId,
+          payDate: new Date(periodEnd.getTime() + 5 * 24 * 60 * 60 * 1000), // 5 days after period end
+          status: 'ACTIVE',
+          type: 'REGULAR',
+          year: periodStart.getFullYear(),
+          month: periodStart.getMonth() + 1, // JavaScript months are 0-indexed
+          periodNumber: Math.ceil((periodStart.getDate()) / 15) // Approximate period number
+        }
+      });
+    }
   }
 }
 

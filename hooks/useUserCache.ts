@@ -9,6 +9,9 @@ interface User {
   organizationId?: string;
   firstName?: string;
   lastName?: string;
+  roles?: string[];
+  permissions?: string[];
+  employeeId?: string;
 }
 
 interface UseUserCacheOptions {
@@ -23,9 +26,13 @@ const sanitizeUser = (user: any): User => {
     id: user.id,
     email: user.email,
     username: user.username,
+    role: user.role,
     organizationId: user.organizationId || user.organizationId, // Handle both camelCase and snake_case
     firstName: user.firstName,
-    lastName: user.lastName
+    lastName: user.lastName,
+    roles: user.roles || [],
+    permissions: user.permissions || [],
+    employeeId: user.employeeId
   };
 };
 

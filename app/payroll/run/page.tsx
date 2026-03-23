@@ -16,6 +16,7 @@ import PageBreadcrumb from '@/components/common/PageBreadCrumb';
 import { ADMINSTRATIVE_ROLES } from '@/lib/constants/roles';
 import { useAuth } from '@/components/providers/auth-provider';
 import { usePayrollPeriods } from '@/hooks/usePayrollPeriods';
+import { createPeriodISOWithTimezone } from '@/lib/utils/timezone-utils';
 import { useOrganizationFilter } from '@/hooks/useOrganizationFilter';
 import RoleComponentWrapper from '@/components/common/RoleComponentWrapper';
 
@@ -236,10 +237,11 @@ function PayrollRunContent() {
       const startDay = parseInt(cutoffParts[2]);
       const endDay = parseInt(cutoffParts[3]);
 
-      // Create dates as ISO strings with Manila timezone
-      // This ensures backend knows the exact timezone
-      const periodStartISO = `${year}-${String(month + 1).padStart(2, '0')}-${String(startDay).padStart(2, '0')}T00:00:00+08:00`;
-      const periodEndISO = `${year}-${String(month + 1).padStart(2, '0')}-${String(endDay).padStart(2, '0')}T23:59:59+08:00`;
+      // Create ISO dates with timezone representing local midnight
+      // This ensures backend knows the exact local time being requested
+      const periodDates = createPeriodISOWithTimezone(year, month - 1, startDay, endDay);
+      const periodStartISO = periodDates.start;
+      const periodEndISO = periodDates.end;
 
       console.log('Payroll Summary Debug:', {
         selectedCutoff,
@@ -295,27 +297,6 @@ function PayrollRunContent() {
     setIsMissingAttendanceModalOpen(true);
   };
 
-  const handleViewEmployeeAttendance = (employeeId: string, cutoffPeriod?: { start: string; end: string } | null) => {
-    // Build URL with period parameters as default filters
-    const params = new URLSearchParams();
-    
-    // Add cutoff period as date range filter
-    if (cutoffPeriod) {
-      params.set('startDate', cutoffPeriod.start);
-      params.set('endDate', cutoffPeriod.end);
-    }
-    
-    // Add department filter if selected
-    if (selectedDepartment) {
-      params.set('department', selectedDepartment);
-    }
-    
-    const queryString = params.toString();
-    const attendanceUrl = `/employees/${employeeId}/attendance${queryString ? `?${queryString}` : ''}`;
-    
-    window.open(attendanceUrl, '_blank');
-  };
-
   const handleGeneratePayroll = async () => {
     if (!selectedCutoff || !selectedDepartment) {
       alert('Please select both cutoff period and department');
@@ -333,9 +314,9 @@ function PayrollRunContent() {
       // Parse cutoff period
       const [year, month, startDay, endDay] = selectedCutoff.split('-').map(Number);
       
-      // Create dates as ISO strings with Manila timezone
-      const periodStartISO = `${year}-${String(month).padStart(2, '0')}-${String(startDay).padStart(2, '0')}T00:00:00+08:00`;
-      const periodEndISO = `${year}-${String(month).padStart(2, '0')}-${String(endDay).padStart(2, '0')}T23:59:59+08:00`;
+      // Create dates as UTC ISO strings to avoid timezone conversion issues
+      const periodStartISO = new Date(Date.UTC(year, month - 1, startDay, 0, 0, 0)).toISOString();
+      const periodEndISO = new Date(Date.UTC(year, month - 1, endDay, 23, 59, 59)).toISOString();
 
       // Generate payroll for each eligible employee using the new API
       const payrollPromises = eligibleEmployees.map(async (employee) => {
@@ -415,9 +396,9 @@ function PayrollRunContent() {
       // Parse cutoff period
       const [year, month, startDay, endDay] = selectedCutoff.split('-').map(Number);
       
-      // Create dates as ISO strings with Manila timezone
-      const periodStartISO = `${year}-${String(month).padStart(2, '0')}-${String(startDay).padStart(2, '0')}T00:00:00+08:00`;
-      const periodEndISO = `${year}-${String(month).padStart(2, '0')}-${String(endDay).padStart(2, '0')}T23:59:59+08:00`;
+      // Create dates as UTC ISO strings to avoid timezone conversion issues
+      const periodStartISO = new Date(Date.UTC(year, month - 1, startDay, 0, 0, 0)).toISOString();
+      const periodEndISO = new Date(Date.UTC(year, month - 1, endDay, 23, 59, 59)).toISOString();
 
       // Approve payroll for each eligible employee with COMPUTED status
       const approvalPromises = eligibleEmployees.map(async (employee) => {
@@ -478,9 +459,9 @@ function PayrollRunContent() {
       // Parse cutoff period
       const [year, month, startDay, endDay] = selectedCutoff.split('-').map(Number);
       
-      // Create dates as ISO strings with Manila timezone
-      const periodStartISO = `${year}-${String(month).padStart(2, '0')}-${String(startDay).padStart(2, '0')}T00:00:00+08:00`;
-      const periodEndISO = `${year}-${String(month).padStart(2, '0')}-${String(endDay).padStart(2, '0')}T23:59:59+08:00`;
+      // Create dates as UTC ISO strings to avoid timezone conversion issues
+      const periodStartISO = new Date(Date.UTC(year, month - 1, startDay, 0, 0, 0)).toISOString();
+      const periodEndISO = new Date(Date.UTC(year, month - 1, endDay, 23, 59, 59)).toISOString();
 
       // Release payroll for each eligible employee with APPROVED status
       const releasePromises = eligibleEmployees.map(async (employee) => {
@@ -547,9 +528,9 @@ function PayrollRunContent() {
       // Parse cutoff period
       const [year, month, startDay, endDay] = selectedCutoff.split('-').map(Number);
       
-      // Create dates as ISO strings with Manila timezone
-      const periodStartISO = `${year}-${String(month).padStart(2, '0')}-${String(startDay).padStart(2, '0')}T00:00:00+08:00`;
-      const periodEndISO = `${year}-${String(month).padStart(2, '0')}-${String(endDay).padStart(2, '0')}T23:59:59+08:00`;
+      // Create dates as UTC ISO strings to avoid timezone conversion issues
+      const periodStartISO = new Date(Date.UTC(year, month - 1, startDay, 0, 0, 0)).toISOString();
+      const periodEndISO = new Date(Date.UTC(year, month - 1, endDay, 23, 59, 59)).toISOString();
 
       // Void payroll for each eligible employee with APPROVED/RELEASED status
       const voidPromises = eligibleEmployees.map(async (employee) => {
@@ -592,13 +573,6 @@ function PayrollRunContent() {
     } finally {
       setIsGenerating(false);
     }
-  };
-
-  const handleEmployeeClick = (employeeId: string) => {
-    // Open employee payroll summary page in new tab
-    // Remove department parameter from URL
-    const url = `/payroll/summary/employee/${employeeId}?cutoff=${selectedCutoff}`;
-    window.open(url, '_blank');
   };
 
   return (
@@ -679,7 +653,6 @@ function PayrollRunContent() {
             canGenerate={payrollSummary?.readiness?.canGenerate || false}
             lastGeneratedAt={payrollSummary?.payrollStatus?.lastGeneratedAt}
             eligibleEmployees={eligibleEmployees}
-            onEmployeeClick={handleEmployeeClick}
             periodStatus={getPeriodStatus()}
           />
         </div>
@@ -707,7 +680,7 @@ function PayrollRunContent() {
           }
           return null;
         })() : null}
-        onViewAttendance={handleViewEmployeeAttendance}
+        selectedDepartment={selectedDepartment}
       />
       </>
     </TooltipProvider>

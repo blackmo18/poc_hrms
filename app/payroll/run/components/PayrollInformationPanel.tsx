@@ -2,6 +2,7 @@
 
 import { Card, CardHeader, CardContent } from '@/components/ui/card';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import Link from 'next/link';
 
 interface Employee {
   id: string;
@@ -22,7 +23,6 @@ interface PayrollInformationPanelProps {
   canGenerate: boolean;
   lastGeneratedAt?: string;
   eligibleEmployees?: Employee[];
-  onEmployeeClick?: (employeeId: string) => void;
   periodStatus?: 'DRAFT' | 'COMPUTED' | 'APPROVED' | 'RELEASED' | 'VOIDED';
 }
 
@@ -32,7 +32,6 @@ export function PayrollInformationPanel({
   canGenerate,
   lastGeneratedAt,
   eligibleEmployees = [],
-  onEmployeeClick,
   periodStatus
 }: PayrollInformationPanelProps) {
   console.log('[PayrollInformationPanel] periodStatus:', periodStatus);
@@ -124,8 +123,10 @@ export function PayrollInformationPanel({
               {eligibleEmployees.map((employee) => (
                 <Tooltip key={employee.id}>
                   <TooltipTrigger asChild>
-                    <div 
-                      onClick={() => onEmployeeClick?.(employee.id)}
+                    <Link 
+                      href={`/payroll/summary/employee/${employee.id}?cutoff=${selectedCutoff}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
                       className="flex items-center justify-between text-xs p-2 bg-gray-50 dark:bg-gray-800 rounded hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer transition-colors"
                     >
                       <div className="flex items-center space-x-2">
@@ -151,7 +152,7 @@ export function PayrollInformationPanel({
                         </div>
                       </div>
                       <span className="text-gray-500">₱{employee.baseSalary.toLocaleString()}</span>
-                    </div>
+                    </Link>
                   </TooltipTrigger>
                   <TooltipContent>
                     <p>Click to generate employee payroll summary</p>

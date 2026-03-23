@@ -1,7 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import { 
   ensureUTCForStorage,
-  isValidISODate
+  isValidISODate,
+  createLocalISOWithTimezone,
+  createPeriodISOWithTimezone
 } from '../timezone-utils';
 
 describe('Timezone Utils', () => {
@@ -150,6 +152,58 @@ describe('API Requirements Tests', () => {
         const clientReceives = new Date(apiResponse);
         expect(clientReceives.toISOString()).toBe(clientInput);
       }
+    });
+  });
+
+  describe('createLocalISOWithTimezone', () => {
+    it('should create ISO string with Manila timezone for midnight', () => {
+      const isoString = createLocalISOWithTimezone(2026, 1, 16, 0, 0, 0); // Feb 16, 2026 00:00:00
+      
+      expect(isoString).toMatch(/^\d{4}-\d{2}-\d{2}T00:00:00\+08:00$/);
+      expect(isoString).toBe('2026-02-16T00:00:00+08:00');
+    });
+
+    it('should create ISO string with Manila timezone for end of day', () => {
+      const isoString = createLocalISOWithTimezone(2026, 1, 28, 23, 59, 59); // Feb 28, 2026 23:59:59
+      
+      expect(isoString).toMatch(/^\d{4}-\d{2}-\d{2}T23:59:59\+08:00$/);
+      expect(isoString).toBe('2026-02-28T23:59:59+08:00');
+    });
+
+    it('should handle different timezone', () => {
+      const isoString = createLocalISOWithTimezone(2026, 1, 16, 12, 30, 0, 'UTC');
+      
+      expect(isoString).toMatch(/^\d{4}-\d{2}-\d{2}T12:30:00\+00:00$/);
+      expect(isoString).toBe('2026-02-16T12:30:00+00:00');
+    });
+  });
+
+  describe('createPeriodISOWithTimezone', () => {
+    it('should create start and end ISO strings for a period', () => {
+      const period = createPeriodISOWithTimezone(2026, 1, 16, 28); // Feb 16-28, 2026
+      
+      expect(period).toEqual({
+        start: '2026-02-16T00:00:00+08:00',
+        end: '2026-02-28T23:59:59+08:00'
+      });
+    });
+
+    it('should handle different month', () => {
+      const period = createPeriodISOWithTimezone(2026, 11, 1, 15); // Dec 1-15, 2026
+      
+      expect(period).toEqual({
+        start: '2026-12-01T00:00:00+08:00',
+        end: '2026-12-15T23:59:59+08:00'
+      });
+    });
+
+    it('should handle cross-year period', () => {
+      const period = createPeriodISOWithTimezone(2025, 11, 16, 31); // Dec 16-31, 2025
+      
+      expect(period).toEqual({
+        start: '2025-12-16T00:00:00+08:00',
+        end: '2025-12-31T23:59:59+08:00'
+      });
     });
   });
 });

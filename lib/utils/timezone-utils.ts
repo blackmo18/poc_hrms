@@ -159,8 +159,120 @@ export function ensureUTCForStorage(dateInput: Date | string | undefined): Date 
     return convertManilaToUTC(dateInput);
   }
   
-  // If it's a string, parse it as Manila time
-  return convertManilaToUTC(dateInput);
+  // If it's a string, check if it has timezone information
+  const dateString = dateInput.toString();
+  
+  // If the string already contains timezone information (like +08:00), 
+  // JavaScript Date constructor will automatically convert it to UTC
+  if (dateString.includes('+') || dateString.includes('Z')) {
+    const date = new Date(dateString);
+    // Return the date as-is since JavaScript already converted it to UTC
+    return date;
+  }
+  
+  // If it's a string without timezone info, parse it as Manila time
+  return convertManilaToUTC(dateString);
+}
+
+/**
+ * Converts a UTC date to local date format for database queries
+ * @param utcDate - Date object in UTC
+ * @param isEndDate - Whether this is an end date (should use 23:59:59)
+ * @returns Date object in local timezone format
+ */
+export function convertUTCToLocalForDB(utcDate: Date | string, isEndDate: boolean = false): Date {
+  const date = typeof utcDate === 'string' ? new Date(utcDate) : utcDate;
+  
+  // If the input is in YYYY-MM-DD format, treat it as local date
+  if (typeof utcDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(utcDate)) {
+    // Parse YYYY-MM-DD as local date
+    const [year, month, day] = utcDate.split('-').map(Number);
+    if (isEndDate) {
+      // For end dates, use 23:59:59
+      return new Date(year, month - 1, day, 23, 59, 59, 999);
+    } else {
+      // For start dates, use 00:00:00
+      return new Date(year, month - 1, day, 0, 0, 0, 0);
+    }
+  }
+  
+  // For Date objects or ISO strings, convert to local time
+  // This converts: "2026-02-15T16:00:00.000Z" -> "2026-02-16 00:00:00" (local)
+  return new Date(
+    date.getFullYear(),
+    date.getMonth(),
+    date.getDate(),
+    date.getHours(),
+    date.getMinutes(),
+    date.getSeconds(),
+    date.getMilliseconds()
+  );
+}
+
+/**
+ * Creates an ISO string with timezone from local date components
+ * @param year - Year
+ * @param month - Month (0-11, like JavaScript Date)
+ * @param day - Day
+ * @param hours - Hours (default: 0)
+ * @param minutes - Minutes (default: 0)
+ * @param seconds - Seconds (default: 0)
+ * @param timezone - Timezone string (default: 'Asia/Manila')
+ * @returns ISO string with timezone offset
+ */
+export function createLocalISOWithTimezone(
+  year: number,
+  month: number,
+  day: number,
+  hours: number = 0,
+  minutes: number = 0,
+  seconds: number = 0,
+  timezone: string = 'Asia/Manila'
+): string {
+  // Create a date object representing the specified local time
+  const localDate = new Date(year, month, day, hours, minutes, seconds);
+  
+  // Format date parts manually to avoid Intl complexities
+  const yearStr = year.toString().padStart(4, '0');
+  const monthStr = (month + 1).toString().padStart(2, '0');
+  const dayStr = day.toString().padStart(2, '0');
+  const hourStr = hours.toString().padStart(2, '0');
+  const minuteStr = minutes.toString().padStart(2, '0');
+  const secondStr = seconds.toString().padStart(2, '0');
+  
+  // Get timezone offset for the given timezone
+  let timezoneOffset: string;
+  if (timezone === 'UTC') {
+    timezoneOffset = '+00:00';
+  } else if (timezone === 'Asia/Manila') {
+    timezoneOffset = '+08:00';
+  } else {
+    // Default to Manila timezone
+    timezoneOffset = '+08:00';
+  }
+  
+  return `${yearStr}-${monthStr}-${dayStr}T${hourStr}:${minuteStr}:${secondStr}${timezoneOffset}`;
+}
+ /**
+ * Creates an ISO string with timezone for a date range (start and end)
+ * @param year - Year
+ * @param month - Month (0-11, like JavaScript Date)
+ * @param startDay - Start day
+ * @param endDay - End day
+ * @param timezone - Timezone string (default: 'Asia/Manila')
+ * @returns Object with start and end ISO strings
+ */
+export function createPeriodISOWithTimezone(
+  year: number,
+  month: number,
+  startDay: number,
+  endDay: number,
+  timezone: string = 'Asia/Manila'
+): { start: string; end: string } {
+  return {
+    start: createLocalISOWithTimezone(year, month, startDay, 0, 0, 0, timezone),
+    end: createLocalISOWithTimezone(year, month, endDay, 23, 59, 59, timezone)
+  };
 }
 
 /**

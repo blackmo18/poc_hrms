@@ -26,6 +26,18 @@ export function ProtectedRoute({
     // Don't do anything while loading
     if (isLoading || roleLoading) return;
 
+    // Additional check: ensure roles are loaded (not empty array when they should be)
+    if (requiredRoles && roles.length === 0 && user) {
+      // User exists but roles are empty - likely still loading, wait a bit
+      const timeout = setTimeout(() => {
+        // Re-check after delay
+        if (roles.length === 0) {
+          router.push(fallbackPath);
+        }
+      }, 1000);
+      return () => clearTimeout(timeout);
+    }
+
     // If not logged in, redirect to login
     if (!user) {
       router.push('/login');
@@ -47,11 +59,12 @@ export function ProtectedRoute({
     }
   }, [user, isLoading, roleLoading, router, requiredRoles, requiredPermission, fallbackPath, hasPermission, roles]);
 
-  // Show loading state
+  // Show loading state while auth is being checked
   if (isLoading || roleLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+        <span className="ml-2">Loading...</span>
       </div>
     );
   }

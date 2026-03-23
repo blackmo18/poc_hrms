@@ -9,6 +9,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import Button from '@/components/ui/button/Button';
+import Link from 'next/link';
 
 interface MissingAttendanceEmployee {
   id: string;
@@ -27,7 +28,7 @@ interface MissingAttendanceModalProps {
     start: string;
     end: string;
   } | null;
-  onViewAttendance?: (employeeId: string, cutoffPeriod?: { start: string; end: string } | null) => void;
+  selectedDepartment?: string;
 }
 
 export function MissingAttendanceModal({
@@ -36,11 +37,30 @@ export function MissingAttendanceModal({
   organizationId,
   departmentId,
   cutoffPeriod,
-  onViewAttendance,
+  selectedDepartment,
 }: MissingAttendanceModalProps) {
   const [employees, setEmployees] = useState<MissingAttendanceEmployee[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Helper function to build attendance URL
+  const buildAttendanceUrl = (employeeId: string) => {
+    const params = new URLSearchParams();
+    
+    // Add cutoff period as date range filter
+    if (cutoffPeriod) {
+      params.set('startDate', cutoffPeriod.start);
+      params.set('endDate', cutoffPeriod.end);
+    }
+    
+    // Add department filter if selected
+    if (selectedDepartment) {
+      params.set('department', selectedDepartment);
+    }
+    
+    const queryString = params.toString();
+    return `/employees/${employeeId}/attendance${queryString ? `?${queryString}` : ''}`;
+  };
 
   useEffect(() => {
     if (isOpen && organizationId && cutoffPeriod) {
@@ -81,13 +101,6 @@ export function MissingAttendanceModal({
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const handleViewAttendance = (employeeId: string) => {
-    if (onViewAttendance) {
-      onViewAttendance(employeeId, cutoffPeriod);
-    }
-    onClose();
   };
 
   return (
@@ -153,14 +166,14 @@ export function MissingAttendanceModal({
                         {employee.missingHours}
                       </TableCell>
                       <TableCell className="px-4 py-3 text-center">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleViewAttendance(employee.id)}
-                          className="text-blue-600 hover:text-blue-800 border-blue-200 hover:border-blue-300"
+                        <Link
+                          href={buildAttendanceUrl(employee.id)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center px-3 py-1 text-sm border border-blue-200 text-blue-600 hover:text-blue-800 hover:border-blue-300 rounded-md transition-colors"
                         >
                           View Attendance
-                        </Button>
+                        </Link>
                       </TableCell>
                     </TableRow>
                   ))}

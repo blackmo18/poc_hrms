@@ -99,6 +99,7 @@ export async function POST(request: NextRequest) {
         );
       }
 
+      // Convert cutoff period dates to UTC for database storage and searching
       const periodStart = ensureUTCForStorage(cutoffPeriod.start);
       const periodEnd = ensureUTCForStorage(cutoffPeriod.end);
 
