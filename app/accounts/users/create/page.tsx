@@ -180,7 +180,6 @@ const initialCreateUserState: CreateUserState = {
 export default function CreateUserPage() {
   const router = useRouter();
   const { user } = useAuth();
-  const { roles } = useRoleAccess();
   const [state, dispatch] = useReducer(createUserReducer, initialCreateUserState);
 
   useEffect(() => {

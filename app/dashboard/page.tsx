@@ -55,7 +55,6 @@ function DashboardContent() {
         
         // Use the centralized API service
         const dashboardData = await adminDashboardAPI.getAllDashboardData();
-        console.log('Admin dashboard data:', dashboardData);
         
         setStats(dashboardData.stats);
         setRecentActivities(dashboardData.recentActivities);

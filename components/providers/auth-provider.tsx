@@ -15,15 +15,15 @@ interface User {
   organizationId?: string;
   firstName?: string;
   lastName?: string;
-  roles?: string[];
-  permissions?: string[];
   employeeId?: string;
+  // Note: roles and permissions arrays removed for security
+  // Use role-based checks instead
 }
 
 interface AuthContextType {
   user: User | null;
-  roles: string[]; // Kept for backward compatibility, but not used
-  permissions: string[]; // Kept for backward compatibility, but not used
+  roles: string[]; // Kept for backward compatibility, derived from user.role
+  permissions: string[]; // Kept for backward compatibility, but always empty
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   isLoading: boolean;
@@ -37,12 +37,12 @@ const sanitizeUser = (user: any): User => ({
   id: user.id,
   email: user.email,
   username: user.username,
+  role: user.role,
   organizationId: user.organizationId || user.organizationId, // Handle both camelCase and snake_case
   firstName: user.first_name || user.firstName,
   lastName: user.last_name || user.lastName,
-  roles: user.roles || [],
-  permissions: user.permissions || [],
   employeeId: user.employeeId
+  // roles and permissions arrays removed for security
 });
 
 export function AuthProvider({
@@ -236,6 +236,9 @@ export function AuthProvider({
   const { checkAuth } = useUserCache(setUser, setIsLoading, setHasCheckedAuth, {
     onUserNull: handleUserNull,
     isUserIdle: () => {
+      if (process.env.NODE_ENV === 'development') {
+        return false; // Disable idle timeout for development
+      }
       const status = getIdleStatus();
       return status ? status.idleTime > 5 * 60 * 1000 : false; // Consider idle after 5 minutes
     }
@@ -249,7 +252,16 @@ export function AuthProvider({
   };
 
   return (
-    <AuthContext.Provider value={{ user, roles: [], permissions: [], login, logout, isLoading, getAccessToken, checkAuth }}>
+    <AuthContext.Provider value={{ 
+      user, 
+      roles: user?.role ? [user.role] : [], // Derive roles array from single role for compatibility
+      permissions: [], // Always empty - permissions removed from client
+      login, 
+      logout, 
+      isLoading, 
+      getAccessToken, 
+      checkAuth 
+    }}>
       {children}
     </AuthContext.Provider>
   );

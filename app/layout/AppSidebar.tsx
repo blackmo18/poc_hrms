@@ -22,9 +22,8 @@ import {
   LayoutGridIcon,
   CalendarInDaysIcon,
 } from '../../icons';
-import { useSidebar } from '../../context/SidebarContext';
+import { useSidebar } from "../../context/SidebarContext";
 import { useAuth } from '../../components/providers/auth-provider';
-import { useRoleAccess } from '../../components/providers/role-access-provider';
 import SidebarWidget from './SidebarWidget';
 import { ADMINSTRATIVE_ROLES } from '@/lib/constants/roles';
 
@@ -178,7 +177,6 @@ const AppSidebar: React.FC = () => {
   const { isExpanded, isHovered, isMobileOpen, toggleMobileSidebar, setIsHovered } = useSidebar();
   const pathname = usePathname();
   const { user } = useAuth();
-  const { roles, isLoading } = useRoleAccess();
   const [openSubmenu, setOpenSubmenu] = useState<{
     type: 'main' | 'others';
     index: number;
@@ -187,9 +185,29 @@ const AppSidebar: React.FC = () => {
     {}
   );
   const subMenuRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const [userRole, setUserRole] = useState<string | null>(null);
   
   // Track manual submenu opens to prevent auto-close from overriding
   const [manualOverride, setManualOverride] = useState<string | null>(null);
+
+  // Fallback: Fetch user role directly if missing from useAuth
+  useEffect(() => {
+    if (!user?.role) {
+      fetch('/api/auth/session', {
+        credentials: 'include',
+        headers: { 'Cache-Control': 'no-cache' }
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.user?.role) {
+          setUserRole(data.user.role);
+        }
+      })
+      .catch(err => console.error('Failed to fetch session:', err));
+    } else {
+      setUserRole(user.role);
+    }
+  }, [user?.role]);
 
   // Close mobile sidebar when navigation item is clicked
   const handleNavigationClick = () => {
@@ -199,10 +217,13 @@ const AppSidebar: React.FC = () => {
   };
 
   const hasAccessToItem = useCallback((itemRoles?: string[]) => {
+    const currentRole = user?.role || userRole;
+    
     if (!itemRoles || itemRoles.length === 0) return true;
-    if (isLoading) return false; // Don't show role-based items while roles are loading
-    return itemRoles.some(role => roles.includes(role));
-  }, [roles, isLoading]);
+    if (!currentRole) return false;
+    
+    return itemRoles.includes(currentRole);
+  }, [user?.role, userRole]);
 
   const filterNavItems = useCallback((items: NavItem[]) => {
     return items.map(item => ({
@@ -407,7 +428,7 @@ const AppSidebar: React.FC = () => {
 
   return (
     <aside
-      key={`${isLoading}-${roles.join(',')}`}
+      key={`${user?.role || 'no-role'}`}
       className={`fixed flex flex-col top-16 lg:top-0 left-0 px-5 bg-white dark:bg-gray-900 dark:border-gray-800 text-gray-900 h-screen transition-all duration-300 ease-in-out z-50 border-r border-gray-200 
         ${
           isExpanded || isMobileOpen

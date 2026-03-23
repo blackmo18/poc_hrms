@@ -16,13 +16,13 @@ interface RoleComponentWrapperProps {
 export default function RoleComponentWrapper({
   children,
   roles: requiredRoles = ['ADMIN'],
-  requireAll = false,
+  requireAll = false, // Now supports multi-role validation
   fallbackMessage = 'Required permissions not available.',
   showFallback = true,
   fallback
 }: RoleComponentWrapperProps) {
   const { user, isLoading: authLoading } = useAuth();
-  const { hasAnyRole, hasAllRoles, isLoading: rolesLoading } = useRoleAccess();
+  const { validateRoles, isLoading: rolesLoading } = useRoleAccess();
   const [hasCheckedRole, setHasCheckedRole] = useState(false);
   const [hasAccess, setHasAccess] = useState(false);
 
@@ -35,15 +35,16 @@ export default function RoleComponentWrapper({
         return;
       }
 
-      // Check access based on requireAll flag
-      const accessGranted = requireAll
-        ? hasAllRoles(requiredRoles)
-        : hasAnyRole(requiredRoles);
+      // Use server-side validation for multi-role support
+      const checkAccess = async () => {
+        const accessGranted = await validateRoles(requiredRoles, requireAll);
+        setHasAccess(accessGranted);
+        setHasCheckedRole(true);
+      };
 
-      setHasAccess(accessGranted);
-      setHasCheckedRole(true);
+      checkAccess();
     }
-  }, [requiredRoles, requireAll, hasAnyRole, hasAllRoles, rolesLoading, authLoading]);
+  }, [requiredRoles, requireAll, validateRoles, rolesLoading, authLoading]);
 
   // Show loading state while checking authentication/role
   if (authLoading || rolesLoading || !hasCheckedRole) {

@@ -3,6 +3,7 @@
 import { useEffect, useCallback, useMemo, useReducer } from "react";
 import Link from "next/link";
 import { useRoleAccess } from "@/components/providers/role-access-provider";
+import { useAuth } from "@/components/providers/auth-provider";
 import {  PlusIcon, UserIcon } from "@/icons";
 import UserCard from "@/components/accounts/UserCard";
 import UsersTable from "@/components/accounts/UsersTable";
@@ -121,7 +122,7 @@ const initialUsersState: UsersState = {
 };
 
 export default function UsersPage() {
-  const { roles } = useRoleAccess();
+  const { user } = useAuth();
   const [state, dispatch] = useReducer(usersReducer, initialUsersState);
 
   // Use the reusable organization filter hook

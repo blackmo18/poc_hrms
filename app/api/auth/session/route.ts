@@ -16,7 +16,12 @@ export async function GET(request: Request) {
     }
 
     // Verify the session token (JWT)
-    const payload = JWTUtils.verifyAccessToken(sessionToken);
+    let payload;
+    try {
+      payload = JWTUtils.verifyAccessToken(sessionToken);
+    } catch (error) {
+      return NextResponse.json({ user: null }, { status: 401 });
+    }
 
     // Verify session exists in database and is not expired
     const session = await prisma.session.findUnique({
@@ -61,14 +66,15 @@ export async function GET(request: Request) {
         id: payload.userId,
         email: payload.email,
         username: payload.username,
-        role: roles[0]?.name || 'EMPLOYEE',
-        roles: roles.map(role => role.name),
-        permissions,
+        role: roles[0]?.name || 'EMPLOYEE', // Primary role for UI compatibility
         organizationId: user?.organizationId,
         firstName: firstName,
         lastName: lastName,
-        employeeId: employeeId // Add employeeId to response
-      }
+        employeeId: employeeId
+      },
+      // Note: Full roles array removed for security, but server can still validate multi-role access
+      hasMultipleRoles: roles.length > 1, // Optional: indicate if user has multiple roles
+      timestamp: new Date().toISOString() // Force refresh
     });
 
   } catch (error) {

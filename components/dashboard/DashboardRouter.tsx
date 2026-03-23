@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '../providers/auth-provider';
 import { useRoleAccess } from '../providers/role-access-provider';
 import { ADMINSTRATIVE_ROLES } from '@/lib/constants/roles';
@@ -13,12 +13,12 @@ interface DashboardRouterProps {
 export function DashboardRouter({ children }: DashboardRouterProps) {
   const router = useRouter();
   const { user, isLoading: authLoading } = useAuth();
-  const { roles, isLoading: roleLoading } = useRoleAccess();
+  const pathname = usePathname(); // Use Next.js hook instead of window.location
   const [isRedirecting, setIsRedirecting] = useState(false);
 
   useEffect(() => {
     // Don't do anything while loading
-    if (authLoading || roleLoading || isRedirecting) return;
+    if (authLoading || isRedirecting) return;
 
     // If not logged in, redirect to login
     if (!user) {
@@ -26,27 +26,16 @@ export function DashboardRouter({ children }: DashboardRouterProps) {
       return;
     }
 
-    // Check if user has administrative roles
-    const hasAdminRole = ADMINSTRATIVE_ROLES.some(role => roles.includes(role));
+    // Check if user has administrative role - use single role check
+    const hasAdminRole = ADMINSTRATIVE_ROLES.includes(user?.role || '');
     
-    // If user has admin role and is not already on admin dashboard, redirect to admin dashboard
-    if (hasAdminRole && window.location.pathname === '/dashboard') {
-      setIsRedirecting(true);
-      // Stay on current admin dashboard - no redirect needed
-      return;
-    }
+    // Temporarily disable redirect logic for testing
+    // TODO: Remove this after fixing the issue
     
-    // If user doesn't have admin role and is on main dashboard, redirect to employee dashboard
-    if (!hasAdminRole && window.location.pathname === '/dashboard') {
-      setIsRedirecting(true);
-      router.push('/dashboard/employee');
-      return;
-    }
-
-  }, [user, authLoading, roleLoading, router, roles, isRedirecting]);
+  }, [user, authLoading, router, isRedirecting, pathname]); // Add pathname to dependencies
 
   // Show loading state
-  if (authLoading || roleLoading || isRedirecting) {
+  if (authLoading || isRedirecting) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">

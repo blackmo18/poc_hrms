@@ -128,7 +128,6 @@ const initialEmployeesState: EmployeesState = {
 
 export default function EmployeesPage() {
   const { user, isLoading: authLoading } = useAuth();
-  const { roles } = useRoleAccess();
   const [state, dispatch] = useReducer(employeesReducer, initialEmployeesState);
 
   // Use the reusable organization filter hook
@@ -151,8 +150,8 @@ export default function EmployeesPage() {
 
   // Memoize super admin check for consistency
   const isSuperAdminMemo = useMemo(() =>
-    roles.includes('SUPER_ADMIN'),
-    [roles]
+    user?.role === 'SUPER_ADMIN',
+    [user]
   );
 
   const fetchEmployees = async (orgId?: string, page: number = 1) => {

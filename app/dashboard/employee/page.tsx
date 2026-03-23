@@ -50,7 +50,6 @@ function EmployeeDashboardContent() {
       try {
         // Use the centralized API service
         const dashboardData = await employeeDashboardAPI.getAllDashboardData();
-        console.log('dashboardData', dashboardData);
         
         setStats(dashboardData.stats);
         setRecentActivities(dashboardData.activities);
