@@ -89,96 +89,7 @@ interface PayslipPreviewProps {
 const PayslipPrintTemplate = forwardRef<HTMLDivElement, { data: PayslipData; ytdData?: any }>(({ data, ytdData }, ref) => {
   return (
     <div ref={ref} className="bg-white p-8 print-container">
-      <div className="border-2 border-gray-300 p-6">
-        <h1 className="text-2xl font-bold text-center mb-6">PAYSLIP</h1>
-        
-        <div className="grid grid-cols-2 gap-4 mb-6">
-          <div>
-            <p><strong>Employee Name:</strong> {data.firstName} {data.lastName}</p>
-            <p><strong>Employee ID:</strong> {data.employeeId}</p>
-            <p><strong>Department:</strong> {data.departmentName || 'N/A'}</p>
-            <p><strong>Position:</strong> {data.position || 'N/A'}</p>
-          </div>
-          <div>
-            <p><strong>Pay Period:</strong> {formatDate(data.cutoffPeriod.start)} - {formatDate(data.cutoffPeriod.end)}</p>
-            <p><strong>Basic Salary:</strong> {formatCurrency(data.baseSalary)}</p>
-            <p><strong>Total Earnings:</strong> {formatCurrency(data.earnings.totalEarnings)}</p>
-            <p><strong>Total Deductions:</strong> {formatCurrency(data.deductions.totalDeductions)}</p>
-          </div>
-        </div>
-
-        <div className="mb-6">
-          <h3 className="font-bold mb-2">Earnings</h3>
-          <table className="w-full border-collapse">
-            <thead>
-              <tr className="border-b">
-                <th className="text-left p-2">Description</th>
-                <th className="text-right p-2">Amount</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr className="border-b">
-                <td className="p-2">Basic Salary</td>
-                <td className="text-right p-2">{formatCurrency(data.earnings.basicSalary)}</td>
-              </tr>
-              <tr className="border-b">
-                <td className="p-2">Overtime Pay</td>
-                <td className="text-right p-2">{formatCurrency(data.earnings.overtimePay)}</td>
-              </tr>
-              <tr className="border-b">
-                <td className="p-2">Holiday Pay</td>
-                <td className="text-right p-2">{formatCurrency(data.earnings.holidayPay)}</td>
-              </tr>
-              <tr className="border-b">
-                <td className="p-2">Night Differential</td>
-                <td className="text-right p-2">{formatCurrency(data.earnings.nightDifferential)}</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-
-        <div className="mb-6">
-          <h3 className="font-bold mb-2">Deductions</h3>
-          <table className="w-full border-collapse">
-            <thead>
-              <tr className="border-b">
-                <th className="text-left p-2">Description</th>
-                <th className="text-right p-2">Amount</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr className="border-b">
-                <td className="p-2">SSS</td>
-                <td className="text-right p-2">{formatCurrency(data.deductions.sss)}</td>
-              </tr>
-              <tr className="border-b">
-                <td className="p-2">PhilHealth</td>
-                <td className="text-right p-2">{formatCurrency(data.deductions.philhealth)}</td>
-              </tr>
-              <tr className="border-b">
-                <td className="p-2">Pag-IBIG</td>
-                <td className="text-right p-2">{formatCurrency(data.deductions.pagibig)}</td>
-              </tr>
-              <tr className="border-b">
-                <td className="p-2">Withholding Tax</td>
-                <td className="text-right p-2">{formatCurrency(data.deductions.withholdingTax)}</td>
-              </tr>
-              <tr className="border-b">
-                <td className="p-2">Late Deduction</td>
-                <td className="text-right p-2">{formatCurrency(data.deductions.lateDeduction)}</td>
-              </tr>
-              <tr className="border-b">
-                <td className="p-2">Absence Deduction</td>
-                <td className="text-right p-2">{formatCurrency(data.deductions.absenceDeduction)}</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-
-        <div className="text-right">
-          <p className="text-xl font-bold">Net Pay: {formatCurrency(data.netPay)}</p>
-        </div>
-      </div>
+      <PdfTemplate1 data={data} ytdData={ytdData} />
     </div>
   );
 });
@@ -201,7 +112,7 @@ export default function PayslipPreview({ isOpen, onClose, data, ytdData }: Paysl
     pageStyle: `
       @page {
         size: A4;
-        margin: 5mm;
+        margin: 0;
       }
       @media print {
         html, body {

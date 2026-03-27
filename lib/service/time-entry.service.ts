@@ -4,6 +4,14 @@ import { TimeEntry } from '@prisma/client';
 import { holidayService } from './holiday.service';
 import { ITimeEntryService } from '@/lib/interfaces/time-entry.interface';
 import { logInfo } from '../utils/logger';
+import { createDateAtMidnightUTCFromDate } from '../utils/date-utils';
+import { 
+  convertManilaToUTC, 
+  convertUTCToManila, 
+  ensureUTCForStorage,
+  createManilaMidnightUTC,
+  getCurrentUTC
+} from '../utils/timezone-utils';
 
 export class TimeEntryService implements ITimeEntryService {
   /**
@@ -16,15 +24,23 @@ export class TimeEntryService implements ITimeEntryService {
     workDate?: Date;
     createdBy?: string;
   }): Promise<TimeEntry> {
-    // IMPORTANT: Always use server time for clockInAt to prevent client manipulation of work hours
-    // Client cannot trick the system into recording more hours than actually worked
-    const clockInAt = new Date();
+    // IMPORTANT: Always use current UTC time for clockInAt to prevent client manipulation
+    // The time is stored in UTC but represents the moment the employee clocked in
+    const clockInAt = getCurrentUTC();
 
     // Use provided workDate (from client, which knows local timezone) or calculate from server time
+    // workDate should be stored as midnight UTC representing Manila midnight
     let workDate = data.workDate;
     if (!workDate) {
-      // Fallback: Create work date in local timezone to avoid timezone issues
-      workDate = new Date(clockInAt.getFullYear(), clockInAt.getMonth(), clockInAt.getDate());
+      // Create work date at midnight UTC from current Manila time
+      const manilaTime = convertUTCToManila(clockInAt);
+      workDate = createManilaMidnightUTC(
+        `${manilaTime.getFullYear()}-${String(manilaTime.getMonth() + 1).padStart(2, '0')}-${String(manilaTime.getDate()).padStart(2, '0')}`
+      );
+    } else {
+      // Convert the provided workDate to proper UTC format
+      const workDateStr = workDate.toISOString().split('T')[0];
+      workDate = createManilaMidnightUTC(workDateStr);
     }
 
     const createData: CreateTimeEntry = {
@@ -39,24 +55,23 @@ export class TimeEntryService implements ITimeEntryService {
   }
 
   async clockOut(timeEntryId: string, clockOutAt?: Date, updatedBy?: string) {
-    const clockOutTime = clockOutAt || new Date();
+    // Use provided time or current UTC time
+    const clockOutTime = clockOutAt ? ensureUTCForStorage(clockOutAt) : getCurrentUTC();
 
-    return await timeEntryController.clockOut(timeEntryId, clockOutTime);
+    return await timeEntryController.clockOut(timeEntryId, clockOutTime!);
   }
 
   /**
-   * Get time entries by organization, department and date range
+   * Get time entries by organization and date range
    */
   async getTimeEntriesByOrganizationAndPeriod(
     organizationId: string,
-    departmentId: string | undefined,
     periodStart: Date,
     periodEnd: Date,
     status?: string
   ): Promise<TimeEntry[]> {
     return await timeEntryController.getByOrganizationAndPeriod(
       organizationId,
-      departmentId,
       periodStart,
       periodEnd,
       status
@@ -67,20 +82,22 @@ export class TimeEntryService implements ITimeEntryService {
    * Get current open time entry for employee
    */
   async getCurrentOpenEntry(employeeId: string) {
-    // Get today's date at start of day in local timezone
-    const today = new Date();
-    const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-    const todayEnd = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
-
+    // Look for any OPEN entry for this employee, regardless of work date
+    // This handles cases where someone clocked in late for a previous day
     const result = await timeEntryController.getAll({
       employeeId: employeeId,
       status: TimeEntryStatus.OPEN,
-      dateFrom: todayStart,
-      dateTo: todayEnd,
     });
 
     // Return the most recent open entry (should only be one, but just in case)
-    return result.data.length > 0 ? result.data[0] : null;
+    // Sort by clockInAt descending to get the most recent one
+    if (result.data.length > 0) {
+      return result.data.sort((a, b) => 
+        new Date(b.clockInAt).getTime() - new Date(a.clockInAt).getTime()
+      )[0];
+    }
+    
+    return null;
   }
 
   async isClockedIn(employeeId: string): Promise<boolean> {

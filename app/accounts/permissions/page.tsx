@@ -139,7 +139,6 @@ const initialPermissionsState: PermissionsState = {
 
 export default function PermissionsPage() {
   const { user, isLoading: authLoading } = useAuth();
-  const { roles } = useRoleAccess();
   const [state, dispatch] = useReducer(permissionsReducer, initialPermissionsState);
 
   // Use the reusable organization filter hook

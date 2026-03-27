@@ -14,7 +14,6 @@ export default function AttendanceLayout({
   const pages = [
     { label: 'Clock In/Out', href: '/attendance/clock-in-out' },
     { label: 'Timesheet View', href: '/attendance/timesheet-view' },
-    { label: 'Cutoff Overview', href: '/attendance/cutoff-overview' },
     { label: 'Employee Timesheets', href: '/attendance/timesheets' },
     { label: 'Time Corrections', href: '/attendance/corrections' },
     { label: 'Break Validation', href: '/attendance/breaks' },

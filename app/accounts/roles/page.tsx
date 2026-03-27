@@ -154,7 +154,6 @@ const initialRolesState: RolesState = {
 
 export default function RolesPage() {
   const { user, isLoading: authLoading } = useAuth();
-  const { roles } = useRoleAccess();
   const [state, dispatch] = useReducer(rolesReducer, initialRolesState);
 
   // Modal state

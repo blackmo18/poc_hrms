@@ -4,9 +4,10 @@ import { prisma } from '@/lib/db';
 import { Overtime, OvertimeRequestStatus } from '@prisma/client';
 import { generateULID } from '@/lib/utils/ulid.service';
 import { z } from 'zod';
+import { ensureUTCForStorage } from '@/lib/utils/timezone-utils';
 
 const createOvertimeRequestSchema = z.object({
-  workDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Invalid date format'),
+  workDate: z.string().regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\+\d{2}:\d{2}$/, 'Invalid date format (use ISO format with timezone)'),
   timeEntryId: z.string().optional(),
   timeStart: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, 'Invalid time format (use 24-hour format HH:MM)').optional(),
   timeEnd: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, 'Invalid time format (use 24-hour format HH:MM)').optional(),
@@ -119,10 +120,14 @@ export class OvertimeController {
       const body = await request.json();
       const validatedData = createOvertimeRequestSchema.parse(body);
 
+      console.log('Overtime Controller - Creating request with date:', {
+        workDate: validatedData.workDate
+      });
+
       const overtimeData: CreateOvertimeRequestData = {
         employeeId,
         organizationId,
-        workDate: new Date(validatedData.workDate),
+        workDate: ensureUTCForStorage(validatedData.workDate),
         timeEntryId: validatedData.timeEntryId || null,
         timeStart: validatedData.timeStart || null,
         timeEnd: validatedData.timeEnd || null,
@@ -130,6 +135,11 @@ export class OvertimeController {
         otType: validatedData.otType,
         remarks: validatedData.remarks || null,
       };
+
+      console.log('Overtime Controller - Converted workDate to UTC:', {
+        original: validatedData.workDate,
+        utc: overtimeData.workDate.toISOString()
+      });
 
       const overtimeRequest = await overtimeService.createOvertimeRequest(overtimeData);
 

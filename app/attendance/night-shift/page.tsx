@@ -5,6 +5,8 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import Badge from '@/components/ui/badge/Badge';
 import { MoonIcon, AlertCircleIcon } from 'lucide-react';
+import { ProtectedRoute } from '@/components/protected-route';
+import { ADMINSTRATIVE_ROLES } from '@/lib/constants/roles';
 
 export default function NightShiftMonitorPage() {
   const nightShiftWorkers = [
@@ -47,6 +49,7 @@ export default function NightShiftMonitorPage() {
   ];
 
   return (
+    <ProtectedRoute requiredRoles={ADMINSTRATIVE_ROLES}>
     <div className="max-w-7xl mx-auto px-4 py-8">
       {/* Header */}
       <div className="mb-8">
@@ -174,5 +177,6 @@ export default function NightShiftMonitorPage() {
         </CardContent>
       </Card>
     </div>
+    </ProtectedRoute>
   );
 }

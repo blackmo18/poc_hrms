@@ -11,6 +11,7 @@ async function testJWTDecode() {
       email: 'admin@techcorp.com',
       organizationId: '1',
       roleIds: ['1'],
+      roleNames: ['ADMIN'], // Add role names
       username: 'admin@techcorp.com',
       type: 'access' as const
     };
@@ -27,6 +28,7 @@ async function testJWTDecode() {
       console.log('📧 Email:', decoded.email);
       console.log('🏢 Organization ID:', decoded.organizationId);
       console.log('🔑 Role IDs:', decoded.roleIds);
+      console.log('🏷️ Role Names:', decoded.roleNames); // Add role names test
       console.log('👤 Username:', decoded.username);
       console.log('🔖 Token Type:', decoded.type);
     } else {

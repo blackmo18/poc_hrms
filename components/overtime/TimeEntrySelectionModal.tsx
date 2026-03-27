@@ -29,21 +29,21 @@ export default function TimeEntrySelectionModal({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      className="max-w-2xl m-4"
+      className="max-w-2xl m-4 max-h-[90vh]"
     >
-      <div className="no-scrollbar relative w-full overflow-y-auto rounded-3xl bg-white p-4 dark:bg-gray-900 lg:p-8">
+      <div className="no-scrollbar relative w-full overflow-y-auto rounded-3xl bg-white p-4 dark:bg-gray-900 sm:p-6 lg:p-8">
         {/* Header */}
-        <div className="px-2 pr-14 mb-6">
-          <h4 className="mb-2 text-xl font-semibold text-gray-800 dark:text-white/90">
+        <div className="px-2 pr-14 mb-4 sm:mb-6">
+          <h4 className="mb-2 text-lg sm:text-xl font-semibold text-gray-800 dark:text-white/90">
             Select Time Entry
           </h4>
-          <p className="text-sm text-gray-500 dark:text-gray-400">
+          <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">
             Choose a time entry from your last 30 days
           </p>
         </div>
 
         {/* Scrollable Content Area */}
-        <div className="px-2 mb-6 max-h-[500px] overflow-y-auto custom-scrollbar">
+        <div className="px-2 mb-4 sm:mb-6 max-h-[400px] sm:max-h-[500px] overflow-y-auto custom-scrollbar">
           <TimeEntryCalendar
             onSelectTimeEntry={onSelectTimeEntry}
             selectedTimeEntryId={selectedTimeEntryId}

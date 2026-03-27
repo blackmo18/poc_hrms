@@ -5,6 +5,7 @@ import { TimeEntryStatus } from '@/lib/models/time-entry';
 import { BreakType } from '@prisma/client';
 import { generateULID } from '../utils/ulid.service';
 import { ITimeBreakService } from '@/lib/interfaces/time-break.interface';
+import { getCurrentUTC, ensureUTCForStorage } from '../utils/timezone-utils';
 
 export class TimeBreakService implements ITimeBreakService {
   /**
@@ -37,7 +38,7 @@ export class TimeBreakService implements ITimeBreakService {
         throw new Error('Cannot start break. TimeEntry not found or not open.');
       }
 
-      const currentTime = new Date();
+      const currentTime = getCurrentUTC();
 
       // Check break is within clock-in/out range
       if (currentTime < timeEntry.clockInAt || (timeEntry.clockOutAt && currentTime > timeEntry.clockOutAt)) {
@@ -104,7 +105,7 @@ export class TimeBreakService implements ITimeBreakService {
         throw new Error('TimeEntry does not belong to this employee.');
       }
 
-      const currentTime = new Date();
+      const currentTime = getCurrentUTC();
 
       // Find ongoing break with better error handling
       const existingBreaks = await timeBreakController.getByTimeEntryId(data.timeEntryId);

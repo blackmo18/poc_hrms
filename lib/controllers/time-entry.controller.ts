@@ -4,11 +4,10 @@ import { generateULID } from '../utils/ulid.service';
 
 export class TimeEntryController {
   /**
-   * Get time entries by organization, department and date range
+   * Get time entries by organization and date range
    */
   async getByOrganizationAndPeriod(
     organizationId: string,
-    departmentId: string | undefined,
     periodStart: Date,
     periodEnd: Date,
     status?: string
@@ -20,12 +19,6 @@ export class TimeEntryController {
         lte: periodEnd,
       },
     };
-
-    if (departmentId) {
-      whereClause.employee = {
-        departmentId,
-      };
-    }
 
     if (status) {
       whereClause.status = status;
@@ -60,7 +53,6 @@ export class TimeEntryController {
         id: generateULID(),
         employee: { connect: { id: data.employeeId } },
         organization: { connect: { id: data.organizationId } },
-        ...(data.departmentId && { department: { connect: { id: data.departmentId } } }),
         workDate: data.workDate,
         clockInAt: data.clockInAt,
         clockOutAt: data.clockOutAt,
@@ -112,7 +104,6 @@ export class TimeEntryController {
     const where: any = {};
 
     if (filters.employeeId) where.employeeId = filters.employeeId;
-    if (filters.departmentId) where.departmentId = filters.departmentId;
     if (filters.status) where.status = filters.status;
     if (filters.workDate) where.workDate = filters.workDate;
     if (filters.dateFrom && filters.dateTo) {

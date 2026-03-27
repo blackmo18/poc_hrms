@@ -18,6 +18,37 @@ interface SelectedEntriesSectionProps {
   selectedTimeEntryId?: string;
 }
 
+// Helper function to format date and time from ISO string
+const formatDateTime = (timeStr: string): string => {
+  try {
+    const date = new Date(timeStr);
+    return format(date, 'MMM d, h:mm a');
+  } catch {
+    return timeStr;
+  }
+};
+
+// Helper function to calculate duration in hours and minutes
+const formatDuration = (startTime: string, endTime: string): string => {
+  try {
+    const start = new Date(startTime);
+    const end = new Date(endTime);
+    const diffMs = end.getTime() - start.getTime();
+    const hours = Math.floor(diffMs / (1000 * 60 * 60));
+    const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+    
+    if (hours > 0 && minutes > 0) {
+      return `${hours}h ${minutes}m`;
+    } else if (hours > 0) {
+      return `${hours}h`;
+    } else {
+      return `${minutes}m`;
+    }
+  } catch {
+    return 'Unknown';
+  }
+};
+
 const SelectedEntriesSection: React.FC<SelectedEntriesSectionProps> = ({
   selectedDate,
   timeEntries,
@@ -57,7 +88,7 @@ const SelectedEntriesSection: React.FC<SelectedEntriesSectionProps> = ({
                           : 'border-gray-200 bg-gray-50 hover:border-gray-300 dark:border-gray-700 dark:bg-gray-900/50 dark:hover:border-gray-600'
                       }`}
                     >
-                      <div className="flex items-center gap-3">
+                      <div className="flex flex-col sm:flex-row sm:items-center gap-3">
                         <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-100 dark:bg-blue-900/30">
                           <svg
                             className="h-5 w-5 text-blue-600 dark:text-blue-400"
@@ -75,10 +106,10 @@ const SelectedEntriesSection: React.FC<SelectedEntriesSectionProps> = ({
                         </div>
                         <div className="flex-1">
                           <p className="font-semibold text-gray-800 dark:text-white/90">
-                            {entry.startTime} - {entry.endTime}
+                            {formatDateTime(entry.startTime)} - {formatDateTime(entry.endTime)}
                           </p>
                           <p className="text-sm text-gray-600 dark:text-gray-400">
-                            Duration: {entry.duration} hours
+                            Duration: {formatDuration(entry.startTime, entry.endTime)}
                           </p>
                         </div>
                         <div className="text-right">

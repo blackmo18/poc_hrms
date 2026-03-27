@@ -63,22 +63,22 @@ describe('PayrollController', () => {
   describe('getPayrollsByOrganizationAndPeriod', () => {
     const mockOrganizationId = 'org-123';
     const mockDepartmentId = 'dept-456';
-    const mockPeriodStart = new Date('2026-02-16');
-    const mockPeriodEnd = new Date('2026-02-28');
+    const mockPeriodStart = new Date('2026-02-15T16:00:00.000Z'); // UTC converted from Manila
+    const mockPeriodEnd = new Date('2026-02-28T15:59:59.000Z');   // UTC converted from Manila
 
     it('should call prisma.payroll.findMany with correct overlapping period query', async () => {
       const mockPayrolls = [
         createMockPayroll({
           id: 'payroll-1',
           employeeId: 'emp-1',
-          periodStart: new Date('2026-02-15T16:00:00.000Z'),
-          periodEnd: new Date('2026-02-27T16:00:00.000Z'),
+          periodStart: new Date('2026-02-15T16:00:00.000Z'), // Stored as UTC
+          periodEnd: new Date('2026-02-27T15:59:59.000Z'),   // Stored as UTC
         }),
         createMockPayroll({
           id: 'payroll-2',
           employeeId: 'emp-2',
-          periodStart: new Date('2026-02-20T00:00:00.000Z'),
-          periodEnd: new Date('2026-03-05T00:00:00.000Z'),
+          periodStart: new Date('2026-02-19T16:00:00.000Z'), // Stored as UTC
+          periodEnd: new Date('2026-03-04T15:59:59.000Z'),   // Stored as UTC
           status: 'APPROVED',
         }),
       ];
@@ -95,7 +95,10 @@ describe('PayrollController', () => {
       expect(prisma.payroll.findMany).toHaveBeenCalledWith({
         where: {
           organizationId: mockOrganizationId,
-          departmentId: mockDepartmentId,
+          OR: [
+            { departmentId: mockDepartmentId },
+            { departmentId: null }  // Include records with NULL departmentId
+          ],
           AND: [
             {
               periodStart: {

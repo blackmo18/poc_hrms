@@ -16,6 +16,14 @@ export class LeaveRequestController {
             jobTitle: true,
           },
         },
+        // TODO: Fix approvedBy relation - temporarily removed due to schema sync issue
+        // approvedBy: {
+        //   select: {
+        //     id: true,
+        //     firstName: true,
+        //     lastName: true,
+        //   },
+        // },
       },
       orderBy: {
         createdAt: 'desc',
@@ -71,6 +79,13 @@ export class LeaveRequestController {
             manager: true,
           },
         },
+        approvedBy: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+          },
+        },
       },
     });
   }
@@ -85,14 +100,33 @@ export class LeaveRequestController {
             jobTitle: true,
           },
         },
+        // TODO: Fix approvedBy relation - temporarily removed due to schema sync issue
+        // approvedBy: {
+        //   select: {
+        //     id: true,
+        //     firstName: true,
+        //     lastName: true,
+        //   },
+        // },
       },
     });
   }
 
   async update(id: string, data: UpdateLeaveRequest) {
+    // Filter out fields that shouldn't be directly updated
+    const { 
+      employeeId, 
+      organizationId, 
+      departmentId, 
+      startDate, 
+      endDate, 
+      leaveType,
+      ...updateData 
+    } = data;
+    
     return await prisma.leaveRequest.update({
       where: { id },
-      data,
+      data: updateData,
       include: {
         employee: {
           include: {
@@ -100,6 +134,14 @@ export class LeaveRequestController {
             jobTitle: true,
           },
         },
+        // TODO: Fix approvedBy relation - temporarily removed due to schema sync issue
+        // approvedBy: {
+        //   select: {
+        //     id: true,
+        //     firstName: true,
+        //     lastName: true,
+        //   },
+        // },
       },
     });
   }
@@ -110,12 +152,12 @@ export class LeaveRequestController {
     });
   }
 
-  async approve(id: string) {
-    return await this.update(id, { status: 'APPROVED' });
+  async approve(id: string, approvedById?: string) {
+    return await this.update(id, { status: 'APPROVED' as any, ...(approvedById && { approvedById }) });
   }
 
-  async reject(id: string, remarks?: string) {
-    return await this.update(id, { status: 'REJECTED', remarks });
+  async reject(id: string, remarks?: string, rejectedById?: string) {
+    return await this.update(id, { status: 'REJECTED' as any, remarks, ...(rejectedById && { approvedById: rejectedById }) });
   }
 }
 

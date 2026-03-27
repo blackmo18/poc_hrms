@@ -16,7 +16,12 @@ export async function GET(request: Request) {
     }
 
     // Verify the session token (JWT)
-    const payload = JWTUtils.verifyAccessToken(sessionToken);
+    let payload;
+    try {
+      payload = JWTUtils.verifyAccessToken(sessionToken);
+    } catch (error) {
+      return NextResponse.json({ user: null }, { status: 401 });
+    }
 
     // Verify session exists in database and is not expired
     const session = await prisma.session.findUnique({
@@ -28,11 +33,7 @@ export async function GET(request: Request) {
       return NextResponse.json({ user: null }, { status: 401 });
     }
 
-    // Get user roles and permissions
-    const roles = await getUserRoles(payload.userId);
-    const permissions = await getUserPermissions(payload.userId);
-
-    // Get user's organizationId from the database
+    // Get user's organizationId from database (minimal call)
     const userService = getUserService();
     const user = await userService.getById(payload.userId);
 
@@ -43,6 +44,7 @@ export async function GET(request: Request) {
     // Get employee details if available
     let firstName = '';
     let lastName = '';
+    let employeeId = '';
     if (user?.employeeId) {
       const employee = await prisma.employee.findUnique({
         where: { id: user.employeeId },
@@ -51,6 +53,7 @@ export async function GET(request: Request) {
       if (employee) {
         firstName = employee.firstName;
         lastName = employee.lastName;
+        employeeId = user.employeeId; // Include employeeId in response
       }
     }
 
@@ -59,13 +62,16 @@ export async function GET(request: Request) {
         id: payload.userId,
         email: payload.email,
         username: payload.username,
-        role: roles[0]?.name || 'EMPLOYEE',
-        roles: roles.map(role => role.name),
-        permissions,
+        roles: payload.roleNames, // Use roles from JWT instead of DB call
+        role: payload.roleNames[0] || 'EMPLOYEE', // Primary role for UI compatibility
         organizationId: user?.organizationId,
         firstName: firstName,
-        lastName: lastName
-      }
+        lastName: lastName,
+        employeeId: employeeId
+      },
+      // Note: Full roles array now comes from JWT for performance
+      hasMultipleRoles: (payload.roleNames?.length || 0) > 1, // Indicate if user has multiple roles
+      timestamp: new Date().toISOString() // Force refresh
     });
 
   } catch (error) {

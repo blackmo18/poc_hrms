@@ -1,4 +1,5 @@
 import ComponentCard from '@/components/common/ComponentCard';
+import Select from '@/components/form/Select';
 
 interface PayrollPeriod {
   value: string;
@@ -18,23 +19,23 @@ export default function PeriodSelectionSection({
   onCutoffChange,
   payrollPeriods
 }: PeriodSelectionSectionProps) {
+  // Convert payroll periods to Select component format
+  const selectOptions = payrollPeriods.map(period => ({
+    value: period.value,
+    label: period.label
+  }));
+
   return (
     <ComponentCard title="Select Period">
       <div>
-        <label className="block text-sm font-medium mb-2">Cutoff Period</label>
-        <select
+        <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">Cutoff Period</label>
+        <Select
+          options={selectOptions}
           value={selectedCutoff}
-          onChange={(e) => {
-            console.log(e.target.value);
-            onCutoffChange(e.target.value);
-          }}
-          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
-        >
-          <option value="">Select cutoff period...</option>
-          {payrollPeriods.map(period => (
-            <option key={period.value} value={period.value}>{period.label}</option>
-          ))}
-        </select>
+          onChange={onCutoffChange}
+          placeholder="Select cutoff period..."
+          className="w-full"
+        />
       </div>
     </ComponentCard>
   );

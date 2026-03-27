@@ -4,6 +4,7 @@ import { SidebarProvider, useSidebar } from "../../context/SidebarContext";
 import AppHeader from "./AppHeader";
 import Backdrop from "./Backdrop";
 import AppSidebar from "./AppSidebar";
+import FloatingSidebarToggle from "../../components/layout/FloatingSidebarToggle";
 
 const LayoutContent: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isExpanded, isHovered, isMobileOpen } = useSidebar();
@@ -24,6 +25,7 @@ const LayoutContent: React.FC<{ children: React.ReactNode }> = ({ children }) =>
           {children}
         </div>
       </div>
+      <FloatingSidebarToggle />
     </div>
   );
 };

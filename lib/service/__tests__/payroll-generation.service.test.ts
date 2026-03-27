@@ -186,7 +186,6 @@ describe('PayrollService - Generation', () => {
       expect(mockPayrollController.create).toHaveBeenCalledWith({
         employeeId: mockEmployeeId,
         organizationId: mockOrganizationId,
-        departmentId: mockDepartmentId,
         periodStart,
         periodEnd,
         grossPay: 5000,

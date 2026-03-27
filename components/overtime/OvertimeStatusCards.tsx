@@ -11,26 +11,39 @@ export default function OvertimeStatusCards({
   approvedThisMonth = 0,
   totalApprovedHours = 0,
 }: OvertimeStatusCardsProps) {
+  // Convert minutes to hours and minutes for better display
+  const formatHours = (minutes: number): string => {
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    if (hours > 0 && mins > 0) {
+      return `${hours}h ${mins}m`;
+    } else if (hours > 0) {
+      return `${hours}h`;
+    } else {
+      return `${mins}m`;
+    }
+  };
+
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 mb-6 md:mb-8">
       <ComponentCard title="Pending Requests">
-        <div className="p-6">
-          <p className="mt-2 text-3xl font-bold text-orange-600">{pendingRequests}</p>
-          <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">Awaiting approval</p>
+        <div className="p-3 md:p-6">
+          <p className="mt-1 md:mt-2 text-2xl md:text-3xl font-bold text-orange-600">{pendingRequests}</p>
+          <p className="mt-0.5 md:mt-1 text-xs md:text-sm text-gray-600 dark:text-gray-400">Awaiting approval</p>
         </div>
       </ComponentCard>
 
       <ComponentCard title="Approved This Month">
-        <div className="p-6">
-          <p className="mt-2 text-3xl font-bold text-success-600">{approvedThisMonth}</p>
-          <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">This month</p>
+        <div className="p-3 md:p-6">
+          <p className="mt-1 md:mt-2 text-2xl md:text-3xl font-bold text-success-600">{approvedThisMonth}</p>
+          <p className="mt-0.5 md:mt-1 text-xs md:text-sm text-gray-600 dark:text-gray-400">This month</p>
         </div>
       </ComponentCard>
 
       <ComponentCard title="Total OT Hours">
-        <div className="p-6">
-          <p className="mt-2 text-3xl font-bold text-brand-600">{totalApprovedHours}</p>
-          <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">Approved hours</p>
+        <div className="p-3 md:p-6">
+          <p className="mt-1 md:mt-2 text-2xl md:text-3xl font-bold text-brand-600">{formatHours(totalApprovedHours)}</p>
+          <p className="mt-0.5 md:mt-1 text-xs md:text-sm text-gray-600 dark:text-gray-400">Approved hours</p>
         </div>
       </ComponentCard>
     </div>

@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react';
 import PageBreadcrumb from '@/components/common/PageBreadCrumb';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import Badge from '@/components/ui/badge/Badge';
 import { CheckIcon, XIcon } from 'lucide-react';
 import OrganizationFilter from '@/components/common/OrganizationFilter';
@@ -14,6 +13,7 @@ import { ADMINSTRATIVE_ROLES } from '@/lib/constants/roles';
 import { useOrganizationFilter } from '@/hooks/useOrganizationFilter';
 import { usePayrollPeriods } from '@/hooks/usePayrollPeriods';
 import ComponentCard from '@/components/common/ComponentCard';
+import Button from '@/components/ui/button/Button';
 
 function OvertimeApprovalsContent() {
   const [otRequests, setOtRequests] = useState([]);
@@ -243,7 +243,7 @@ function OvertimeApprovalsContent() {
                       </Button>
                       <Button
                         size="sm"
-                        variant="secondary"
+                        variant="outline"
                         onClick={() => handleReject(request.id)}
                         className="flex items-center gap-2 bg-red-100 hover:bg-red-200 text-red-700 border-red-200 dark:bg-red-900 dark:hover:bg-red-800 dark:text-red-300 dark:border-red-800"
                       >

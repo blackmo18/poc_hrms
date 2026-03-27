@@ -7,6 +7,7 @@ import { getDeductionService } from './deduction.service';
 import { PayrollLogService } from './payroll-log.service';
 import { getServiceContainer } from '@/lib/di/container';
 import { logInfo, logError, logWarn } from '@/lib/utils/logger';
+import { ensureUTCForStorage } from '@/lib/utils/timezone-utils';
 
 export interface PayrollGenerationInput {
   employeeId: string;
@@ -68,14 +69,19 @@ export class PayrollService {
   async generatePayroll(input: PayrollGenerationInput, userId: string): Promise<PayrollGenerationResult> {
     const { employeeId, organizationId, periodStart, periodEnd } = input;
 
+    // Convert period dates to UTC for consistent storage
+    // These dates come from frontend as ISO strings, we need to ensure they're in UTC
+    const utcPeriodStart = ensureUTCForStorage(periodStart.toISOString());
+    const utcPeriodEnd = ensureUTCForStorage(periodEnd.toISOString());
+
     // Log critical flow start
     logInfo('Starting payroll generation', {
       references: {
         organizationId,
         employeeId,
         period: {
-          start: periodStart.toISOString().split('T')[0],
-          end: periodEnd.toISOString().split('T')[0]
+          start: utcPeriodStart.toISOString().split('T')[0],
+          end: utcPeriodEnd.toISOString().split('T')[0]
         }
       },
       userId,
@@ -86,8 +92,8 @@ export class PayrollService {
     const existingPayroll = await payrollController.getAll().then(payrolls =>
       payrolls.find(p =>
         p.employeeId === employeeId &&
-        p.periodStart.getTime() === periodStart.getTime() &&
-        p.periodEnd.getTime() === periodEnd.getTime() &&
+        p.periodStart.getTime() === utcPeriodStart.getTime() &&
+        p.periodEnd.getTime() === utcPeriodEnd.getTime() &&
         p.status !== PayrollStatus.VOIDED
       )
     );
@@ -161,8 +167,8 @@ export class PayrollService {
     const calculationResult = await payrollCalculationService.calculateCompletePayroll(
       organizationId,
       employeeId,
-      periodStart,
-      periodEnd,
+      utcPeriodStart,
+      utcPeriodEnd,
       monthlySalary
     );
 
@@ -170,9 +176,8 @@ export class PayrollService {
     const payrollData: CreatePayroll = {
       employeeId,
       organizationId,
-      departmentId: employee.departmentId,
-      periodStart,
-      periodEnd,
+      periodStart: utcPeriodStart,
+      periodEnd: utcPeriodEnd,
       grossPay: calculationResult.total_gross_pay,
       netPay: calculationResult.total_net_pay,
       taxableIncome: calculationResult.taxable_income,

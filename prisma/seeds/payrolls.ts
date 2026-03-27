@@ -60,7 +60,6 @@ export async function seedPayrolls() {
         id: generateULID(),
         employeeId: employee.id,
         organizationId: employee.department?.organizationId || organizations[0].id,
-        departmentId: employee.departmentId,
         periodStart: period.startDate,
         periodEnd: period.endDate,
         grossPay,

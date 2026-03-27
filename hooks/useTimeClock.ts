@@ -92,42 +92,46 @@ export const useTimeClock = () => {
     );
 
     sortedEntries.forEach(entry => {
+      // clockInAt is now UTC from API, convert to local time
       const clockInDate = new Date(entry.clockInAt);
-      const clockInTime = clockInDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      const clockInTime = clockInDate.toLocaleTimeString('en-PH', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
 
       logs.push({
         type: 'Clock In',
         time: clockInTime,
-        date: clockInDate.toLocaleDateString()
+        date: clockInDate.toLocaleDateString('en-PH')
       });
 
       // Add breaks
       if (entry.timeBreaks) {
         entry.timeBreaks.forEach((breakItem: any) => {
           if (breakItem.breakStartAt) {
+            // breakStartAt is now UTC from API, convert to local time
             const breakStartDate = new Date(breakItem.breakStartAt);
-            const breakStartTime = breakStartDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            const breakStartTime = breakStartDate.toLocaleTimeString('en-PH', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
             logs.push({
               type: 'Break Start',
               time: breakStartTime,
-              date: breakStartDate.toLocaleDateString()
+              date: breakStartDate.toLocaleDateString('en-PH')
             });
           }
           if (breakItem.breakEndAt) {
+            // breakEndAt is now UTC from API, convert to local time
             const breakEndDate = new Date(breakItem.breakEndAt);
-            const breakEndTime = breakEndDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            const breakEndTime = breakEndDate.toLocaleTimeString('en-PH', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
             logs.push({
               type: 'Break End',
               time: breakEndTime,
-              date: breakEndDate.toLocaleDateString()
+              date: breakEndDate.toLocaleDateString('en-PH')
             });
           }
         });
       }
 
       if (entry.clockOutAt) {
+        // clockOutAt is now UTC from API, convert to local time
         const clockOutDate = new Date(entry.clockOutAt);
-        const clockOutTime = clockOutDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        const clockOutTime = clockOutDate.toLocaleTimeString('en-PH', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
         
         // Calculate work and break times for summary
         const totalElapsed = Math.floor((clockOutDate.getTime() - clockInDate.getTime()) / 1000);
@@ -155,25 +159,26 @@ export const useTimeClock = () => {
         logs.push({
           type: 'Session Summary',
           time: summaryText,
-          date: clockOutDate.toLocaleDateString()
+          date: clockOutDate.toLocaleDateString('en-PH')
         });
         
         logs.push({
           type: 'Clock Out',
           time: clockOutTime,
-          date: clockOutDate.toLocaleDateString()
+          date: clockOutDate.toLocaleDateString('en-PH')
         });
       }
     });
 
     // Add current active break if exists
     if (activeBreak?.breakStartAt) {
+      // breakStartAt is now UTC from API, convert to local time
       const breakStartDate = new Date(activeBreak.breakStartAt);
-      const breakStartTime = breakStartDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      const breakStartTime = breakStartDate.toLocaleTimeString('en-PH', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
       logs.unshift({
         type: 'Break Start',
         time: breakStartTime,
-        date: breakStartDate.toLocaleDateString()
+        date: breakStartDate.toLocaleDateString('en-PH')
       });
     }
 
@@ -441,9 +446,9 @@ export const useTimeClock = () => {
       setLoading(true);
       setError(null);
       
-      // Send workDate to server (client knows local timezone)
+      // Send workDate to server as ISO string (assumed Manila date)
       const today = new Date();
-      const workDate = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+      const workDate = today.toISOString().split('T')[0];
       
       await timesheetApi.performAction('clockin', { workDate });
       await new Promise(resolve => setTimeout(resolve, 100));
@@ -454,10 +459,6 @@ export const useTimeClock = () => {
       const errorMessage = err instanceof Error ? err.message : 'Clock in failed';
       setError(errorMessage);
       console.error('Clock in error:', err);
-      window.dispatchEvent(new CustomEvent('timeClock:error', {
-        detail: { action: 'clockIn', reason: errorMessage }
-      }));
-      await fetchStatus();
     } finally {
       setLoading(false);
     }

@@ -2,13 +2,14 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { payrollSummaryService } from '@/lib/service/payroll-summary.service';
 import { requiresAdmin, requiresPermissions } from '@/lib/auth/middleware';
+import { ensureUTCForStorage } from '@/lib/utils/timezone-utils';
 
 const payrollSummaryRequestSchema = z.object({
   organizationId: z.string().min(1, 'Organization ID is required'),
   departmentId: z.string().optional(),
   cutoffPeriod: z.object({
-    start: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Invalid start date format (use YYYY-MM-DD)'),
-    end: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Invalid end date format (use YYYY-MM-DD)'),
+    start: z.string().regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\+\d{2}:\d{2}$/, 'Invalid start date format (use ISO format with timezone)'),
+    end: z.string().regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\+\d{2}:\d{2}$/, 'Invalid end date format (use ISO format with timezone)'),
   }),
 });
 
@@ -98,8 +99,16 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      const periodStart = new Date(cutoffPeriod.start);
-      const periodEnd = new Date(cutoffPeriod.end);
+      // Convert cutoff period dates to UTC for database storage and searching
+      const periodStart = ensureUTCForStorage(cutoffPeriod.start);
+      const periodEnd = ensureUTCForStorage(cutoffPeriod.end);
+
+      console.log('Payroll Summary API - Date Conversion:', {
+        originalStart: cutoffPeriod.start,
+        originalEnd: cutoffPeriod.end,
+        utcStart: periodStart.toISOString(),
+        utcEnd: periodEnd.toISOString()
+      });
 
       // Generate comprehensive payroll summary
       const summary = await payrollSummaryService.generateSummary(

@@ -481,7 +481,6 @@ export class PayrollSummaryService {
       const employeesWithAttendance = new Set(
         (await timeEntryService.getTimeEntriesByOrganizationAndPeriod(
           organizationId,
-          departmentId,
           periodStart,
           periodEnd
         )).map(te => te.employeeId)
@@ -720,7 +719,6 @@ export class PayrollSummaryService {
     // For now, we'll create a simplified version
     const timeEntries = await timeEntryService.getTimeEntriesByOrganizationAndPeriod(
       organizationId,
-      departmentId,
       periodStart,
       periodEnd
     );

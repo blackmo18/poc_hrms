@@ -1,0 +1,405 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card';
+import MetricCard from '../../../components/common/MetricCard';
+import { ProtectedRoute } from '../../../components/protected-route';
+import { DashboardRouter } from '../../../components/dashboard/DashboardRouter';
+import FloatingClockButton from '../../../components/FloatingClockButton';
+import { employeeDashboardAPI } from '../../../lib/api/employee-dashboard';
+import { 
+  EmployeeTimeStats, 
+  RecentActivity, 
+  LeaveRequest, 
+  OvertimeRequest 
+} from '../../../types/employee-dashboard';
+import { 
+  Clock, 
+  Calendar,
+  Timer,
+  TrendingUp,
+  Coffee,
+  Home,
+  FileText
+} from 'lucide-react';
+
+function EmployeeDashboardContent() {
+  const router = useRouter();
+  const [stats, setStats] = useState<EmployeeTimeStats>({
+    todayHours: 0,
+    weekHours: 0,
+    monthHours: 0,
+    overtimeHours: 0,
+    remainingLeave: 0,
+    pendingRequests: 0,
+    todayStatus: 'not_clocked_in',
+    clockInTime: undefined,
+    breakTime: undefined,
+    lastClockOut: undefined,
+    onTimeEntries: 0,
+    lateArrivals: 0
+  });
+  const [loading, setLoading] = useState(true);
+  const [recentActivities, setRecentActivities] = useState<RecentActivity[]>([]);
+  const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>([]);
+  const [overtimeRequests, setOvertimeRequests] = useState<OvertimeRequest[]>([]);
+
+  useEffect(() => {
+    const fetchEmployeeData = async () => {
+      try {
+        // Use the centralized API service
+        const dashboardData = await employeeDashboardAPI.getAllDashboardData();
+        
+        setStats(dashboardData.stats);
+        setRecentActivities(dashboardData.activities);
+        setLeaveRequests(dashboardData.leaveRequests);
+        setOvertimeRequests(dashboardData.overtimeRequests);
+
+      } catch (error) {
+        console.error('Failed to fetch employee data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchEmployeeData();
+  }, []);
+
+  const statCards = [
+    {
+      title: 'Today\'s Hours',
+      value: `${stats.todayHours.toFixed(1)}h`,
+      icon: Clock,
+      iconColor: 'text-blue-600 dark:text-blue-400',
+      iconBgColor: 'bg-blue-50 dark:bg-blue-900/20',
+    },
+    {
+      title: 'This Week',
+      value: `${stats.weekHours.toFixed(1)}h`,
+      icon: Calendar,
+      iconColor: 'text-green-600 dark:text-green-400',
+      iconBgColor: 'bg-green-50 dark:bg-green-900/20',
+    },
+    {
+      title: 'This Month',
+      value: `${stats.monthHours.toFixed(1)}h`,
+      icon: TrendingUp,
+      iconColor: 'text-purple-600 dark:text-purple-400',
+      iconBgColor: 'bg-purple-50 dark:bg-purple-900/20',
+    },
+    {
+      title: 'Overtime',
+      value: `${stats.overtimeHours.toFixed(1)}h`,
+      icon: Timer,
+      iconColor: 'text-orange-600 dark:text-orange-400',
+      iconBgColor: 'bg-orange-50 dark:bg-orange-900/20',
+    },
+  ];
+
+  const getStatusColor = (status: EmployeeTimeStats['todayStatus']) => {
+    switch (status) {
+      case 'clocked_in': return 'text-green-600 dark:text-green-400';
+      case 'on_break': return 'text-yellow-600 dark:text-yellow-400';
+      case 'clocked_out': return 'text-gray-600 dark:text-gray-400';
+      default: return 'text-red-600 dark:text-red-400';
+    }
+  };
+
+  const getStatusText = (status: EmployeeTimeStats['todayStatus']) => {
+    switch (status) {
+      case 'clocked_in': return 'Clocked In';
+      case 'on_break': return 'On Break';
+      case 'clocked_out': return 'Clocked Out';
+      default: return 'Not Clocked In';
+    }
+  };
+
+  const getActivityIcon = (type: RecentActivity['type']) => {
+    switch (type) {
+      case 'clock_in': return <Clock className="w-4 h-4 text-green-600 dark:text-green-400" />;
+      case 'clock_out': return <Home className="w-4 h-4 text-red-600 dark:text-red-400" />;
+      case 'break_start': return <Coffee className="w-4 h-4 text-orange-600 dark:text-orange-400" />;
+      case 'break_end': return <Coffee className="w-4 h-4 text-blue-600 dark:text-blue-400" />;
+      default: return <Clock className="w-4 h-4 text-gray-600 dark:text-gray-400" />;
+    }
+  };
+
+  const formatTime = (isoString?: string) => {
+    if (!isoString) return '';
+    const date = new Date(isoString);
+    return date.toLocaleTimeString('en-US', { 
+      hour: 'numeric', 
+      minute: '2-digit',
+      hour12: true 
+    });
+  };
+
+  const formatDate = (isoString?: string) => {
+    if (!isoString) return '';
+    const date = new Date(isoString);
+    return date.toLocaleDateString('en-US', { 
+      weekday: 'short', 
+      month: 'short', 
+      day: 'numeric' 
+    });
+  };
+
+  const getRequestStatusColor = (status: string) => {
+    switch (status) {
+      case 'approved': return 'text-green-600 dark:text-green-400 bg-green-100 dark:bg-green-900/20';
+      case 'pending': return 'text-yellow-600 dark:text-yellow-400 bg-yellow-100 dark:bg-yellow-900/20';
+      case 'rejected': return 'text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-900/20';
+      default: return 'text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-900/20';
+    }
+  };
+
+  const handleNavigation = (path: string) => {
+    router.push(path);
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-lg text-gray-600 dark:text-gray-300">Loading your dashboard...</div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="pb-20">
+      <div className="mb-6">
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">My Dashboard</h1>
+        <p className="text-gray-600 mt-2 dark:text-gray-300 text-sm sm:text-base">Track your time, leave, and overtime</p>
+      </div>
+
+      {/* Current Status Card - Mobile Optimized */}
+      <Card className="mb-6 border-l-4 border-l-blue-500">
+        <CardContent className="pt-4 sm:pt-6">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div className="flex flex-col sm:flex-row items-center gap-3 sm:gap-4 text-center sm:text-left">
+              <div className={`p-2 sm:p-3 rounded-full ${getStatusColor(stats.todayStatus)} bg-opacity-10`}>
+                <Clock className="w-5 h-5 sm:w-6 sm:h-6" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <h3 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white">
+                  <span className="block sm:inline">Current Status:</span>
+                  <span className={`block sm:inline ml-0 sm:ml-2 ${getStatusColor(stats.todayStatus)}`}>{getStatusText(stats.todayStatus)}</span>
+                </h3>
+                <p className="text-gray-600 dark:text-gray-400 text-xs sm:text-sm mt-1">
+                  {stats.clockInTime && `Clocked in at ${formatTime(stats.clockInTime)}`}
+                  {stats.breakTime && <span className="block sm:inline sm:ml-2">• Break at ${formatTime(stats.breakTime)}</span>}
+                </p>
+              </div>
+            </div>
+            <div className="text-center sm:text-right">
+              <p className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">{stats.todayHours.toFixed(1)}h</p>
+              <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Today's hours</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Weekly Summary Card - Mobile Optimized */}
+      <Card className="mb-6">
+        <CardHeader className="pb-3 sm:pb-4">
+          <CardTitle className="text-lg font-semibold text-gray-900 dark:text-white">Weekly Summary</CardTitle>
+        </CardHeader>
+        <CardContent className="pt-0">
+          <div className="grid grid-cols-2 gap-4 sm:gap-6">
+            <div className="text-center sm:text-left">
+              <p className="text-2xl sm:text-3xl font-bold text-blue-600 dark:text-blue-400">
+                {stats.weekHours.toFixed(2)}
+              </p>
+              <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mt-1">Total Hours This Week</p>
+            </div>
+            <div className="text-center sm:text-left">
+              <p className="text-2xl sm:text-3xl font-bold text-orange-600 dark:text-orange-400">
+                {stats.overtimeHours.toFixed(2)}
+              </p>
+              <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mt-1">Overtime Hours</p>
+            </div>
+            <div className="text-center sm:text-left">
+              <p className="text-2xl sm:text-3xl font-bold text-green-600 dark:text-green-400">
+                {stats.onTimeEntries} of 5
+              </p>
+              <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mt-1">On Time Entries</p>
+            </div>
+            <div className="text-center sm:text-left">
+              <p className="text-2xl sm:text-3xl font-bold text-red-600 dark:text-red-400">
+                {stats.lateArrivals}
+              </p>
+              <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mt-1">Late Arrivals</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Time Stats - Mobile Optimized */}
+      <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6 mb-6">
+        {statCards.map((card) => (
+          <MetricCard
+            id={card.title}
+            key={card.title}
+            title={card.title}
+            value={card.value}
+            icon={card.icon}
+            iconColor={card.iconColor}
+            iconBgColor={card.iconBgColor}
+          />
+        ))}
+      </div>
+
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 sm:gap-6">
+        {/* Recent Activities - Mobile Optimized */}
+        <Card className="xl:col-span-2">
+          <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+            <CardTitle className="flex items-center gap-2 text-lg text-gray-900 dark:text-white">
+              <Clock className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+              Recent Time Activities
+            </CardTitle>
+            <span className="text-sm text-gray-500 dark:text-gray-400">Last 7 days</span>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3 sm:space-y-4">
+              {recentActivities.map((activity) => (
+                <div key={activity.id} className="p-3 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+                  <div className="flex items-start gap-3">
+                    <div className="p-2 rounded-full bg-gray-50 dark:bg-gray-900 flex-shrink-0">
+                      {getActivityIcon(activity.type)}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-2">
+                        <p className="font-medium text-gray-900 dark:text-white text-sm">{formatDate(activity.date)}</p>
+                        <div className="flex items-center gap-2 sm:gap-3 sm:text-left text-right">
+                          <p className="text-sm font-medium text-gray-900 dark:text-white">{formatTime(activity.time)}</p>
+                          <span className="text-xs text-gray-500 dark:text-gray-400 capitalize">{activity.type.replace('_', ' ')}</span>
+                        </div>
+                      </div>
+                      <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 truncate mt-1">{activity.description}</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Leave & Overtime Summary - Mobile Optimized */}
+        <div className="space-y-4 sm:space-y-6">
+          <Card>
+            <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+              <CardTitle className="flex items-center gap-2 text-lg text-gray-900 dark:text-white">
+                <Calendar className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+                Leave Balance
+              </CardTitle>
+              <span className="bg-green-100 dark:bg-green-900/20 text-green-700 dark:text-green-400 text-xs px-2 py-1 rounded-full">
+                {stats.remainingLeave} days
+              </span>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2 sm:space-y-3">
+                {leaveRequests.slice(0, 3).map((request) => (
+                  <div key={request.id} className="flex items-center justify-between p-2 sm:p-3 rounded-lg border border-gray-200 dark:border-gray-700">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium text-gray-900 dark:text-white capitalize truncate">{request.type} leave</p>
+                      <p className="text-xs text-gray-600 dark:text-gray-400">{request.days} days</p>
+                    </div>
+                    <span className={`text-xs px-2 py-1 rounded-full flex-shrink-0 ${getRequestStatusColor(request.status)}`}>
+                      {request.status}
+                    </span>
+                  </div>
+                ))}
+              </div>
+              <button className="w-full mt-3 text-sm text-blue-600 dark:text-blue-400 hover:underline">
+                View all leave requests →
+              </button>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+              <CardTitle className="flex items-center gap-2 text-lg text-gray-900 dark:text-white">
+                <Timer className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+                Overtime
+              </CardTitle>
+              <span className="bg-orange-100 dark:bg-orange-900/20 text-orange-700 dark:text-orange-400 text-xs px-2 py-1 rounded-full">
+                {stats.pendingRequests} pending
+              </span>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2 sm:space-y-3">
+                {overtimeRequests.slice(0, 3).map((request) => (
+                  <div key={request.id} className="flex items-center justify-between p-2 sm:p-3 rounded-lg border border-gray-200 dark:border-gray-700">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium text-gray-900 dark:text-white">{request.hours}h</p>
+                      <p className="text-xs text-gray-600 dark:text-gray-400">{request.date}</p>
+                    </div>
+                    <span className={`text-xs px-2 py-1 rounded-full flex-shrink-0 ${getRequestStatusColor(request.status)}`}>
+                      {request.status}
+                    </span>
+                  </div>
+                ))}
+              </div>
+              <button className="w-full mt-3 text-sm text-blue-600 dark:text-blue-400 hover:underline">
+                View all overtime →
+              </button>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+
+      {/* Quick Actions - Mobile Optimized */}
+      <Card className="mt-4 sm:mt-6">
+        <CardHeader>
+          <CardTitle className="text-lg text-gray-900 dark:text-white">Quick Actions</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+            <button 
+              onClick={() => handleNavigation('/attendance/clock-in-out')}
+              className="p-3 sm:p-4 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-center active:scale-95"
+            >
+              <Clock className="w-5 h-5 sm:w-6 sm:h-6 mx-auto mb-2 text-blue-600 dark:text-blue-400" />
+              <p className="text-xs sm:text-sm font-medium text-gray-900 dark:text-white">Clock In/Out</p>
+            </button>
+            <button 
+              onClick={() => handleNavigation('/attendance/requests')}
+              className="p-3 sm:p-4 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-center active:scale-95"
+            >
+              <Calendar className="w-5 h-5 sm:w-6 sm:h-6 mx-auto mb-2 text-green-600 dark:text-green-400" />
+              <p className="text-xs sm:text-sm font-medium text-gray-900 dark:text-white">Requests</p>
+            </button>
+            <button 
+              onClick={() => handleNavigation('/attendance/timesheet')}
+              className="p-3 sm:p-4 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-center active:scale-95"
+            >
+              <FileText className="w-5 h-5 sm:w-6 sm:h-6 mx-auto mb-2 text-orange-600 dark:text-orange-400" />
+              <p className="text-xs sm:text-sm font-medium text-gray-900 dark:text-white">Timesheet</p>
+            </button>
+            <button 
+              onClick={() => handleNavigation('/attendance/timesheets')}
+              className="p-3 sm:p-4 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-center active:scale-95"
+            >
+              <Timer className="w-5 h-5 sm:w-6 sm:h-6 mx-auto mb-2 text-purple-600 dark:text-purple-400" />
+              <p className="text-xs sm:text-sm font-medium text-gray-900 dark:text-white">Timesheets</p>
+            </button>
+          </div>
+        </CardContent>
+      </Card>
+      
+      {/* Floating Clock Button - Mobile Only */}
+      <FloatingClockButton status={stats.todayStatus} />
+    </div>
+  );
+}
+
+export default function EmployeeDashboard() {
+  return (
+    <ProtectedRoute>
+      <DashboardRouter>
+        <EmployeeDashboardContent />
+      </DashboardRouter>
+    </ProtectedRoute>
+  );
+}

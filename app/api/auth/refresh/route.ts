@@ -28,6 +28,7 @@ export async function POST(request: NextRequest) {
     // Get user roles
     const roles = await getUserRoles(user.id);
     const roleIds = roles.map(role => role.id);
+    const roleNames = roles.map(role => role.name);
 
     // Generate new tokens
     const tokenPayload = {
@@ -35,6 +36,7 @@ export async function POST(request: NextRequest) {
       email: user.email,
       organizationId: user.organizationId,
       roleIds,
+      roleNames,
       username: user.email
     };
 

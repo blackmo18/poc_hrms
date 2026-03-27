@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
@@ -22,9 +22,8 @@ import {
   LayoutGridIcon,
   CalendarInDaysIcon,
 } from '../../icons';
-import { useSidebar } from '../../context/SidebarContext';
+import { useSidebar } from "../../context/SidebarContext";
 import { useAuth } from '../../components/providers/auth-provider';
-import { useRoleAccess } from '../../components/providers/role-access-provider';
 import SidebarWidget from './SidebarWidget';
 import { ADMINSTRATIVE_ROLES } from '@/lib/constants/roles';
 
@@ -77,7 +76,7 @@ const navItems: NavItem[] = [
     subItems: [
       { name: 'Leave Requests', path: '/leave', pro: false },
       { name: 'Leave Calendar', path: '/leave/calendar', pro: false },
-      { name: 'Leave Approvals', path: '/leave/approvals', pro: false },
+      { name: 'Leave Approvals', path: '/leave/approvals', pro: false, roles:ADMINSTRATIVE_ROLES },
     ]
   },
   {
@@ -107,8 +106,8 @@ const navItems: NavItem[] = [
     name: 'Holidays & Calendar',
     icon: <CalendarInDaysIcon />,
     subItems: [
-      { name: 'Holidays', path: '/holidays', pro: false },
-      { name: 'Holiday Templates', path: '/holidays/templates', pro: false },
+      { name: 'Holidays', path: '/holidays', pro: false, roles: ADMINSTRATIVE_ROLES },
+      { name: 'Holiday Templates', path: '/holidays/templates', roles: ADMINSTRATIVE_ROLES },
       { name: 'Calendars', path: '/calendars', pro: false },
     ]
   },
@@ -121,11 +120,11 @@ const othersItems: NavItem[] = [
     subItems: [
       {name: 'Clock In/Out', path: '/attendance/clock-in-out'},
       {name: 'Timesheet View', path: '/attendance/timesheet-view'},
-      {name: 'Cutoff Overview', path: '/attendance/cutoff-overview'},
-      {name: 'Employee Timesheets', path: '/attendance/timesheets'},
-      {name: 'Time Corrections', path: '/attendance/corrections'},
-      {name: 'Break Validation', path: '/attendance/breaks'},
-      {name: 'Night Shift Monitor', path: '/attendance/night-shift'},
+      {name: 'Cutoff Overview', path: '/attendance/cutoff-overview', roles: ADMINSTRATIVE_ROLES},
+      {name: 'Employee Timesheets', path: '/attendance/timesheets', roles: ADMINSTRATIVE_ROLES},
+      {name: 'Time Corrections', path: '/attendance/corrections', roles: ADMINSTRATIVE_ROLES},
+      {name: 'Break Validation', path: '/attendance/breaks', roles: ADMINSTRATIVE_ROLES},
+      {name: 'Night Shift Monitor', path: '/attendance/night-shift', roles: ADMINSTRATIVE_ROLES},
     ]
   },
   {
@@ -144,6 +143,7 @@ const othersItems: NavItem[] = [
     subItems: [
       { name: 'Department List', path: '/departments', pro: false },
     ],
+    roles: ADMINSTRATIVE_ROLES
   },
   {
     icon: <PieChartIcon />,
@@ -174,11 +174,9 @@ const othersItems: NavItem[] = [
 ];
 
 const AppSidebar: React.FC = () => {
-  const { isExpanded, isMobileOpen, isHovered, setIsHovered } = useSidebar();
-  const { user } = useAuth();
-  const { roles, isLoading } = useRoleAccess();
+  const { isExpanded, isHovered, isMobileOpen, toggleMobileSidebar, setIsHovered } = useSidebar();
   const pathname = usePathname();
-
+  const { user } = useAuth();
   const [openSubmenu, setOpenSubmenu] = useState<{
     type: 'main' | 'others';
     index: number;
@@ -187,22 +185,55 @@ const AppSidebar: React.FC = () => {
     {}
   );
   const subMenuRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const [userRole, setUserRole] = useState<string | null>(null);
+  
+  // Track manual submenu opens to prevent auto-close from overriding
+  const [manualOverride, setManualOverride] = useState<string | null>(null);
 
-  const hasAccessToItem = (itemRoles?: string[]) => {
-    if (!itemRoles || itemRoles.length === 0) return true;
-    if (isLoading) return false; // Don't show role-based items while roles are loading
-    return itemRoles.some(role => roles.includes(role));
+  // Fallback: Fetch user role directly if missing from useAuth
+  useEffect(() => {
+    if (!user?.role) {
+      fetch('/api/auth/session', {
+        credentials: 'include',
+        headers: { 'Cache-Control': 'no-cache' }
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.user?.role) {
+          setUserRole(data.user.role);
+        }
+      })
+      .catch(err => console.error('Failed to fetch session:', err));
+    } else {
+      setUserRole(user.role);
+    }
+  }, [user?.role]);
+
+  // Close mobile sidebar when navigation item is clicked
+  const handleNavigationClick = () => {
+    if (isMobileOpen) {
+      toggleMobileSidebar();
+    }
   };
 
-  const filterNavItems = (items: NavItem[]) => {
+  const hasAccessToItem = useCallback((itemRoles?: string[]) => {
+    const currentRole = user?.role || userRole;
+    
+    if (!itemRoles || itemRoles.length === 0) return true;
+    if (!currentRole) return false;
+    
+    return itemRoles.includes(currentRole);
+  }, [user?.role, userRole]);
+
+  const filterNavItems = useCallback((items: NavItem[]) => {
     return items.map(item => ({
       ...item,
       subItems: item.subItems ? item.subItems.filter(sub => hasAccessToItem(sub.roles)) : item.subItems
     })).filter(item => hasAccessToItem(item.roles));
-  };
+  }, [hasAccessToItem]);
 
-  const filteredNavItems = filterNavItems(navItems);
-  const filteredOthersItems = filterNavItems(othersItems);
+  const filteredNavItems = useMemo(() => filterNavItems(navItems), [filterNavItems]);
+  const filteredOthersItems = useMemo(() => filterNavItems(othersItems), [filterNavItems]);
 
   const isActive = useCallback(
     (path: string) => pathname === path,
@@ -217,10 +248,14 @@ const AppSidebar: React.FC = () => {
         if (nav.subItems) {
           nav.subItems.forEach((subItem) => {
             if (isActive(subItem.path)) {
-              setOpenSubmenu({
-                type: menuType as 'main' | 'others',
-                index,
-              });
+              const currentKey = `${menuType}-${index}`;
+              // Only auto-open if not manually overridden for this specific submenu
+              if (!manualOverride || manualOverride !== currentKey) {
+                setOpenSubmenu({
+                  type: menuType as 'main' | 'others',
+                  index,
+                });
+              }
               submenuMatched = true;
             }
           });
@@ -228,7 +263,9 @@ const AppSidebar: React.FC = () => {
       });
     });
 
-    if (!submenuMatched) {
+    // Only auto-close if no submenu is manually opened and no path matches
+    // This allows manual submenu opening while preserving auto-open for active pages
+    if (!submenuMatched && openSubmenu === null) {
       setOpenSubmenu(null);
     }
   }, [pathname, isActive, filteredNavItems, filteredOthersItems, user]);
@@ -246,6 +283,9 @@ const AppSidebar: React.FC = () => {
   }, [openSubmenu]);
 
   const handleSubmenuToggle = (index: number, menuType: 'main' | 'others') => {
+    const key = `${menuType}-${index}`;
+    setManualOverride(key);
+    
     setOpenSubmenu((prevOpenSubmenu) => {
       if (
         prevOpenSubmenu &&
@@ -256,6 +296,9 @@ const AppSidebar: React.FC = () => {
       }
       return { type: menuType, index };
     });
+    
+    // Reset manual override after a short delay to allow auto-open later
+    setTimeout(() => setManualOverride(null), 200);
   };
 
   const renderMenuItems = (items: NavItem[], menuType: 'main' | 'others') => (
@@ -305,6 +348,7 @@ const AppSidebar: React.FC = () => {
                 className={`menu-item group ${
                   isActive(nav.path) ? 'menu-item-active' : 'menu-item-inactive'
                 }`}
+                onClick={handleNavigationClick}
               >
                 <span
                   className={`menu-item-icon-size ${
@@ -344,6 +388,7 @@ const AppSidebar: React.FC = () => {
                           ? 'menu-dropdown-item-active'
                           : 'menu-dropdown-item-inactive'
                       }`}
+                      onClick={handleNavigationClick}
                     >
                       {subItem.name}
                       <span className='flex items-center gap-1 ml-auto'>
@@ -383,8 +428,8 @@ const AppSidebar: React.FC = () => {
 
   return (
     <aside
-      key={`${isLoading}-${roles.join(',')}`}
-      className={`fixed mt-16 flex flex-col lg:mt-0 top-0 px-5 left-0 bg-white dark:bg-gray-900 dark:border-gray-800 text-gray-900 h-screen transition-all duration-300 ease-in-out z-50 border-r border-gray-200 
+      key={`${user?.role || 'no-role'}`}
+      className={`fixed flex flex-col top-16 lg:top-0 left-0 px-5 bg-white dark:bg-gray-900 dark:border-gray-800 text-gray-900 h-screen transition-all duration-300 ease-in-out z-50 border-r border-gray-200 
         ${
           isExpanded || isMobileOpen
             ? 'w-[290px]'
@@ -402,7 +447,7 @@ const AppSidebar: React.FC = () => {
           !isExpanded && !isHovered ? 'lg:justify-center' : 'justify-start'
         }`}
       >
-        <Link href='/'>
+        <Link href='/' onClick={handleNavigationClick}>
           {isExpanded || isHovered || isMobileOpen ? (
             <>
               <img

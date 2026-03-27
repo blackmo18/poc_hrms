@@ -69,13 +69,13 @@ export async function POST(
   try {
     const { id } = await params;
     const body = await request.json();
-    const { action, remarks } = body;
+    const { action, remarks, approvedById } = body;
 
     let leaveRequest;
     if (action === 'approve') {
-      leaveRequest = await leaveRequestController.approve(id);
+      leaveRequest = await leaveRequestController.approve(id, approvedById);
     } else if (action === 'reject') {
-      leaveRequest = await leaveRequestController.reject(id, remarks);
+      leaveRequest = await leaveRequestController.reject(id, remarks, approvedById);
     } else {
       return NextResponse.json(
         { error: 'Invalid action' },

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getPayrollService } from '@/lib/service/payroll.service';
 import { requiresPermissions } from '@/lib/auth/middleware';
+import { ensureUTCForStorage } from '@/lib/utils/timezone-utils';
 
 export async function GET(request: NextRequest) {
   return requiresPermissions(request, ['payroll.read'], async (authRequest) => {
@@ -25,8 +26,8 @@ export async function GET(request: NextRequest) {
 
       // Find the payroll for the specific period
       const payroll = payrolls.find(p =>
-        p.periodStart.getTime() === new Date(periodStart).getTime() &&
-        p.periodEnd.getTime() === new Date(periodEnd).getTime()
+        p.periodStart.getTime() === ensureUTCForStorage(periodStart).getTime() &&
+        p.periodEnd.getTime() === ensureUTCForStorage(periodEnd).getTime()
       );
 
       if (!payroll) {
@@ -114,8 +115,8 @@ export async function POST(request: NextRequest) {
             {
               employeeId,
               organizationId,
-              periodStart: new Date(periodStart),
-              periodEnd: new Date(periodEnd),
+              periodStart: ensureUTCForStorage(periodStart),
+              periodEnd: ensureUTCForStorage(periodEnd),
             },
             authRequest.user.id
           );
@@ -140,8 +141,8 @@ export async function POST(request: NextRequest) {
           // Find the payroll record for this employee and period
           const payrolls = await payrollService.getByEmployeeId(employeeId);
           const payroll = payrolls.find(p =>
-            p.periodStart.getTime() === new Date(periodStart).getTime() &&
-            p.periodEnd.getTime() === new Date(periodEnd).getTime() &&
+            p.periodStart.getTime() === ensureUTCForStorage(periodStart).getTime() &&
+            p.periodEnd.getTime() === ensureUTCForStorage(periodEnd).getTime() &&
             p.status === 'COMPUTED'
           );
 
@@ -172,8 +173,8 @@ export async function POST(request: NextRequest) {
           // Find the payroll record for this employee and period
           const payrolls = await payrollService.getByEmployeeId(employeeId);
           const payroll = payrolls.find(p =>
-            p.periodStart.getTime() === new Date(periodStart).getTime() &&
-            p.periodEnd.getTime() === new Date(periodEnd).getTime() &&
+            p.periodStart.getTime() === ensureUTCForStorage(periodStart).getTime() &&
+            p.periodEnd.getTime() === ensureUTCForStorage(periodEnd).getTime() &&
             p.status === 'APPROVED'
           );
 
@@ -204,8 +205,8 @@ export async function POST(request: NextRequest) {
           // Find the payroll record for this employee and period
           const payrolls = await payrollService.getByEmployeeId(employeeId);
           const payroll = payrolls.find(p =>
-            p.periodStart.getTime() === new Date(periodStart).getTime() &&
-            p.periodEnd.getTime() === new Date(periodEnd).getTime() &&
+            p.periodStart.getTime() === ensureUTCForStorage(periodStart).getTime() &&
+            p.periodEnd.getTime() === ensureUTCForStorage(periodEnd).getTime() &&
             (p.status === 'APPROVED' || p.status === 'RELEASED')
           );
 
@@ -238,8 +239,8 @@ export async function POST(request: NextRequest) {
             {
               employeeId,
               organizationId,
-              periodStart: new Date(periodStart),
-              periodEnd: new Date(periodEnd),
+              periodStart: ensureUTCForStorage(periodStart),
+              periodEnd: ensureUTCForStorage(periodEnd),
             },
             authRequest.user.id
           );

@@ -12,15 +12,19 @@ interface User {
   email: string;
   username: string;
   role?: string;
+  roles?: string[]; // Add roles array for multi-role support
   organizationId?: string;
   firstName?: string;
   lastName?: string;
+  employeeId?: string;
+  // Note: permissions arrays removed for security
+  // Use role-based checks instead
 }
 
 interface AuthContextType {
   user: User | null;
-  roles: string[]; // Kept for backward compatibility, but not used
-  permissions: string[]; // Kept for backward compatibility, but not used
+  roles: string[]; // Kept for backward compatibility, derived from user.role
+  permissions: string[]; // Kept for backward compatibility, but always empty
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   isLoading: boolean;
@@ -34,9 +38,12 @@ const sanitizeUser = (user: any): User => ({
   id: user.id,
   email: user.email,
   username: user.username,
+  role: user.role,
   organizationId: user.organizationId || user.organizationId, // Handle both camelCase and snake_case
-  firstName: user.first_name,
-  lastName: user.last_name
+  firstName: user.first_name || user.firstName,
+  lastName: user.last_name || user.lastName,
+  employeeId: user.employeeId
+  // roles and permissions arrays removed for security
 });
 
 export function AuthProvider({
@@ -47,6 +54,8 @@ export function AuthProvider({
   initialUser?: User | null;
 }) {
   const [user, setUser] = useState<User | null>(initialUser);
+  const [roles, setRoles] = useState<string[]>([]);
+  const [permissions, setPermissions] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true); // Always start loading, let checkAuth handle it
   const [hasCheckedAuth, setHasCheckedAuth] = useState(false);
 
@@ -163,16 +172,11 @@ export function AuthProvider({
           id: data.user.id,
           email: data.user.email,
           username: data.user.email,
-          organizationId: data.user.organizationId
+          organizationId: data.user.organizationId,
+          roles: data.user.roles || [] // Include roles from response
         };
         setUser(userData);
-        
-        // Fetch full user data via session endpoint for verification
-        // Roles and permissions will be fetched separately via /api/auth/roles-permissions
-        await checkAuth();
-        
-        // Small delay to ensure state updates propagate
-        await new Promise(resolve => setTimeout(resolve, 100));
+        setHasCheckedAuth(true); // Mark auth as checked
         
         // Store session in session manager for persistence (only basic user info, no sensitive data)
         sessionManager.setAuthenticatedUser(
@@ -184,6 +188,9 @@ export function AuthProvider({
           '', // accessToken (managed by cookie)
           ''  // refreshToken (managed by cookie)
         );
+        
+        // Small delay to ensure state updates propagate
+        await new Promise(resolve => setTimeout(resolve, 100));
         
         // Redirect to dashboard after successful login
         router.push('/dashboard');
@@ -230,10 +237,27 @@ export function AuthProvider({
   const { checkAuth } = useUserCache(setUser, setIsLoading, setHasCheckedAuth, {
     onUserNull: handleUserNull,
     isUserIdle: () => {
+      if (process.env.NODE_ENV === 'development') {
+        return false; // Disable idle timeout for development
+      }
       const status = getIdleStatus();
       return status ? status.idleTime > 5 * 60 * 1000 : false; // Consider idle after 5 minutes
     }
   });
+
+  useEffect(() => {
+    if (!user) {
+      setRoles([]);
+      setPermissions([]);
+      return;
+    }
+
+    // Extract roles from user object (now includes all roles from JWT)
+    const userRoles = (user as any).roles || [];
+    
+    setRoles(userRoles);
+    setPermissions([]); // Always empty - permissions removed from client
+  }, [user]);
 
   // Get access token - Better-Auth manages tokens via cookies
   const getAccessToken = async (): Promise<string | null> => {
@@ -243,7 +267,16 @@ export function AuthProvider({
   };
 
   return (
-    <AuthContext.Provider value={{ user, roles: [], permissions: [], login, logout, isLoading, getAccessToken, checkAuth }}>
+    <AuthContext.Provider value={{ 
+      user, 
+      roles, 
+      permissions, 
+      login, 
+      logout, 
+      isLoading, 
+      getAccessToken, 
+      checkAuth 
+    }}>
       {children}
     </AuthContext.Provider>
   );

@@ -47,15 +47,26 @@ export default function DatePicker({
       static: false, // Changed to false to allow popup above modal
       monthSelectorType: "static",
       dateFormat: "Y-m-d",
-      defaultDate: finalDefaultDate,
+      altInput: true,
+      altFormat: "F j, Y", // User-friendly display format
+      ...(finalDefaultDate && { defaultDate: finalDefaultDate }),
       onChange,
       // Set the initial view to show the correct month/year for offset dates
-      ...(dateOffset !== undefined && dateOffset !== 0 && {
+      ...(dateOffset !== undefined && dateOffset !== 0 && finalDefaultDate && {
         defaultDate: finalDefaultDate,
       }),
       // Add z-index to appear above modal
       position: "auto center",
+      // Force disable mobile detection to use consistent behavior
+      disableMobile: true, // Force use of flatpickr UI on mobile
+      allowInput: false, // Prevent keyboard on mobile
     });
+
+    // Set the placeholder after initialization
+    const input = document.getElementById(id) as HTMLInputElement;
+    if (input && placeholder) {
+      input.placeholder = placeholder;
+    }
 
     // Add custom styles to ensure calendar appears above modal
     const addStyles = () => {
@@ -102,6 +113,22 @@ export default function DatePicker({
           id={id}
           placeholder={placeholder}
           className="h-11 w-full rounded-lg border appearance-none px-4 py-2.5 text-sm shadow-theme-xs placeholder:text-gray-400 focus:outline-hidden focus:ring-3  dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30  bg-transparent text-gray-800 border-gray-300 focus:border-brand-300 focus:ring-brand-500/20 dark:border-gray-700  dark:focus:border-brand-800"
+          onClick={(e) => {
+            // Fallback for click events
+            const target = e.target as HTMLInputElement;
+            const instance = (target as any)._flatpickr;
+            if (instance && !instance.isOpen) {
+              setTimeout(() => instance.open(), 0);
+            }
+          }}
+          onTouchEnd={(e) => {
+            // Mobile touch fallback
+            const target = e.target as HTMLInputElement;
+            const instance = (target as any)._flatpickr;
+            if (instance && !instance.isOpen) {
+              setTimeout(() => instance.open(), 0);
+            }
+          }}
         />
 
         <span className="absolute text-gray-500 -translate-y-1/2 pointer-events-none right-3 top-1/2 dark:text-gray-400">

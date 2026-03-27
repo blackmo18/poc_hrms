@@ -96,7 +96,7 @@ export default function EmployeeForm({
   user,
   isEdit = false,
 }: EmployeeFormProps) {
-  const isSuperAdmin = user?.roles?.includes('SUPER_ADMIN') || user?.role === 'SUPER_ADMIN';
+  const isSuperAdmin = user?.role === 'SUPER_ADMIN';
 
   return (
     <form className='space-y-6 mb-7'>

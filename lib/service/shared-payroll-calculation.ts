@@ -253,10 +253,6 @@ export class SharedPayrollCalculation {
     const lateDays = calculationResult.daily_breakdown.filter(d => d.late_minutes > 0).length;
     const totalLateMinutes = calculationResult.daily_breakdown.reduce((sum, d) => sum + d.late_minutes, 0);
     
-    // For absent days, use the calculated value but ensure consistency
-    // The calculation result already has the correct absent days
-    const consistentAbsentDays = actualAbsentDays;
-
     const data =  {
       id: payrollRecord?.id || null,
       employeeId: employeeData.employeeId || employeeData.id,
@@ -276,7 +272,7 @@ export class SharedPayrollCalculation {
       },
       attendance: {
         presentDays: presentDays,
-        absentDays: consistentAbsentDays,
+        absentDays: actualAbsentDays,
         lateDays: lateDays,
         overtimeHours: Math.floor(calculationResult.total_overtime_minutes / 60),
         lateMinutes: totalLateMinutes,

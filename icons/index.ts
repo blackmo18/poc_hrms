@@ -50,6 +50,7 @@ import {
   LayoutGrid,
   ArrowLeft,
   CalendarDaysIcon,
+  Menu,
 } from "lucide-react";
 
 // Create wrapper components for consistency
@@ -115,4 +116,5 @@ export const UserGroupIcon = BookUser;
 export const BriefcaseIcon = Briefcase;
 export const LayoutGridIcon = LayoutGrid;
 export const ArrowLeftIcon = ArrowLeft;
-export const CalendarInDaysIcon = CalendarDaysIcon
+export const CalendarInDaysIcon = CalendarDaysIcon;
+export const MenuIcon = Menu;

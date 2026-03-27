@@ -173,7 +173,7 @@ async function seedDatabase() {
   const { employees, adminEmployee } = await seedEmployeesAndUsers(prisma, generateULID, organization, systemOrg, hrDept, hrManager, engineeringDept, seniorEngineer, salesDept, salesRep, adminRole, hrRole, employeeRole, managerRole, superAdminRole);
 
   // Seed leave requests
-  await seedLeaveRequests(prisma, generateULID, employees, organization);
+  await seedLeaveRequests(prisma, generateULID, employees, organization, adminEmployee);
 
   // Seed compensation
   await seedCompensation(prisma, generateULID, employees, organization, seniorEngineer);

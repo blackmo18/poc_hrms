@@ -34,7 +34,7 @@ export default function CreatePermissionPage() {
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  const isSuperAdmin = roles.includes('SUPER_ADMIN');
+  const isSuperAdmin = user?.role === 'SUPER_ADMIN';
 
   // Fetch organizations
   useEffect(() => {

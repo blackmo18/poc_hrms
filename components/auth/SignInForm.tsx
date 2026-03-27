@@ -20,7 +20,7 @@ export default function SignInForm() {
   
   const { login } = useAuth();
   const router = useRouter();
-  const disabled = true // hard disabled for testing
+  const disabled = false
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

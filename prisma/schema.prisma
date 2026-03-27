@@ -123,6 +123,7 @@ model Employee {
 
   compensations    Compensation[]
   leaveRequests    LeaveRequest[]
+  approvedRequests LeaveRequest[] @relation("LeaveApprovedBy")
   payrolls         Payroll[]
   employeeBenefits EmployeeBenefit[]
   employeeDocument EmployeeDocument[]
@@ -315,7 +316,7 @@ model TimeBreak {
   employeeId      String   @map("employee_id")
   breakType       BreakType // MEAL, REST, etc
   breakStartAt    DateTime @map("break_start_at") @db.Timestamptz(3)
-  breakEndAt      DateTime @map("break_end_at") @db.Timestamptz(3)
+  breakEndAt      DateTime? @map("break_end_at") @db.Timestamptz(3)
   isPaid          Boolean  @default(true)
   durationMinutes Int?     @map("duration_minutes")
 
@@ -697,6 +698,7 @@ model LeaveRequest {
   employeeId     String      @map("employee_id")
   organizationId String      @map("organization_id")
   departmentId   String?     @map("department_id")
+  approvedById   String?     @map("approved_by_id")
   leaveType      LeaveType   @map("leave_type")
   startDate      DateTime    @map("start_date")
   endDate        DateTime    @map("end_date")
@@ -708,6 +710,7 @@ model LeaveRequest {
   employee     Employee     @relation(fields: [employeeId], references: [id], onDelete: Cascade)
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   department   Department?  @relation(fields: [departmentId], references: [id])
+  approvedBy   Employee?    @relation("LeaveApprovedBy", fields: [approvedById], references: [id])
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -715,6 +718,7 @@ model LeaveRequest {
   @@index([organizationId])
   @@index([employeeId])
   @@index([departmentId])
+  @@index([approvedById])
   @@index([status])
   @@index([leaveType])
   @@index([startDate, endDate])

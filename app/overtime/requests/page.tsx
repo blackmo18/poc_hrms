@@ -14,8 +14,20 @@ import TimeInput from '@/components/form/input/TimeInput';
 import DetailsConfirmationModal from '@/components/ui/modal/DetailsConfirmationModal';
 import { AlertCircleIcon, CheckCircleIcon, CalendarIcon } from 'lucide-react';
 import OvertimeStatusCards from '@/components/overtime/OvertimeStatusCards';
+import Toast from '@/components/ui/toast/Toast';
+import { format } from 'date-fns';
 
 export default function OTRequestPage() {
+  // Helper function to format time from ISO string
+  const formatTime = (timeStr: string): string => {
+    try {
+      const date = new Date(timeStr);
+      return format(date, 'MMM d, h:mm a');
+    } catch {
+      return timeStr;
+    }
+  };
+
   const [formData, setFormData] = useState({
     workDate: '',
     timeEntryId: '',
@@ -28,6 +40,7 @@ export default function OTRequestPage() {
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitStatus, setSubmitStatus] = useState<'idle' | 'success' | 'error'>('idle');
+  const [showToast, setShowToast] = useState(false);
   const [showTimeEntryModal, setShowTimeEntryModal] = useState(false);
   const [selectedTimeEntryDisplay, setSelectedTimeEntryDisplay] = useState<{ date: string; time: string } | null>(null);
   const [showValidationModal, setShowValidationModal] = useState(false);
@@ -182,7 +195,12 @@ export default function OTRequestPage() {
         console.log('OT request submitted successfully');
         setSubmitStatus('success');
         setShowValidationModal(false);
+        setShowToast(true);
 
+        // Refresh stats to update the cards
+        fetchOvertimeStats();
+
+        // Reset form after success
         setTimeout(() => {
           setFormData({
             workDate: '',
@@ -193,8 +211,9 @@ export default function OTRequestPage() {
             otType: '',
             remarks: '',
           });
+          setSelectedTimeEntryDisplay(null);
           setSubmitStatus('idle');
-        }, 2000);
+        }, 1000);
       } else {
         const errorData = await response.json().catch(() => ({}));
         console.error('Failed to submit OT request:', errorData);
@@ -218,6 +237,16 @@ export default function OTRequestPage() {
           { label: 'Requests' }
         ]}
       />
+
+      {/* Success Toast */}
+      {showToast && (
+        <Toast
+          type="success"
+          title="Overtime request submitted successfully!"
+          message="Your request is now pending approval."
+          onClose={() => setShowToast(false)}
+        />
+      )}
 
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-6">
         <div className="max-w-7xl mx-auto">
@@ -285,7 +314,9 @@ export default function OTRequestPage() {
                       placeholder="Select work date"
                       onChange={(dates) => {
                         if (dates && dates.length > 0) {
-                          const dateStr = dates[0].toISOString().split('T')[0];
+                          const date = dates[0];
+                          // Create ISO string with Manila timezone
+                          const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}T00:00:00+08:00`;
                           handleInputChange('workDate', dateStr);
                         }
                       }}
@@ -455,7 +486,7 @@ export default function OTRequestPage() {
               }));
               setSelectedTimeEntryDisplay({
                 date: timeEntry.date,
-                time: `${timeEntry.startTime} - ${timeEntry.endTime}`
+                time: `${formatTime(timeEntry.startTime)} - ${formatTime(timeEntry.endTime)}`
               });
               if (errors.timeEntryId) {
                 setErrors(prev => ({

@@ -210,7 +210,6 @@ export default function EditUserPage() {
   const params = useParams();
   const userId = params.id as string;
   const { user } = useAuth();
-  const { roles } = useRoleAccess();
   const [state, dispatch] = useReducer(editUserReducer, initialEditUserState);
 
   useEffect(() => {

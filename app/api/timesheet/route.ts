@@ -3,6 +3,11 @@ import { timeBreakService } from '@/lib/service/time-break.service';
 import { getEmployeeService } from '@/lib/service/employee.service';
 import { requiresPermissions } from '@/lib/auth/middleware';
 import { getTimeEntryService } from '@/lib/service';
+import { 
+  ensureUTCForStorage,
+  getCurrentUTC,
+  isValidISODate
+} from '@/lib/utils/timezone-utils';
 
 export async function POST(request: NextRequest) {
   return requiresPermissions(request, ['timesheet.own'], async (authRequest) => {
@@ -34,8 +39,17 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'Already clocked in' }, { status: 400 });
           }
 
-          // Parse workDate from client (client knows local timezone)
-          const workDate = body.workDate ? new Date(body.workDate) : undefined;
+          // Parse workDate from client (ISO string assumed Manila date)
+          let workDate;
+          if (body.workDate) {
+            // Validate ISO date format
+            if (!isValidISODate(body.workDate)) {
+              return NextResponse.json({ 
+                error: 'Invalid workDate format. Use ISO format (e.g., 2024-01-15)' 
+              }, { status: 400 });
+            }
+            workDate = ensureUTCForStorage(body.workDate);
+          }
 
           result = await timeEntryService.clockIn({
             employeeId: employee.id,
@@ -114,9 +128,10 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({ error: 'Employee not found' }, { status: 404 });
       }
 
-      const today = new Date();
-      const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-      const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
+      // Get current UTC date for filtering
+      const today = getCurrentUTC();
+      const startOfDay = new Date(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate());
+      const endOfDay = new Date(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate() + 1);
 
       // Get today's entries
       const todayEntries = await timeEntryService.getByEmployeeAndDateRange(
@@ -133,6 +148,7 @@ export async function GET(request: NextRequest) {
         activeBreak = breaks.find(breakItem => !breakItem.breakEndAt) || null;
       }
 
+      // Return UTC times directly
       return NextResponse.json({
         todayEntries: todayEntries || [],
         activeEntry,

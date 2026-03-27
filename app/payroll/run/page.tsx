@@ -16,6 +16,7 @@ import PageBreadcrumb from '@/components/common/PageBreadCrumb';
 import { ADMINSTRATIVE_ROLES } from '@/lib/constants/roles';
 import { useAuth } from '@/components/providers/auth-provider';
 import { usePayrollPeriods } from '@/hooks/usePayrollPeriods';
+import { createPeriodISOWithTimezone } from '@/lib/utils/timezone-utils';
 import { useOrganizationFilter } from '@/hooks/useOrganizationFilter';
 import RoleComponentWrapper from '@/components/common/RoleComponentWrapper';
 
@@ -236,17 +237,19 @@ function PayrollRunContent() {
       const startDay = parseInt(cutoffParts[2]);
       const endDay = parseInt(cutoffParts[3]);
 
-      // Create dates in local timezone to avoid UTC conversion issues
-      const periodStart = new Date(year, month, startDay, 0, 0, 0, 0);
-      const periodEnd = new Date(year, month, endDay, 23, 59, 59, 999); // End of day
+      // Create ISO dates with timezone representing local midnight
+      // This ensures backend knows the exact local time being requested
+      const periodDates = createPeriodISOWithTimezone(year, month - 1, startDay, endDay);
+      const periodStartISO = periodDates.start;
+      const periodEndISO = periodDates.end;
 
-      // Format dates using local date components to avoid timezone conversion
-      const formatLocalDate = (date: Date) => {
-        const y = date.getFullYear();
-        const m = String(date.getMonth() + 1).padStart(2, '0');
-        const d = String(date.getDate()).padStart(2, '0');
-        return `${y}-${m}-${d}`;
-      };
+      console.log('Payroll Summary Debug:', {
+        selectedCutoff,
+        selectedOrganization,
+        userOrganizationId: user?.organizationId,
+        periodStartISO,
+        periodEndISO
+      });
 
       const response = await fetch('/api/payroll/summary', {
         method: 'POST',
@@ -258,8 +261,8 @@ function PayrollRunContent() {
           organizationId: orgId,
           departmentId: selectedDepartment || undefined,
           cutoffPeriod: {
-            start: formatLocalDate(periodStart),
-            end: formatLocalDate(periodEnd),
+            start: periodStartISO,
+            end: periodEndISO,
           },
         }),
       });
@@ -294,12 +297,6 @@ function PayrollRunContent() {
     setIsMissingAttendanceModalOpen(true);
   };
 
-  const handleViewEmployeeAttendance = (employeeId: string) => {
-    // Open employee attendance page in new tab
-    const attendanceUrl = `/employees/${employeeId}/attendance`;
-    window.open(attendanceUrl, '_blank');
-  };
-
   const handleGeneratePayroll = async () => {
     if (!selectedCutoff || !selectedDepartment) {
       alert('Please select both cutoff period and department');
@@ -316,8 +313,10 @@ function PayrollRunContent() {
 
       // Parse cutoff period
       const [year, month, startDay, endDay] = selectedCutoff.split('-').map(Number);
-      const periodStart = new Date(year, month - 1, startDay);
-      const periodEnd = new Date(year, month - 1, endDay);
+      
+      // Create dates as UTC ISO strings to avoid timezone conversion issues
+      const periodStartISO = new Date(Date.UTC(year, month - 1, startDay, 0, 0, 0)).toISOString();
+      const periodEndISO = new Date(Date.UTC(year, month - 1, endDay, 23, 59, 59)).toISOString();
 
       // Generate payroll for each eligible employee using the new API
       const payrollPromises = eligibleEmployees.map(async (employee) => {
@@ -332,8 +331,8 @@ function PayrollRunContent() {
             employeeId: employee.id,
             organizationId: orgId,
             departmentId: selectedDepartment,
-            periodStart: periodStart.toISOString(),
-            periodEnd: periodEnd.toISOString(),
+            periodStart: periodStartISO,
+            periodEnd: periodEndISO,
           }),
         });
 
@@ -396,8 +395,10 @@ function PayrollRunContent() {
 
       // Parse cutoff period
       const [year, month, startDay, endDay] = selectedCutoff.split('-').map(Number);
-      const periodStart = new Date(year, month - 1, startDay);
-      const periodEnd = new Date(year, month - 1, endDay);
+      
+      // Create dates as UTC ISO strings to avoid timezone conversion issues
+      const periodStartISO = new Date(Date.UTC(year, month - 1, startDay, 0, 0, 0)).toISOString();
+      const periodEndISO = new Date(Date.UTC(year, month - 1, endDay, 23, 59, 59)).toISOString();
 
       // Approve payroll for each eligible employee with COMPUTED status
       const approvalPromises = eligibleEmployees.map(async (employee) => {
@@ -412,8 +413,8 @@ function PayrollRunContent() {
             employeeId: employee.id,
             organizationId: orgId,
             departmentId: selectedDepartment,
-            periodStart: periodStart.toISOString(),
-            periodEnd: periodEnd.toISOString(),
+            periodStart: periodStartISO,
+            periodEnd: periodEndISO,
           }),
         });
 
@@ -457,8 +458,10 @@ function PayrollRunContent() {
 
       // Parse cutoff period
       const [year, month, startDay, endDay] = selectedCutoff.split('-').map(Number);
-      const periodStart = new Date(year, month - 1, startDay);
-      const periodEnd = new Date(year, month - 1, endDay);
+      
+      // Create dates as UTC ISO strings to avoid timezone conversion issues
+      const periodStartISO = new Date(Date.UTC(year, month - 1, startDay, 0, 0, 0)).toISOString();
+      const periodEndISO = new Date(Date.UTC(year, month - 1, endDay, 23, 59, 59)).toISOString();
 
       // Release payroll for each eligible employee with APPROVED status
       const releasePromises = eligibleEmployees.map(async (employee) => {
@@ -473,8 +476,8 @@ function PayrollRunContent() {
             employeeId: employee.id,
             organizationId: orgId,
             departmentId: selectedDepartment,
-            periodStart: periodStart.toISOString(),
-            periodEnd: periodEnd.toISOString(),
+            periodStart: periodStartISO,
+            periodEnd: periodEndISO,
           }),
         });
 
@@ -524,8 +527,10 @@ function PayrollRunContent() {
 
       // Parse cutoff period
       const [year, month, startDay, endDay] = selectedCutoff.split('-').map(Number);
-      const periodStart = new Date(year, month - 1, startDay);
-      const periodEnd = new Date(year, month - 1, endDay);
+      
+      // Create dates as UTC ISO strings to avoid timezone conversion issues
+      const periodStartISO = new Date(Date.UTC(year, month - 1, startDay, 0, 0, 0)).toISOString();
+      const periodEndISO = new Date(Date.UTC(year, month - 1, endDay, 23, 59, 59)).toISOString();
 
       // Void payroll for each eligible employee with APPROVED/RELEASED status
       const voidPromises = eligibleEmployees.map(async (employee) => {
@@ -540,8 +545,8 @@ function PayrollRunContent() {
             employeeId: employee.id,
             organizationId: orgId,
             departmentId: selectedDepartment,
-            periodStart: periodStart.toISOString(),
-            periodEnd: periodEnd.toISOString(),
+            periodStart: periodStartISO,
+            periodEnd: periodEndISO,
             reason: reason.trim(),
           }),
         });
@@ -568,13 +573,6 @@ function PayrollRunContent() {
     } finally {
       setIsGenerating(false);
     }
-  };
-
-  const handleEmployeeClick = (employeeId: string) => {
-    // Open employee payroll summary page in new tab
-    // Remove department parameter from URL
-    const url = `/payroll/summary/employee/${employeeId}?cutoff=${selectedCutoff}`;
-    window.open(url, '_blank');
   };
 
   return (
@@ -655,7 +653,6 @@ function PayrollRunContent() {
             canGenerate={payrollSummary?.readiness?.canGenerate || false}
             lastGeneratedAt={payrollSummary?.payrollStatus?.lastGeneratedAt}
             eligibleEmployees={eligibleEmployees}
-            onEmployeeClick={handleEmployeeClick}
             periodStatus={getPeriodStatus()}
           />
         </div>
@@ -667,11 +664,23 @@ function PayrollRunContent() {
         onClose={() => setIsMissingAttendanceModalOpen(false)}
         organizationId={isSuperAdmin ? selectedOrganization : (user?.organizationId || null)}
         departmentId={selectedDepartment || undefined}
-        cutoffPeriod={payrollSummary ? {
-          start: payrollSummary.cutoffPeriod.start,
-          end: payrollSummary.cutoffPeriod.end,
-        } : null}
-        onViewAttendance={handleViewEmployeeAttendance}
+        cutoffPeriod={selectedCutoff ? (() => {
+          // Parse cutoff format "2026-2-16-28"
+          const cutoffParts = selectedCutoff.split('-');
+          if (cutoffParts.length === 4) {
+            const year = parseInt(cutoffParts[0]);
+            const month = parseInt(cutoffParts[1]);
+            const startDay = parseInt(cutoffParts[2]);
+            const endDay = parseInt(cutoffParts[3]);
+            
+            return {
+              start: `${year}-${String(month).padStart(2, '0')}-${String(startDay).padStart(2, '0')}`,
+              end: `${year}-${String(month).padStart(2, '0')}-${String(endDay).padStart(2, '0')}`,
+            };
+          }
+          return null;
+        })() : null}
+        selectedDepartment={selectedDepartment}
       />
       </>
     </TooltipProvider>

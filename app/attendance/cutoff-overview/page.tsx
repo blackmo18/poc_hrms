@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { ProtectedRoute } from '@/components/protected-route';
+import { ADMINSTRATIVE_ROLES } from '@/lib/constants/roles';
 import PeriodSwitcher from './components/PeriodSwitcher';
 import HeroProgressCard from './components/HeroProgressCard';
 import SecondaryStats from './components/SecondaryStats';
@@ -96,24 +98,38 @@ export default function CutoffOverviewPage() {
   const fetchEntriesForCutoff = async (cutoff: CutoffPeriod) => {
     setLoading(true);
     try {
-      const startDate = cutoff.startDate.toISOString().split('T')[0];
-      const endDate = cutoff.endDate.toISOString().split('T')[0];
+      // Create dates as ISO strings with Manila timezone
+      const startDate = `${cutoff.startDate.getFullYear()}-${String(cutoff.startDate.getMonth() + 1).padStart(2, '0')}-${String(cutoff.startDate.getDate()).padStart(2, '0')}T00:00:00+08:00`;
+      const endDate = `${cutoff.endDate.getFullYear()}-${String(cutoff.endDate.getMonth() + 1).padStart(2, '0')}-${String(cutoff.endDate.getDate()).padStart(2, '0')}T23:59:59+08:00`;
 
-      const response = await fetch(
-        `/api/attendance/cutoff?startDate=${startDate}&endDate=${endDate}`,
-        {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        }
-      );
+      console.log('Attendance Cutoff - Sending dates:', {
+        startDate,
+        endDate,
+        originalStart: cutoff.startDate.toISOString(),
+        originalEnd: cutoff.endDate.toISOString()
+      });
+
+      const url = `/api/attendance/cutoff?startDate=${encodeURIComponent(startDate)}&endDate=${encodeURIComponent(endDate)}`;
+      console.log('Attendance Cutoff - Full URL:', url);
+
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      console.log('Attendance Cutoff - Response status:', response.status);
+      console.log('Attendance Cutoff - Response ok:', response.ok);
 
       if (!response.ok) {
-        throw new Error('Failed to fetch cutoff data');
+        const errorText = await response.text();
+        console.error('Attendance Cutoff - Error response:', errorText);
+        throw new Error(`Failed to fetch cutoff data (${response.status}): ${errorText}`);
       }
 
       const result = await response.json();
+      console.log('Attendance Cutoff - Response data:', result);
       if (result.success && result.data) {
         setEntries(result.data.entries || []);
         
@@ -148,9 +164,10 @@ export default function CutoffOverviewPage() {
   const percentage = selectedCutoff ? calculatePercentage(selectedCutoff.totalHours, selectedCutoff.targetHours) : 0;
 
   return (
-    <>
-      <PeriodSwitcher
-        cutoffs={cutoffs}
+    <ProtectedRoute requiredRoles={ADMINSTRATIVE_ROLES}>
+      <>
+        <PeriodSwitcher
+          cutoffs={cutoffs}
         selectedCutoff={selectedCutoff}
         onSelectCutoff={setSelectedCutoff}
       />
@@ -177,5 +194,6 @@ export default function CutoffOverviewPage() {
         </>
       )}
     </>
+    </ProtectedRoute>
   );
 }
