@@ -68,6 +68,11 @@ export async function POST(request: Request) {
       requiredRoles,
       requireAll,
       details
+    }, {
+      headers: {
+        'Cache-Control': 'private, max-age=300', // 5 minutes cache
+        'Vary': 'Cookie'
+      }
     });
 
   } catch (error) {

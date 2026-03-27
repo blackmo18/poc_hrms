@@ -49,6 +49,7 @@ export interface JWTPayload {
   email: string;
   organizationId: string;
   roleIds: string[];  // Updated to string[] to match CUID IDs
+  roleNames: string[]; // Add role names array
   username: string;
   type: 'access' | 'refresh';
   user?: {
@@ -66,6 +67,7 @@ export interface JWTSerializablePayload {
   email: string;
   organizationId?: string;
   roleIds: string[];
+  roleNames: string[]; // Add role names array
   username: string;
   type: 'access' | 'refresh';
   user?: {

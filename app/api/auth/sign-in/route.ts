@@ -24,12 +24,17 @@ export async function POST(request: Request) {
       }
     });
 
+    // Get user roles and permissions for immediate availability
+    const roles = await getUserRoles(authResult.user.id);
+    const permissions = await getUserPermissions(authResult.user.id);
+
     // Create a session in the database for Better-Auth
     const sessionToken = JWTUtils.generateAccessToken({
       userId: authResult.user.id,
       email: authResult.user.email,
       organizationId: authResult.user.organizationId,
-      roleIds: [],
+      roleIds: roles.map(role => role.id), // Use actual role IDs
+      roleNames: roles.map(role => role.name), // Include role names
       username: authResult.user.email
     });
 
@@ -44,10 +49,6 @@ export async function POST(request: Request) {
     }).catch(() => {
       // Session might already exist, that's okay
     });
-
-    // Get user roles and permissions for immediate availability
-    const roles = await getUserRoles(authResult.user.id);
-    const permissions = await getUserPermissions(authResult.user.id);
 
     // Return user data with session managed by Better-Auth cookies
     const result = NextResponse.json({

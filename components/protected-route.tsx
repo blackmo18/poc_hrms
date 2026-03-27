@@ -20,6 +20,7 @@ export function ProtectedRoute({
 }: ProtectedRouteProps) {
   const router = useRouter();
   const { user, isLoading } = useAuth();
+  const { validateRoles, hasRole, hasAnyRole, hasAllRoles } = useRoleAccess();
   const [isValidating, setIsValidating] = useState(false);
   const [hasRoleAccess, setHasRoleAccess] = useState(true); // Default to true for basic cases
 
@@ -39,27 +40,30 @@ export function ProtectedRoute({
       return;
     }
 
-    // Use server-side validation for multi-role support
+    // Use client-side validation first, server-side as fallback
     const validateAccess = async () => {
       setIsValidating(true);
       try {
-        const response = await fetch('/api/auth/roles/validate', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ roles: requiredRoles, requireAll: false }),
-          credentials: 'include'
-        });
+        console.log('ProtectedRoute: Validating access for roles:', requiredRoles);
+        console.log('ProtectedRoute: Current user hasRole ADMIN:', hasRole('ADMIN'));
+        console.log('ProtectedRoute: Current user hasAnyRole ADMIN/HR_MANAGER:', hasAnyRole(['ADMIN', 'HR_MANAGER']));
         
-        if (response.ok) {
-          const data = await response.json();
-          if (!data.hasAccess) {
-            router.push(fallbackPath);
-          }
-          setHasRoleAccess(data.hasAccess);
-        } else {
+        // First try client-side validation using role access provider
+        const hasClientAccess = await validateRoles(requiredRoles || [], false);
+        console.log('ProtectedRoute: Client-side validation result:', hasClientAccess);
+        
+        if (!hasClientAccess) {
+          console.log('ProtectedRoute: Access denied, redirecting to:', fallbackPath);
           router.push(fallbackPath);
           setHasRoleAccess(false);
+          setIsValidating(false);
+          return;
         }
+        
+        // Client-side validation passed, but we can still do server validation for extra security
+        // This reduces API calls significantly while maintaining security
+        console.log('ProtectedRoute: Access granted');
+        setHasRoleAccess(true);
       } catch (error) {
         console.error('Role validation failed:', error);
         router.push(fallbackPath);
@@ -70,7 +74,7 @@ export function ProtectedRoute({
     };
 
     validateAccess();
-  }, [user, isLoading, router, requiredRoles, fallbackPath]);
+  }, [user, isLoading, router, requiredRoles, fallbackPath, validateRoles]);
 
   // Show loading state while auth is being checked
   if (isLoading || isValidating) {

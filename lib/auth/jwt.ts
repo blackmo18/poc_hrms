@@ -18,6 +18,7 @@ export class JWTUtils {
       email: payload.email,
       organizationId: payload.organizationId,
       roleIds: payload.roleIds.map(id => id.toString()),
+      roleNames: payload.roleNames, // Include role names
       username: payload.username
     };
     
@@ -40,6 +41,7 @@ export class JWTUtils {
       email: payload.email,
       organizationId: payload.organizationId,
       roleIds: payload.roleIds.map(id => id.toString()),
+      roleNames: payload.roleNames, // Include role names
       username: payload.username
     };
     
@@ -75,6 +77,7 @@ export class JWTUtils {
       // Get user roles
       const roles = await getUserRoles(user.id);
       const roleIds = roles.map(role => role.id);
+      const roleNames = roles.map(role => role.name);
 
       // Generate tokens
       const payload: Omit<JWTPayload, 'type'> = {
@@ -82,6 +85,7 @@ export class JWTUtils {
         email: user.email,
         organizationId: user.organizationId,
         roleIds,
+        roleNames, // Add role names to JWT payload
         username: user.email // Use email as username for now
       };
 
@@ -98,7 +102,8 @@ export class JWTUtils {
           name: user.name,
           firstName: user.firstName,
           lastName: user.lastName,
-          role: roles[0]?.name || 'EMPLOYEE',
+          roles: roleNames, // Include all roles instead of single role
+          role: roles[0]?.name || 'EMPLOYEE', // Keep for backward compatibility
           permissions,
           organizationId: user.organizationId
         },
@@ -127,6 +132,7 @@ export class JWTUtils {
         email: decoded.email,
         organizationId: decoded.organizationId,
         roleIds: decoded.roleIds,  // Keep as string[]
+        roleNames: decoded.roleNames, // Include role names
         username: decoded.username,
         type: 'access'
       };
@@ -148,6 +154,7 @@ export class JWTUtils {
     // Get user roles
     const roles = await getUserRoles(user.id);
     const roleIds = roles.map(role => role.id);
+    const roleNames = roles.map(role => role.name); // Add role names
 
     // Generate new tokens
     const newAccessToken = this.generateAccessToken({
@@ -155,7 +162,8 @@ export class JWTUtils {
       email: user.email,
       organizationId: user.organizationId,
       username: user.email,
-      roleIds
+      roleIds,
+      roleNames // Include role names
     });
 
     const newRefreshToken = this.generateRefreshToken({
@@ -163,7 +171,8 @@ export class JWTUtils {
       email: user.email,
       organizationId: user.organizationId,
       username: user.email,
-      roleIds
+      roleIds,
+      roleNames // Include role names
     });
 
     // Get user permissions
@@ -206,6 +215,7 @@ export class JWTUtils {
         email: decoded.email,
         organizationId: decoded.organizationId,
         roleIds: decoded.roleIds,  // Keep as string[]
+        roleNames: decoded.roleNames, // Include role names
         username: decoded.username,
         type: 'refresh'
       };
@@ -277,6 +287,7 @@ export class JWTUtils {
         email: decoded.email,
         organizationId: decoded.organizationId,
         roleIds: decoded.roleIds,  // Keep as string[]
+        roleNames: decoded.roleNames, // Include role names
         username: decoded.username,
         type: decoded.type
       };

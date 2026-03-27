@@ -33,11 +33,7 @@ export async function GET(request: Request) {
       return NextResponse.json({ user: null }, { status: 401 });
     }
 
-    // Get user roles and permissions
-    const roles = await getUserRoles(payload.userId);
-    const permissions = await getUserPermissions(payload.userId);
-
-    // Get user's organizationId from the database
+    // Get user's organizationId from database (minimal call)
     const userService = getUserService();
     const user = await userService.getById(payload.userId);
 
@@ -66,14 +62,15 @@ export async function GET(request: Request) {
         id: payload.userId,
         email: payload.email,
         username: payload.username,
-        role: roles[0]?.name || 'EMPLOYEE', // Primary role for UI compatibility
+        roles: payload.roleNames, // Use roles from JWT instead of DB call
+        role: payload.roleNames[0] || 'EMPLOYEE', // Primary role for UI compatibility
         organizationId: user?.organizationId,
         firstName: firstName,
         lastName: lastName,
         employeeId: employeeId
       },
-      // Note: Full roles array removed for security, but server can still validate multi-role access
-      hasMultipleRoles: roles.length > 1, // Optional: indicate if user has multiple roles
+      // Note: Full roles array now comes from JWT for performance
+      hasMultipleRoles: (payload.roleNames?.length || 0) > 1, // Indicate if user has multiple roles
       timestamp: new Date().toISOString() // Force refresh
     });
 
