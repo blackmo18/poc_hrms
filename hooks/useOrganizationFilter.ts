@@ -138,7 +138,11 @@ export function useOrganizationFilter(options: UseOrganizationFilterOptions): Us
       if (orgId !== undefined || isSuperAdmin) {
         onDataFetchRef.current(orgId, currentPage, isOrgChangeRef.current);
         isOrgChangeRef.current = false;
+      } else {
+        console.log('org undefined or not superAdmin', orgId, isSuperAdmin)
       }
+    } else {
+      console.log('datafetch not set')
     }
   }, [currentPage, selectedOrganization, authLoading, enabled, isSuperAdmin, user?.organizationId]);
 

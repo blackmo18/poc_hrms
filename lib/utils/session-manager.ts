@@ -3,7 +3,10 @@
 interface User {
   id: string;
   email: string;
-  username: string;
+  username?: string;
+  roles?: string[];
+  organizationId?: string;
+  // Note: Removed role, firstName, lastName, employeeId for security
 }
 
 interface SessionData {

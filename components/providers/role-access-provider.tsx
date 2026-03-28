@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, useCallback, ReactNode } from 'react';
 import { useAuth } from './auth-provider';
 
 interface RoleAccessContextType {
@@ -32,7 +32,7 @@ export function RoleAccessProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     setValidationCache(new Map());
     setCacheTimestamp(0);
-  }, [user]);
+  }, [user?.id]); // Only depend on user ID, not entire user object
 
   // Use roles from user object instead of separate API call
   useEffect(() => {
@@ -44,8 +44,6 @@ export function RoleAccessProvider({ children }: { children: ReactNode }) {
 
     // Extract roles from user object (now includes all roles from JWT)
     const userRoles = (user as any).roles || [];
-    console.log('RoleAccessProvider: Setting roles from user object:', userRoles);
-    
     setRoles(userRoles);
     setPermissions([]); // Always empty - permissions removed from client
   }, [user]);
@@ -57,7 +55,7 @@ export function RoleAccessProvider({ children }: { children: ReactNode }) {
   const hasAnyPermission = (checkPermissions: string[]) => false; // Always false - permissions removed from client
 
   // Server-side role validation with caching
-  const validateRoles = async (requiredRoles: string[], requireAll = false): Promise<boolean> => {
+  const validateRoles = useCallback(async (requiredRoles: string[], requireAll = false): Promise<boolean> => {
     // First try client-side validation using roles from JWT
     if (roles.length > 0) {
       const hasAllRoles = requiredRoles.every(role => roles.includes(role));
@@ -106,7 +104,7 @@ export function RoleAccessProvider({ children }: { children: ReactNode }) {
       console.error('Role validation failed:', error);
       return false;
     }
-  };
+  }, [roles, validationCache, cacheTimestamp]);
 
   return (
     <RoleAccessContext.Provider value={{

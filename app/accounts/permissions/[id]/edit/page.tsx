@@ -44,7 +44,7 @@ export default function EditPermissionPage() {
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const permissionId = params.id as string;
-  const isSuperAdmin = user?.role === 'SUPER_ADMIN';
+  const isSuperAdmin = user?.roles?.includes('SUPER_ADMIN') || false;
 
   // Fetch permission data and organizations
   useEffect(() => {

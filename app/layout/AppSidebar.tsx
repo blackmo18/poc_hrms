@@ -192,22 +192,24 @@ const AppSidebar: React.FC = () => {
 
   // Fallback: Fetch user role directly if missing from useAuth
   useEffect(() => {
-    if (!user?.role) {
+    if (!user?.roles || user.roles.length === 0) {
       fetch('/api/auth/session', {
         credentials: 'include',
         headers: { 'Cache-Control': 'no-cache' }
       })
       .then(res => res.json())
       .then(data => {
-        if (data.user?.role) {
-          setUserRole(data.user.role);
+        if (data.user?.roles && data.user.roles.length > 0) {
+          setUserRole(data.user.roles[0]); // Use first role as primary
         }
       })
-      .catch(err => console.error('Failed to fetch session:', err));
+      .catch(error => {
+        console.error('Failed to fetch user session:', error);
+      });
     } else {
-      setUserRole(user.role);
+      setUserRole(user.roles[0]); // Use first role as primary
     }
-  }, [user?.role]);
+  }, [user?.roles]);
 
   // Close mobile sidebar when navigation item is clicked
   const handleNavigationClick = () => {
@@ -217,13 +219,13 @@ const AppSidebar: React.FC = () => {
   };
 
   const hasAccessToItem = useCallback((itemRoles?: string[]) => {
-    const currentRole = user?.role || userRole;
+    const currentRole = user?.roles?.[0] || userRole;
     
     if (!itemRoles || itemRoles.length === 0) return true;
     if (!currentRole) return false;
     
     return itemRoles.includes(currentRole);
-  }, [user?.role, userRole]);
+  }, [user?.roles, userRole]);
 
   const filterNavItems = useCallback((items: NavItem[]) => {
     return items.map(item => ({
@@ -428,7 +430,7 @@ const AppSidebar: React.FC = () => {
 
   return (
     <aside
-      key={`${user?.role || 'no-role'}`}
+      key={`${user?.roles?.[0] || 'no-role'}`}
       className={`fixed flex flex-col top-16 lg:top-0 left-0 px-5 bg-white dark:bg-gray-900 dark:border-gray-800 text-gray-900 h-screen transition-all duration-300 ease-in-out z-50 border-r border-gray-200 
         ${
           isExpanded || isMobileOpen

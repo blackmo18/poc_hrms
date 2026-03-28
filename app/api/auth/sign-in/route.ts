@@ -55,13 +55,13 @@ export async function POST(request: Request) {
       user: {
         id: authResult.user.id,
         email: authResult.user.email,
-        name: authResult.user.name,
-        firstName: authResult.user.firstName,
-        lastName: authResult.user.lastName,
+        username: authResult.user.email, // Use email as username
         roles: roles.map(role => role.name),
-        permissions: permissions,
         organizationId: authResult.user.organizationId
-      }
+      },
+      // Note: Minimal data approach - removed firstName, lastName, employeeId for security
+      // These can be fetched on-demand via /api/auth/profile when needed
+      hasMultipleRoles: roles.length > 1
     });
 
     // Set session cookie

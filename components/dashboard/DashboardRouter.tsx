@@ -26,8 +26,8 @@ export function DashboardRouter({ children }: DashboardRouterProps) {
       return;
     }
 
-    // Check if user has administrative role - use single role check
-    const hasAdminRole = ADMINSTRATIVE_ROLES.includes(user?.role || '');
+    // Check if user has administrative role - use roles array check
+    const hasAdminRole = ADMINSTRATIVE_ROLES.some(role => user?.roles?.includes(role));
     
     // Temporarily disable redirect logic for testing
     // TODO: Remove this after fixing the issue

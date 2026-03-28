@@ -3,9 +3,8 @@ import { useEffect, useRef, useCallback } from 'react';
 interface User {
   id: string;
   email: string;
-  username: string;
-  role?: string;
-  permissions?: string[];
+  username?: string;
+  // Note: Removed role, permissions for security
 }
 
 interface UseIdleTimeoutOptions {

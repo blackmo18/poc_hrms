@@ -10,15 +10,11 @@ import { setupFetchInterceptor, registerSessionInvalidationCallback } from '@/li
 interface User {
   id: string;
   email: string;
-  username: string;
-  role?: string;
-  roles?: string[]; // Add roles array for multi-role support
+  username?: string;
+  roles?: string[]; // Keep for role-based access control
   organizationId?: string;
-  firstName?: string;
-  lastName?: string;
-  employeeId?: string;
-  // Note: permissions arrays removed for security
-  // Use role-based checks instead
+  // Note: Removed role, firstName, lastName, employeeId for security
+  // These can be fetched on-demand when needed
 }
 
 interface AuthContextType {
@@ -34,17 +30,18 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const sanitizeUser = (user: any): User => ({
-  id: user.id,
-  email: user.email,
-  username: user.username,
-  role: user.role,
-  organizationId: user.organizationId || user.organizationId, // Handle both camelCase and snake_case
-  firstName: user.first_name || user.firstName,
-  lastName: user.last_name || user.lastName,
-  employeeId: user.employeeId
-  // roles and permissions arrays removed for security
-});
+const sanitizeUser = (user: any): User => {
+  const sanitized = {
+    id: user.id,
+    email: user.email,
+    username: user.username || user.email, // Default to email if username not provided
+    roles: user.roles || [], // Include roles for client-side validation
+    organizationId: user.organizationId
+    // Note: Removed role, firstName, lastName, employeeId for security
+  };
+  
+  return sanitized;
+};
 
 export function AuthProvider({
   children,
@@ -95,6 +92,7 @@ export function AuthProvider({
           router.push('/login');
         } else if (sessionData.user && !user) {
           // Another tab logged in - update this tab's state
+          console.log('user ====>', sessionData.user)
           setUser(sanitizeUser(sessionData.user));
           // Roles and permissions will be fetched by RoleAccessProvider via API
         }
@@ -172,18 +170,19 @@ export function AuthProvider({
           id: data.user.id,
           email: data.user.email,
           username: data.user.email,
-          organizationId: data.user.organizationId,
           roles: data.user.roles || [] // Include roles from response
         };
         setUser(userData);
         setHasCheckedAuth(true); // Mark auth as checked
         
-        // Store session in session manager for persistence (only basic user info, no sensitive data)
+        // Store session in session manager for persistence (minimal user data)
         sessionManager.setAuthenticatedUser(
           {
             id: data.user.id,
             email: data.user.email,
-            username: data.user.email
+            username: data.user.email,
+            roles: data.user.roles || [], // Include roles from response
+            organizationId: data.user.organizationId
           },
           '', // accessToken (managed by cookie)
           ''  // refreshToken (managed by cookie)
