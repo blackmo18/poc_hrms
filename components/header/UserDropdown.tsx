@@ -8,10 +8,26 @@ import { useAuth } from '../providers/auth-provider';
 
 export default function UserDropdown() {
   const [isOpen, setIsOpen] = useState(false);
+  const [userProfile, setUserProfile] = useState<any>(null);
   const { user, logout, isLoading } = useAuth();
 
   const router = useRouter();
 
+  // Fetch user profile for display name
+  useEffect(() => {
+    if (user) {
+      fetch('/api/auth/profile', {
+        credentials: 'include'
+      })
+      .then(res => res.json())
+      .then(data => {
+        setUserProfile(data.user);
+      })
+      .catch(error => {
+        console.error('Failed to fetch user profile:', error);
+      });
+    }
+  }, [user]);
 
   // Don't render anything while loading to prevent flicker
   if (isLoading && !user) {
@@ -52,24 +68,6 @@ export default function UserDropdown() {
     // For disabled items, just close the dropdown
     closeDropdown();
   };
-
-  const [userProfile, setUserProfile] = useState<any>(null);
-
-  // Fetch user profile for display name
-  useEffect(() => {
-    if (user) {
-      fetch('/api/auth/profile', {
-        credentials: 'include'
-      })
-      .then(res => res.json())
-      .then(data => {
-        setUserProfile(data.user);
-      })
-      .catch(error => {
-        console.error('Failed to fetch user profile:', error);
-      });
-    }
-  }, [user]);
 
   const getDisplayName = () => {
     if (userProfile?.lastName && userProfile?.firstName) {

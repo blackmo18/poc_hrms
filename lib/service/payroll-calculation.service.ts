@@ -13,6 +13,7 @@ import { logInfo } from '@/lib/utils/logger';
 import { DIContainer } from '../di/container';
 import { prisma } from '../db';
 import { createManilaMidnightUTC } from '../utils/timezone-utils';
+import { getAttendanceCalculationService } from './attendance-calculation.service';
 
 export interface PayrollCalculationResult {
   employeeId: string;
@@ -364,71 +365,96 @@ export class PayrollCalculationService {
       adjustedEnd
     );
     
-    // If there are no time entries, return basic salary without deductions
+    // If there are no time entries, check for approved leave and determine payroll eligibility
     if (timeEntries.length === 0) {
-      // Calculate pro-rated basic salary for the period
-      const dailyRate = workSchedule 
-        ? await workScheduleService.calculateDailyRate(workSchedule, monthlySalary)
-        : monthlySalary / 22; // Fallback: assume 22 working days
-        
-      let expectedWorkDays: number;
-      let taxBase: number;
-      
-      if (isSemiMonthly) {
-        // Semi-monthly (15-16 days)
-        expectedWorkDays = daysInPeriod;
-        taxBase = monthlySalary; // Use full monthly for tax bracket
-      } else {
-        // Full month or longer
-        expectedWorkDays = Math.min(daysInPeriod, 22); // Max 22 working days
-        taxBase = monthlySalary * (daysInPeriod / 30); // Pro-rate monthly for tax
-      }
-      
-      const basicPay = dailyRate * expectedWorkDays;
-      
-      // Calculate government deductions on basic pay
-      const phDeductionsService = container.getPHDeductionsService();
-      // Pass appropriate tax base based on period length
-      const governmentDeductions = await phDeductionsService.calculateAllDeductions(
-        organizationId,
-        basicPay,
-        new Date(),
-        taxBase // Use calculated tax base (monthly for semi-monthly, pro-rated for full month)
-      );
-      
-      // For display, show monthly equivalent taxable income
-      const displayTaxableIncome = isSemiMonthly 
-        ? governmentDeductions.taxableIncome * 2 
-        : governmentDeductions.taxableIncome;
-        
-      return {
+      // Use the attendance calculation service to determine eligibility
+      const attendanceService = getAttendanceCalculationService();
+      const eligibilityResult = await attendanceService.determinePayrollEligibility(
         employeeId,
-        period_start: periodStart,
-        period_end: periodEnd,
-        total_regular_minutes: 0,
-        total_overtime_minutes: 0,
-        total_night_diff_minutes: 0,
-        total_regular_pay: basicPay,
-        total_overtime_pay: 0,
-        total_night_diff_pay: 0,
-        total_gross_pay: basicPay,
-        taxable_income: displayTaxableIncome,
-        government_deductions: {
-          tax: governmentDeductions.tax,
-          philhealth: governmentDeductions.philhealth,
-          sss: governmentDeductions.sss,
-          pagibig: governmentDeductions.pagibig,
-          total: governmentDeductions.totalDeductions
-        },
-        policy_deductions: {
-          late: 0,
-          absence: 0,
-          total: 0
-        },
-        total_deductions: governmentDeductions.totalDeductions,
-        total_net_pay: basicPay - governmentDeductions.totalDeductions,
-        daily_breakdown: []
-      };
+        periodStart,
+        periodEnd
+      );
+
+      logInfo('PAYROLL_CALCULATION_NO_TIME_ENTRIES', {
+        employeeId,
+        eligibilityResult
+      });
+
+      // If no time entries AND no approved leave, return zero payroll
+      if (!eligibilityResult.eligible) {
+        return {
+          employeeId,
+          period_start: periodStart,
+          period_end: periodEnd,
+          total_regular_minutes: 0,
+          total_overtime_minutes: 0,
+          total_night_diff_minutes: 0,
+          total_regular_pay: 0,
+          total_overtime_pay: 0,
+          total_night_diff_pay: 0,
+          total_gross_pay: 0,
+          taxable_income: 0,
+          government_deductions: {
+            tax: 0,
+            philhealth: 0,
+            sss: 0,
+            pagibig: 0,
+            total: 0
+          },
+          policy_deductions: {
+            late: 0,
+            absence: 0,
+            total: 0
+          },
+          total_deductions: 0,
+          total_net_pay: 0,
+          daily_breakdown: []
+        };
+      }
+
+      // If has approved leave, calculate leave pay (future implementation)
+      // For now, return zero payroll until leave pay calculation is implemented
+      if (eligibilityResult.attendanceStatus.hasApprovedLeave) {
+        logInfo('PAYROLL_CALCULATION_LEAVE_PAY_NOT_IMPLEMENTED', {
+          employeeId,
+          leaveDetails: eligibilityResult.attendanceStatus.leaveDetails
+        });
+
+        return {
+          employeeId,
+          period_start: periodStart,
+          period_end: periodEnd,
+          total_regular_minutes: 0,
+          total_overtime_minutes: 0,
+          total_night_diff_minutes: 0,
+          total_regular_pay: 0,
+          total_overtime_pay: 0,
+          total_night_diff_pay: 0,
+          total_gross_pay: 0,
+          taxable_income: 0,
+          government_deductions: {
+            tax: 0,
+            philhealth: 0,
+            sss: 0,
+            pagibig: 0,
+            total: 0
+          },
+          policy_deductions: {
+            late: 0,
+            absence: 0,
+            total: 0
+          },
+          total_deductions: 0,
+          total_net_pay: 0,
+          daily_breakdown: []
+        };
+      }
+
+      // Fallback to original logic (should not reach here)
+      logInfo('PAYROLL_CALCULATION_FALLBACK', {
+        employeeId,
+        reason: 'Unexpected eligibility state'
+      });
     }
 
     // Calculate basic pay components

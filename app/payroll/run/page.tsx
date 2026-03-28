@@ -229,7 +229,7 @@ function PayrollRunContent() {
         userOrganizationId: user?.organizationId
       });
 
-      // Parse the selected cutoff to get start and end dates
+      // Parse selected cutoff to get start and end dates
       // Format: year-month-startDay-endDay (e.g., "2026-2-1-15")
       const cutoffParts = selectedCutoff.split('-');
       const year = parseInt(cutoffParts[0]);
@@ -239,7 +239,7 @@ function PayrollRunContent() {
 
       // Create ISO dates with timezone representing local midnight
       // This ensures backend knows the exact local time being requested
-      const periodDates = createPeriodISOWithTimezone(year, month - 1, startDay, endDay);
+      const periodDates = createPeriodISOWithTimezone(year, month, startDay, endDay);
       const periodStartISO = periodDates.start;
       const periodEndISO = periodDates.end;
 
