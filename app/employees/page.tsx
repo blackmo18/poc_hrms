@@ -150,7 +150,7 @@ export default function EmployeesPage() {
 
   // Memoize super admin check for consistency
   const isSuperAdminMemo = useMemo(() =>
-    user?.role === 'SUPER_ADMIN',
+    user?.roles?.includes('SUPER_ADMIN') || false,
     [user]
   );
 

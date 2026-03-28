@@ -5,6 +5,7 @@ export interface User {
   passwordHash: string;
   enabled: boolean;
   organizationId: string;
+  employeeId?: string; // Add employeeId
   firstName?: string;
   lastName?: string;
   createdAt: Date;

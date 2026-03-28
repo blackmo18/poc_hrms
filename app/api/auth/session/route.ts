@@ -33,43 +33,16 @@ export async function GET(request: Request) {
       return NextResponse.json({ user: null }, { status: 401 });
     }
 
-    // Get user's organizationId from database (minimal call)
-    const userService = getUserService();
-    const user = await userService.getById(payload.userId);
-
-    if (!user) {
-      return NextResponse.json({ user: null }, { status: 401 });
-    }
-
-    // Get employee details if available
-    let firstName = '';
-    let lastName = '';
-    let employeeId = '';
-    if (user?.employeeId) {
-      const employee = await prisma.employee.findUnique({
-        where: { id: user.employeeId },
-        select: { firstName: true, lastName: true }
-      });
-      if (employee) {
-        firstName = employee.firstName;
-        lastName = employee.lastName;
-        employeeId = user.employeeId; // Include employeeId in response
-      }
-    }
-
     return NextResponse.json({
       user: {
         id: payload.userId,
         email: payload.email,
         username: payload.username,
-        roles: payload.roleNames, // Use roles from JWT instead of DB call
-        role: payload.roleNames[0] || 'EMPLOYEE', // Primary role for UI compatibility
-        organizationId: user?.organizationId,
-        firstName: firstName,
-        lastName: lastName,
-        employeeId: employeeId
+        roles: payload.roleNames, // Use roles from JWT
+        organizationId: payload.organizationId // Use organizationId from JWT
       },
-      // Note: Full roles array now comes from JWT for performance
+      // Note: Minimal data approach - removed firstName, lastName, employeeId for security
+      // These can be fetched on-demand via /api/auth/profile when needed
       hasMultipleRoles: (payload.roleNames?.length || 0) > 1, // Indicate if user has multiple roles
       timestamp: new Date().toISOString() // Force refresh
     });

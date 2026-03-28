@@ -53,10 +53,29 @@ export default function UserDropdown() {
     closeDropdown();
   };
 
-  const getDisplayName = () => {
-    if (user?.lastName && user?.firstName) {
-      return `${user.lastName}, ${user.firstName}`;
+  const [userProfile, setUserProfile] = useState<any>(null);
+
+  // Fetch user profile for display name
+  useEffect(() => {
+    if (user) {
+      fetch('/api/auth/profile', {
+        credentials: 'include'
+      })
+      .then(res => res.json())
+      .then(data => {
+        setUserProfile(data.user);
+      })
+      .catch(error => {
+        console.error('Failed to fetch user profile:', error);
+      });
     }
+  }, [user]);
+
+  const getDisplayName = () => {
+    if (userProfile?.lastName && userProfile?.firstName) {
+      return `${userProfile.lastName}, ${userProfile.firstName}`;
+    }
+    return user?.email || 'User';
   };
 
   return (
