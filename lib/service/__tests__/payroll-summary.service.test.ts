@@ -8,6 +8,7 @@ import { timeEntryService } from '@/lib/service/time-entry.service';
 import { PHDeductionsService } from '../ph-deductions.service';
 import { sharedPayrollCalculation } from '../shared-payroll-calculation';
 import { getWorkScheduleService } from '../work-schedule.service';
+import { getAttendanceCalculationService } from '../attendance-calculation.service';
 import { prisma } from '@/lib/db';
 
 // Mock all dependencies
@@ -64,6 +65,16 @@ vi.mock('@/lib/service/shared-payroll-calculation', () => ({
       },
     })),
   },
+}));
+
+vi.mock('../attendance-calculation.service', () => ({
+  getAttendanceCalculationService: vi.fn(() => ({
+    calculateAttendanceStatus: vi.fn(),
+    hasWorkActivity: vi.fn(),
+    hasApprovedLeave: vi.fn(),
+    getLeaveDays: vi.fn(),
+    determinePayrollEligibility: vi.fn(),
+  })),
 }));
 
 vi.mock('../work-schedule.service', () => ({
@@ -126,6 +137,25 @@ describe('PayrollSummaryService', () => {
       baseSalary: 30000,
       effectiveDate: new Date('2024-01-01'),
     } as any);
+
+    // Mock AttendanceCalculationService
+    const mockAttendanceService = {
+      calculateAttendanceStatus: vi.fn().mockResolvedValue({
+        hasTimeEntries: false,
+        hasApprovedLeave: false,
+        presentDays: 0,
+        absentDays: 0,
+        leaveDays: 0,
+        payrollEligible: false,
+        leaveDetails: []
+      }),
+      hasWorkActivity: vi.fn(),
+      hasApprovedLeave: vi.fn(),
+      getLeaveDays: vi.fn(),
+      determinePayrollEligibility: vi.fn(),
+    } as any;
+    
+    vi.mocked(getAttendanceCalculationService).mockReturnValue(mockAttendanceService);
   });
 
   describe('generateSummary', () => {
@@ -264,14 +294,54 @@ describe('PayrollSummaryService', () => {
     });
 
     it('should handle organization-only filtering (no department)', async () => {
-      (employeeController.getAll as any).mockResolvedValueOnce({
-        pagination: { total: 5 },
-        data: [],
+      // Setup AttendanceCalculationService mock for this test
+      const mockAttendanceService = {
+        calculateAttendanceStatus: vi.fn().mockResolvedValue({
+          hasTimeEntries: false,
+          hasApprovedLeave: false,
+          presentDays: 0,
+          absentDays: 0,
+          leaveDays: 0,
+          payrollEligible: false,
+          leaveDetails: []
+        }),
+        hasWorkActivity: vi.fn(),
+        hasApprovedLeave: vi.fn(),
+        getLeaveDays: vi.fn(),
+        determinePayrollEligibility: vi.fn(),
+      } as any;
+      
+      // Set up the mock to be called for each employee and return the same result
+      mockAttendanceService.calculateAttendanceStatus.mockResolvedValue({
+        hasTimeEntries: false,
+        hasApprovedLeave: false,
+        presentDays: 0,
+        absentDays: 0,
+        leaveDays: 0,
+        payrollEligible: false,
+        leaveDetails: []
       });
-      (employeeController.getAll as any).mockResolvedValueOnce({
+      
+      vi.mocked(getAttendanceCalculationService).mockReturnValue(mockAttendanceService);
+
+      (employeeController.getAll as any).mockResolvedValue({
         pagination: { total: 5 },
         data: [
           { id: 'emp1', compensations: [{ id: 'comp1' }] },
+          { id: 'emp2', compensations: [{ id: 'comp2' }] },
+          { id: 'emp3', compensations: [{ id: 'comp3' }] },
+          { id: 'emp4', compensations: [{ id: 'comp4' }] },
+          { id: 'emp5', compensations: [{ id: 'comp5' }] },
+        ],
+      });
+      (employeeController.getAll as any).mockResolvedValue({
+        pagination: { total: 5 },
+        data: [
+          { id: 'emp1', compensations: [{ id: 'comp1' }] },
+          { id: 'emp2', compensations: [{ id: 'comp2' }] },
+          { id: 'emp3', compensations: [{ id: 'comp3' }] },
+          { id: 'emp4', compensations: [{ id: 'comp4' }] },
+          { id: 'emp5', compensations: [{ id: 'comp5' }] },
         ],
       });
       (timeEntryService.getTimeEntriesByOrganizationAndPeriod as any).mockResolvedValue([]);
@@ -289,9 +359,118 @@ describe('PayrollSummaryService', () => {
       expect(result.organizationId).toBe(mockOrganizationId);
       expect(result.departmentId).toBeUndefined();
       expect(result.employees.total).toBe(5);
+      
+      // Debug: Check if the mock was called
+      expect(mockAttendanceService.calculateAttendanceStatus).toHaveBeenCalledTimes(5);
+      
+      // Verify attendance stats reflect the new logic (missing attendance includes no time entries)
+      expect(result.attendance.missingEmployeesCount).toBe(5); // All 5 employees have no time entries
+      expect(result.attendance.complete).toBe(false);
+    });
+
+    it('should correctly calculate missing attendance including employees with absences', async () => {
+      // Setup AttendanceCalculationService mock for this test
+      const mockAttendanceService = {
+        calculateAttendanceStatus: vi.fn(),
+        hasWorkActivity: vi.fn(),
+        hasApprovedLeave: vi.fn(),
+        getLeaveDays: vi.fn(),
+        determinePayrollEligibility: vi.fn(),
+      } as any;
+      
+      // Set up the mock to return different values for each employee
+      mockAttendanceService.calculateAttendanceStatus
+        .mockResolvedValueOnce({ // Employee 1 - has time entries but has absences
+          hasTimeEntries: true,
+          hasApprovedLeave: false,
+          presentDays: 4,
+          absentDays: 1,
+          leaveDays: 0,
+          payrollEligible: true,
+          leaveDetails: []
+        })
+        .mockResolvedValueOnce({ // Employee 2 - no time entries, no approved leave
+          hasTimeEntries: false,
+          hasApprovedLeave: false,
+          presentDays: 0,
+          absentDays: 0,
+          leaveDays: 0,
+          payrollEligible: false,
+          leaveDetails: []
+        })
+        .mockResolvedValueOnce({ // Employee 3 - has time entries, no absences
+          hasTimeEntries: true,
+          hasApprovedLeave: false,
+          presentDays: 5,
+          absentDays: 0,
+          leaveDays: 0,
+          payrollEligible: true,
+          leaveDetails: []
+        });
+      
+      vi.mocked(getAttendanceCalculationService).mockReturnValue(mockAttendanceService);
+
+      (employeeController.getAll as any).mockResolvedValue({
+        pagination: { total: 3 },
+        data: [
+          { id: 'emp1', compensations: [{ id: 'comp1' }] },
+          { id: 'emp2', compensations: [{ id: 'comp2' }] },
+          { id: 'emp3', compensations: [{ id: 'comp3' }] },
+        ],
+      });
+      (employeeController.getAll as any).mockResolvedValue({
+        pagination: { total: 3 },
+        data: [
+          { id: 'emp1', compensations: [{ id: 'comp1' }] },
+          { id: 'emp2', compensations: [{ id: 'comp2' }] },
+          { id: 'emp3', compensations: [{ id: 'comp3' }] },
+        ],
+      });
+      (timeEntryService.getTimeEntriesByOrganizationAndPeriod as any).mockResolvedValue([
+        { employeeId: 'emp1' }, // Employee 1 has time entries
+        { employeeId: 'emp3' }, // Employee 3 has time entries
+      ]);
+      (OvertimeController.getOvertimeRequestsByOrganizationAndPeriod as any).mockResolvedValue([]);
+      (holidayService.getHolidays as any).mockResolvedValue([]);
+      (payrollController.getPayrollsByOrganizationAndPeriod as any).mockResolvedValue([]);
+
+      const result = await service.generateSummary(
+        mockOrganizationId,
+        mockDepartmentId,
+        mockPeriodStart,
+        mockPeriodEnd
+      );
+
+      // Verify attendance stats reflect the new logic
+      expect(result.attendance.totalRecords).toBe(2); // emp1 and emp3 have time entries
+      expect(result.attendance.expectedEmployees).toBe(3);
+      expect(result.attendance.employeesWithRecords).toBe(2);
+      
+      // missingEmployeesCount should include both emp2 (no time entries) and emp1 (has absences)
+      expect(result.attendance.missingEmployeesCount).toBe(2); // emp1 (absences) + emp2 (no records)
+      expect(result.attendance.complete).toBe(false); // Not complete due to attendance issues
     });
 
     it('should handle successful payroll generation readiness', async () => {
+      // Setup AttendanceCalculationService mock for perfect attendance
+      const mockAttendanceService = {
+        calculateAttendanceStatus: vi.fn().mockResolvedValue({
+          hasTimeEntries: true,
+          hasApprovedLeave: false,
+          presentDays: 5,
+          absentDays: 0,
+          leaveDays: 0,
+          payrollEligible: true,
+          leaveDetails: []
+        }),
+        hasWorkActivity: vi.fn(),
+        hasApprovedLeave: vi.fn(),
+        getLeaveDays: vi.fn(),
+        determinePayrollEligibility: vi.fn(),
+      } as any;
+      
+      vi.mocked(getAttendanceCalculationService).mockReturnValue(mockAttendanceService);
+
       // Mock all data as complete and valid
       (employeeController.getAll as any).mockResolvedValueOnce({
         pagination: { total: 3 },
@@ -798,6 +977,34 @@ describe('PayrollSummaryService', () => {
       mockDepartmentId = 'dept-456';
       mockPeriodStart = new Date('2024-01-01');
       mockPeriodEnd = new Date('2024-01-31');
+      
+      // Set up mocks for time entries
+      (timeEntryService.getTimeEntriesByOrganizationAndPeriod as any).mockResolvedValue([]);
+      
+      // Set up mocks for overtime requests
+      (OvertimeController.getOvertimeRequestsByOrganizationAndPeriod as any).mockResolvedValue([]);
+      
+      // Set up mocks for holidays
+      (holidayService.getHolidays as any).mockResolvedValue([]);
+      
+      // Set up AttendanceCalculationService mock
+      const mockAttendanceService = {
+        calculateAttendanceStatus: vi.fn().mockResolvedValue({
+          hasTimeEntries: false,
+          hasApprovedLeave: false,
+          presentDays: 0,
+          absentDays: 0,
+          leaveDays: 0,
+          payrollEligible: false,
+          leaveDetails: []
+        }),
+        hasWorkActivity: vi.fn(),
+        hasApprovedLeave: vi.fn(),
+        getLeaveDays: vi.fn(),
+        determinePayrollEligibility: vi.fn(),
+      } as any;
+      
+      vi.mocked(getAttendanceCalculationService).mockReturnValue(mockAttendanceService);
     });
 
     it('should include summary, payrolls, and pagination fields for existing payrolls', async () => {

@@ -8,6 +8,7 @@ import { holidayService } from '@/lib/service/holiday.service';
 import { getServiceContainer } from '@/lib/di/container';
 import { getWorkScheduleService } from '@/lib/service/work-schedule.service';
 import { getLateDeductionPolicyService } from '@/lib/service/late-deduction-policy.service';
+import { getAttendanceCalculationService } from './attendance-calculation.service';
 import { logInfo, logWarn } from '@/lib/utils/logger';
 import { prisma } from '@/lib/db';
 import { getEmployeePayrollMetrics } from '@/lib/utils/payroll-calculations';
@@ -713,14 +714,17 @@ export class PayrollSummaryService {
     periodStart: Date,
     periodEnd: Date
   ) {
-    // Get expected employees
-    const expectedEmployees = await this.getEmployeeCount(organizationId, departmentId);
+    // Get all employees in organization/department
+    const result = await employeeController.getAll(organizationId, departmentId, { page: 1, limit: 1000 });
+    const employees = result.data;
+    const expectedEmployees = employees.length;
 
-    // Get time entries for period using time entry service
+    // Get all time entries for the period
     const timeEntries = await timeEntryService.getTimeEntriesByOrganizationAndPeriod(
       organizationId,
       periodStart,
-      periodEnd
+      periodEnd,
+      undefined // No status filter
     );
 
     // Count unique employees with time entries (these are employees WITH attendance)
@@ -729,40 +733,63 @@ export class PayrollSummaryService {
     // Calculate TRULY missing employees (those with NO time entries)
     const missingEmployeesCount = Math.max(0, expectedEmployees - employeesWithRecords);
 
-    // Calculate actual absence metrics using the same logic as individual employee page
+    // Use the new AttendanceCalculationService for consistent attendance calculations
+    const attendanceService = getAttendanceCalculationService();
+    
     let totalAbsentDays = 0;
     let employeesWithAbsences = 0;
-
-    // Get all employees in organization/department to check their actual attendance
-    const result = await employeeController.getAll(organizationId, departmentId, { page: 1, limit: 1000 });
-    const employees = result.data;
+    let employeesWithIncompleteAttendance = 0;
 
     for (const employee of employees) {
       try {
-        // Use the same calculation method as individual employee page for consistency
-        const actualAbsentDays = await this.payrollCalculationService.calculateActualAbsentDays(
+        // Use the attendance calculation service to get accurate attendance status
+        const attendanceStatus = await attendanceService.calculateAttendanceStatus(
           employee.id,
           periodStart,
           periodEnd
         );
         
-        if (actualAbsentDays > 0) {
-          totalAbsentDays += actualAbsentDays;
+        // Count actual absences (only for employees who have time entries but missed some days)
+        if (attendanceStatus.hasTimeEntries && attendanceStatus.absentDays > 0) {
+          totalAbsentDays += attendanceStatus.absentDays;
           employeesWithAbsences++;
+        }
+        
+        // Count employees with incomplete attendance (no time entries and no approved leave)
+        if (!attendanceStatus.payrollEligible && !attendanceStatus.hasApprovedLeave) {
+          employeesWithIncompleteAttendance++;
+        }
+        
+        // Also count employees who have absences as having attendance issues
+        if (attendanceStatus.hasTimeEntries && attendanceStatus.absentDays > 0) {
+          employeesWithIncompleteAttendance++;
         }
       } catch (error) {
         console.error(`Error checking attendance for employee ${employee.id}:`, error);
       }
     }
 
+    logInfo('ATTENDANCE_STATS_CALCULATED', {
+      organizationId,
+      departmentId,
+      periodStart: periodStart.toISOString(),
+      periodEnd: periodEnd.toISOString(),
+      expectedEmployees,
+      employeesWithRecords,
+      missingEmployeesCount,
+      totalAbsentDays,
+      employeesWithAbsences,
+      employeesWithIncompleteAttendance: employeesWithIncompleteAttendance, // Includes both no records and absences
+    });
+
     return {
       totalRecords: timeEntries.length,
       expectedEmployees,
       employeesWithRecords,
-      missingEmployeesCount, // Now correctly shows employees with NO time entries
-      complete: missingEmployeesCount === 0, // Complete only if ALL employees have time entries
+      missingEmployeesCount: employeesWithIncompleteAttendance, // Includes both no records and employees with absences
+      complete: employeesWithIncompleteAttendance === 0, // Complete only if ALL employees have complete attendance (no absences, no missing records)
       totalAbsentDays, // Actual absent days (excluding weekends and approved leave)
-      employeesWithAbsences, // Employees who have actual absences
+      employeesWithAbsences, // Employees who have actual absences (have time entries but missed some days)
     };
   }
 
