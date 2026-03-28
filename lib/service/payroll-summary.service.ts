@@ -57,6 +57,8 @@ export interface PayrollSummaryResponse {
     employeesWithRecords: number;
     missingEmployeesCount: number;
     complete: boolean;
+    totalAbsentDays?: number;
+    employeesWithAbsences?: number;
   };
   overtime: {
     totalRequests: number;
@@ -714,50 +716,39 @@ export class PayrollSummaryService {
     // Get expected employees
     const expectedEmployees = await this.getEmployeeCount(organizationId, departmentId);
 
-    // Get time entries for the period using the time entry service
-    // Note: We need to add a method to timeEntryService for getting entries by organization/department and date range
-    // For now, we'll create a simplified version
+    // Get time entries for period using time entry service
     const timeEntries = await timeEntryService.getTimeEntriesByOrganizationAndPeriod(
       organizationId,
       periodStart,
       periodEnd
     );
 
-    // Count unique employees with time entries
+    // Count unique employees with time entries (these are employees WITH attendance)
     const employeesWithRecords = new Set(timeEntries.map(te => te.employeeId)).size;
+    
+    // Calculate TRULY missing employees (those with NO time entries)
     const missingEmployeesCount = Math.max(0, expectedEmployees - employeesWithRecords);
 
-    // Calculate employees who hit the absence threshold
-    const absenceThreshold = parseInt(process.env.ABSENCE_WARNING_THRESHOLD || '2');
-    let employeesHitAbsenceThreshold = 0;
+    // Calculate actual absence metrics using the same logic as individual employee page
+    let totalAbsentDays = 0;
+    let employeesWithAbsences = 0;
 
-    // Get all employees in the organization/department
+    // Get all employees in organization/department to check their actual attendance
     const result = await employeeController.getAll(organizationId, departmentId, { page: 1, limit: 1000 });
     const employees = result.data;
 
     for (const employee of employees) {
       try {
-        // Get payroll data for this employee
-        const payrollData = await sharedPayrollCalculation.calculatePayroll({
-          employeeId: employee.id,
-          organizationId: organizationId,
-          departmentId: departmentId,
-          periodStart: periodStart,
-          periodEnd: periodEnd,
-          options: {
-            persistData: false // Preview mode
-          }
-        });
-        
-        const transformedData = await sharedPayrollCalculation.transformToEmployeePayrollData(
-          payrollData,
+        // Use the same calculation method as individual employee page for consistency
+        const actualAbsentDays = await this.payrollCalculationService.calculateActualAbsentDays(
+          employee.id,
           periodStart,
           periodEnd
         );
-
-        // Check if employee hit the absence threshold
-        if (transformedData.attendance.absentDays >= absenceThreshold) {
-          employeesHitAbsenceThreshold++;
+        
+        if (actualAbsentDays > 0) {
+          totalAbsentDays += actualAbsentDays;
+          employeesWithAbsences++;
         }
       } catch (error) {
         console.error(`Error checking attendance for employee ${employee.id}:`, error);
@@ -768,8 +759,10 @@ export class PayrollSummaryService {
       totalRecords: timeEntries.length,
       expectedEmployees,
       employeesWithRecords,
-      missingEmployeesCount: employeesHitAbsenceThreshold, // number of employees who hit the threshold
-      complete: employeesHitAbsenceThreshold === 0, // complete if and only if no employee with absences hit absences threshold
+      missingEmployeesCount, // Now correctly shows employees with NO time entries
+      complete: missingEmployeesCount === 0, // Complete only if ALL employees have time entries
+      totalAbsentDays, // Actual absent days (excluding weekends and approved leave)
+      employeesWithAbsences, // Employees who have actual absences
     };
   }
 
