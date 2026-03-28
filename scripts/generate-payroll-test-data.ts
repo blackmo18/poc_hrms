@@ -8,6 +8,16 @@ import { seedPhilhealthContributions } from '../prisma/seeds/philhealthContribut
 import { seedSSSContributions } from '../prisma/seeds/sssContributions';
 import { seedPagibigContributions } from '../prisma/seeds/pagibigContributions';
 
+// Load environment variables to ensure timezone is set
+import { config } from 'dotenv';
+config();
+
+// Ensure Manila timezone is set for consistent calculations
+if (!process.env.TZ || process.env.TZ !== 'Asia/Manila') {
+  process.env.TZ = 'Asia/Manila';
+  console.log('🕐 Timezone set to Asia/Manila for consistent payroll calculations');
+}
+
 /**
  * Script to generate realistic payroll test data for a given month
  * Creates a new employee with time entries including:
